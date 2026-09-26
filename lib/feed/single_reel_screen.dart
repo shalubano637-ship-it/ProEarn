@@ -29,7 +29,7 @@
 // =============================================================================
 
 // ---- Dart core ----
-import 'dart:io';
+import 'package:universal_io/universal_io.dart';
 import 'dart:math';
 
 // ---- Flutter framework ----
