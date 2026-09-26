@@ -28,7 +28,7 @@
 //     removing Vision — worth knowing, not a bug.
 // =============================================================================
 
-import 'dart:io';
+import 'package:universal_io/universal_io.dart';
 import 'moderation_result.dart';
 import 'stage1_quality_check.dart';
 import 'nsfw_classifier_stage.dart';
