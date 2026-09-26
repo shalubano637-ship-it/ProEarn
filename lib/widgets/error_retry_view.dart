@@ -16,7 +16,7 @@
 // nothing new to add to pubspec.yaml/verify against a live pub server.
 // =============================================================================
 
-import 'dart:io';
+import 'package:universal_io/universal_io.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
