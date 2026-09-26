@@ -8,7 +8,7 @@
 // device), or too extreme an aspect ratio to render sensibly in the feed.
 // =============================================================================
 
-import 'dart:io';
+import 'package:universal_io/universal_io.dart';
 import 'package:image/image.dart' as img;
 import 'moderation_result.dart';
 
