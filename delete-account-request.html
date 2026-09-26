@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pro Earn — Delete Account / Data</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #222; }
+  h1 { font-size: 22px; }
+  .box { background: #fafafa; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-top: 20px; }
+  label { display: block; margin-top: 14px; font-weight: 600; font-size: 14px; }
+  input, textarea { width: 100%; padding: 10px; margin-top: 6px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
+  button { margin-top: 18px; padding: 12px 20px; background: #c0392b; color: white; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; }
+  button:disabled { background: #999; cursor: default; }
+  .note { font-size: 13px; color: #666; margin-top: 24px; }
+  #status { margin-top: 14px; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<h1>Delete your Pro Earn account &amp; data</h1>
+<p>
+  Submitting this form permanently deletes your Pro Earn account, posts,
+  comments, and earnings history. This does not require reinstalling the
+  app — you can also delete your account directly from
+  <strong>Settings &gt; Security &gt; Delete Account</strong> inside the app.
+</p>
+
+<div class="box">
+  <form id="deleteForm">
+    <label for="email">Account email</label>
+    <input type="email" id="email" required placeholder="you@example.com">
+
+    <label for="reason">Reason (optional)</label>
+    <textarea id="reason" rows="3" placeholder="Optional — helps us improve"></textarea>
+
+    <button type="submit" id="submitBtn">Request Account Deletion</button>
+    <div id="status"></div>
+  </form>
+</div>
+
+<p class="note">
+  We verify the request belongs to the account owner before deleting
+  anything. Once verified, your account and all associated data (posts,
+  comments, earnings/payout history) are permanently removed within a few
+  business days — this cannot be undone. Questions:
+  proearn.in@gmail.com
+</p>
+
+<script>
+  // TODO: replace with an actual submission endpoint — this form
+  // currently only confirms receipt in the browser and does not yet send
+  // the request anywhere. Wire this to a Supabase Edge Function (or even
+  // a simple email-forwarding service) that queues a verified deletion
+  // request for manual or automated processing, since this page runs
+  // with no login/session and must not be able to delete an account on
+  // its own without confirming the requester owns it.
+  document.getElementById('deleteForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const email = document.getElementById('email').value;
+    document.getElementById('status').textContent =
+      'Request received for ' + email + '. We will email you to confirm before deleting anything.';
+    document.getElementById('submitBtn').disabled = true;
+  });
+</script>
+
+</body>
+</html>

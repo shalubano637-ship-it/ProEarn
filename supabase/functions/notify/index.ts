@@ -1,0 +1,147 @@
+// =============================================================================
+// PRO EARN — notify (Supabase Edge Function)
+// -----------------------------------------------------------------------------
+// Replaces the old client-side sendNotification()/sendOneSignalPushNotification().
+// The app calls this function whenever it wants to notify another user
+// (like, comment, follow, get). The function:
+//   1. Confirms the caller is a logged-in user (the "sender").
+//   2. Looks up the recipient's notification preferences server-side.
+//   3. Writes the in-app notification row.
+//   4. Sends the OneSignal push.
+//
+// The OneSignal REST API key lives only in this function's environment.
+// Previously it was hardcoded in the app, which meant anyone who
+// decompiled the APK could extract it and push arbitrary notifications
+// (spam/phishing) to every one of your users. It's also no longer
+// possible for a client to insert a notification row addressed to
+// someone else with faked sender info — see the RLS policy change in
+// supabase_schema.sql.
+// =============================================================================
+
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const ONESIGNAL_APP_ID = Deno.env.get("ONESIGNAL_APP_ID")!;
+const ONESIGNAL_REST_API_KEY = Deno.env.get("ONESIGNAL_REST_API_KEY")!;
+
+const ALLOWED_TYPES = new Set(["like", "comment", "follow", "get", "message"]);
+const MAX_MESSAGE_LENGTH = 300;
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+  });
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  try {
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const authed = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: userData, error: authError } = await authed.auth.getUser();
+    if (authError || !userData?.user) return json({ error: "Unauthorized" }, 401);
+    const senderId = userData.user.id;
+
+    const body = await req.json().catch(() => ({}));
+    const targetOwnerId = String(body.targetOwnerId ?? "");
+    const type = String(body.type ?? "");
+    const message = String(body.message ?? "").slice(0, MAX_MESSAGE_LENGTH);
+    const targetPostId = String(body.targetPostId ?? "");
+
+    if (!targetOwnerId) return json({ error: "targetOwnerId required" }, 400);
+    if (!ALLOWED_TYPES.has(type)) return json({ error: "Invalid type" }, 400);
+    if (targetOwnerId === senderId) return json({ success: true }); // no self-notify
+
+    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const { data: targetData } = await admin
+      .from("users")
+      .select('"pushNotificationsEnabled", "notifyLikes", "notifyComments", "notifyFollow", "notifyMessages", "mutedUsers"')
+      .eq("uid", targetOwnerId)
+      .maybeSingle();
+    if (!targetData) return json({ success: true });
+
+    if (!targetData.pushNotificationsEnabled) return json({ success: true });
+    if (type === "like" && targetData.notifyLikes === false) return json({ success: true });
+    if (type === "comment" && targetData.notifyComments === false) return json({ success: true });
+    if (type === "follow" && targetData.notifyFollow === false) return json({ success: true });
+    if (type === "message" && targetData.notifyMessages === false) return json({ success: true });
+    // Per-conversation mute (chat "Mute notifications" toggle) — targetData
+    // stores WHO THEY'VE muted, so this checks whether the sender of this
+    // particular message is on that list.
+    if (type === "message" && Array.isArray(targetData.mutedUsers) && targetData.mutedUsers.includes(senderId)) {
+      return json({ success: true });
+    }
+
+    const { data: senderData } = await admin
+      .from("users")
+      .select('"userName", "profileUrl"')
+      .eq("uid", senderId)
+      .maybeSingle();
+
+    const activeName = senderData?.userName ?? "User";
+    const activeProfile = senderData?.profileUrl ?? "";
+
+    // 1. In-app notification row — skipped for chat messages on purpose.
+    //    "message" should only ever show up as a push notification, not
+    //    as an entry in the in-app Notifications page (that page is for
+    //    likes/comments/follows/gets; unread-message state already lives
+    //    in the chat list itself).
+    if (type !== "message") {
+      await admin.from("notifications").insert({
+        targetOwnerId,
+        type,
+        senderId,
+        senderName: activeName,
+        senderProfile: activeProfile,
+        message,
+        targetPostId,
+      });
+    }
+
+    // 2. OneSignal push — same wording as before.
+    let pushBody = message;
+    if (type === "like") pushBody = "Someone liked your post";
+    else if (type === "follow") pushBody = "Someone started following you";
+    else if (type === "comment") pushBody = "Someone commented on your post";
+    else if (type === "message") pushBody = `${activeName} sent you a message`;
+
+    const pushResponse = await fetch("https://onesignal.com/api/v1/notifications", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Authorization": `Key ${ONESIGNAL_REST_API_KEY}`,
+      },
+      body: JSON.stringify({
+        app_id: ONESIGNAL_APP_ID,
+        target_channel: "push",
+        include_aliases: { external_id: [targetOwnerId] },
+        headings: { en: "You have a new notification" },
+        contents: { en: pushBody },
+        priority: 10,
+      }),
+    });
+
+    if (!pushResponse.ok) {
+      console.error("OneSignal push failed:", pushResponse.status, await pushResponse.text());
+    }
+
+    return json({ success: true });
+  } catch (e) {
+    console.error("notify error:", e);
+    return json({ error: "Failed to notify" }, 500);
+  }
+});
