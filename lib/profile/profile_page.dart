@@ -32,7 +32,7 @@
 
 // ---- Dart core ----
 import 'dart:async';
-import 'dart:io';
+import 'package:universal_io/universal_io.dart';
 
 // ---- Flutter framework ----
 import 'package:flutter/material.dart';
