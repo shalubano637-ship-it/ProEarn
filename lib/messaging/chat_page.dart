@@ -32,7 +32,7 @@
 //     report, on a dedicated page.
 // =============================================================================
 
-import 'dart:io';
+import 'package:universal_io/universal_io.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
