@@ -1,21 +1,3 @@
-// =============================================================================
-// PRO EARN — Chest reward page
-// -----------------------------------------------------------------------------
-//   Banner ad
-//     ↓
-//   Horizontal bar: 5 chests, each with a countdown timer
-//     Chest 1: 1 min   Chest 2: 5 min   Chest 3: 10 min
-//     Chest 4: 30 min  Chest 5: 45 min
-//     ↓
-//   Timer reaches 0 → "Open" button highlights → tap → Rewarded Ad →
-//   full watch → coins + gift credited → next chest's timer starts
-//
-// This page is now a thin display layer over chestTimerService (see
-// ../chest_timer_service.dart) — the actual countdown runs globally,
-// independent of whether this page is on screen, so navigating away and
-// back no longer resets or pauses it. Only leaving the app foreground
-// entirely pauses it (see main.dart's lifecycle observer).
-// =============================================================================
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -186,9 +168,6 @@ class _ChestsPageState extends State<ChestsPage> {
                   );
                 }
 
-                // Ek hi scrollable page: chests upar, gift shop niche —
-                // pehle alag GiftShopPage tha, ab dono Rewards tab mein
-                // ek saath hain.
                 return SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
                   child: Column(
@@ -283,12 +262,6 @@ class _ChestsPageState extends State<ChestsPage> {
   }
 }
 
-// =============================================================================
-// Gift Shop — was a separate page (gift_shop_page.dart), now embedded here
-// below the chests so Rewards has everything ("chests + shop") in one
-// place. Same purchase_gift RPC, same catalog; just rendered as a
-// shrink-wrapped grid instead of its own Scaffold.
-// =============================================================================
 class _GiftShopSection extends StatefulWidget {
   const _GiftShopSection();
 
