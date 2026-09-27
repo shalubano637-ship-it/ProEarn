@@ -1,50 +1,15 @@
-// =============================================================================
-// PRO EARN — Profile: AnalyticsPage (creator earnings analytics)
-// -----------------------------------------------------------------------------
-// Extracted from the original user_profile_features.dart during the
-// feature-based file split (no UI or logic changes — only where this code
-// physically lives). user_profile_features.dart is now a barrel file that
-// re-exports this file.
-// =============================================================================
 
-// =============================================================================
-// PRO EARN — AI-generated content social platform
-// -----------------------------------------------------------------------------
-// This file (user_profile_features.dart) is one of three files this app's
-// UI/logic was split into (equal three-way split of the original
-// single-file main.dart, no UI or logic changes — only where each class
-// physically lives):
-//   1. main.dart
-//   2. social_feed.dart
-//   3. user_profile_features.dart  (this file)
-//
-// user_profile_features.dart contains everything about the user's own
-// account, profile, and account-management screens:
-//   - Profile & social graph: ProfilePage, FollowListPage,
-//     BlockedUsersListScreen, EditProfilePage, ImageCropPage
-//   - Notifications: NotificationPage, PushNotificationPage
-//   - Settings & Security: SettingsPage, SecurityPage, HelpPage
-//   - Analytics: AnalyticsPage
-//
-// Persistence: Supabase (Postgres) is the source of truth for all
-// user/post/social data.
-// =============================================================================
 
-// ---- Dart core ----
 import 'package:universal_io/universal_io.dart';
 
-// ---- Flutter framework ----
 import 'package:flutter/material.dart';
 
-// ---- Supabase ----
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// ---- App files (split out of the original single-file main.dart) ----
 import '../models.dart';
 import '../service.dart';
 import '../theme/theme.dart';
 
-  // ================= FIXED CUSTOM ANALYTICS PAGE =================
 class AnalyticsPage extends StatefulWidget {
   const AnalyticsPage({super.key});
 
@@ -69,7 +34,6 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       appBar: AppBar(
         title: const Text("My Analytics Tracker"),
         actions: [
-          // Dropdown Filter menu choice selection configuration bar
           Padding(
             padding: const EdgeInsets.only(right: 12.0),
             child: DropdownButton<String>(
@@ -95,7 +59,6 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         ],
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
-        // Direct Query: User ko sirf khud ke posts filter karke newly data live show karega
         stream: Supabase.instance.client
             .from(kPostsCollection)
             .stream(primaryKey: ['id'])
@@ -114,12 +77,9 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             );
           }
 
-          // Fetch original rows array
           List<Map<String, dynamic>> myDocs = List.from(snapshot.data!);
 
-          // Shorting logic handler routing core block matrix
           if (_selectedFilter == 'Newly Post') {
-            // Default Sorting: Latest timestamp fields elements structural parsing
             myDocs.sort((a, b) {
               var tA = a['timestamp'] != null ? DateTime.parse(a['timestamp'].toString()) : null;
               var tB = b['timestamp'] != null ? DateTime.parse(b['timestamp'].toString()) : null;
@@ -128,7 +88,6 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               return tB.compareTo(tA); // Descending order element sort execution
             });
           } else if (_selectedFilter == 'Popular Post') {
-            // Popular sorting node: Higher array list size logic length elements
             myDocs.sort((a, b) {
               List<dynamic> likesA = a['likedBy'] ?? [];
               List<dynamic> likesB = b['likedBy'] ?? [];
@@ -202,7 +161,6 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     );
   }
 
-  // Live score tracker detailed configuration node layer layout matrix logic panel block
   void _showDetailedAnalyticsBottomSheet(BuildContext context, String postId, Map<String, dynamic> postData) {
     final theme = Theme.of(context);
     final String imageUrl = postData['imageUrl'] ?? '';
@@ -226,7 +184,6 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               liveLikes = likedBy.length;
               liveShares = liveData['sharesCount'] ?? 0;
               
-              // <-- 2. Database se getsCount ya gets list length uthane ka logic
               if (liveData['getsCount'] != null) {
                 liveGets = (liveData['getsCount'] as num).toInt();
               } else if (liveData['gets'] != null && liveData['gets'] is List) {
@@ -283,13 +240,11 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   const Text("Live Statistics Analytics:", style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textTertiary)),
                   const SizedBox(height: 12),
 
-                  // Grid Matrix/Row layout me card distribution
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _buildScoreAnalyticsCard(Icons.favorite, "Likes", "$liveLikes", AppColors.error),
                       
-                      // Comments table stream node
                       StreamBuilder<List<Map<String, dynamic>>>(
                         stream: Supabase.instance.client.from(kCommentsCollection).stream(primaryKey: ['id']).eq('postId', postId),
                         builder: (context, commentSnapshot) {
@@ -300,7 +255,6 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                       
                       _buildScoreAnalyticsCard(Icons.share, "Shares", "$liveShares", AppColors.success),
                       
-                      // <-- 3. Naya Gets Card yahan add kiya hai
                       _buildScoreAnalyticsCard(Icons.ads_click, "Gets", "$liveGets", AppColors.warning),
                     ],
                   ),
