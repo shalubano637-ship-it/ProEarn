@@ -1,12 +1,3 @@
-// =============================================================================
-// PRO EARN — Stage 1: image quality / size check
-// -----------------------------------------------------------------------------
-// The only stage that needs no ML model — pure Dart, works immediately.
-// Rejects images that are too small (likely low-effort/spam), too large
-// (upload abuse — mirrors the 9MB ceiling already enforced server-side in
-// imgbb-upload, checked here first so a bad upload never leaves the
-// device), or too extreme an aspect ratio to render sensibly in the feed.
-// =============================================================================
 
 import 'package:universal_io/universal_io.dart';
 import 'package:image/image.dart' as img;
