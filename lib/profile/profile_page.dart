@@ -230,6 +230,7 @@ class _ProfilePageState extends State<ProfilePage> {
             displayUsername = uData['userName'] ?? "User";
             displayBio = uData['bio'] ?? "No Bio Yet";
             profileUrl = uData['profileUrl'] ?? "";
+            isPrivateAccount = uData['isPrivateAccount'] == true;
             
             if (uData['followers'] != null) {
               userFollowersList = List<String>.from(uData['followers']);
@@ -271,41 +272,43 @@ class _ProfilePageState extends State<ProfilePage> {
                             Row(
                               children: [
                                 if (canSeePrivateProfile) ...[
-                                GestureDetector(
-                                  onTap: () => Navigator.push(
-                                    context, 
-                                    MaterialPageRoute(
-                                      builder: (_) => FollowListPage(title: "Followers", users: userFollowersList)
-                                    )
+                                  GestureDetector(
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => FollowListPage(title: "Followers", users: userFollowersList),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Text(userFollowersList.length.toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        const Text("Followers"),
+                                      ],
+                                    ),
                                   ),
-                                  child: Column(
-                                    children: [
-                                      Text(userFollowersList.length.toString(), style: const TextStyle(fontWeight: FontWeight.bold)), 
-                                      const Text("Followers")
-                                    ]
+                                  const SizedBox(width: 30),
+                                  GestureDetector(
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => FollowListPage(title: "Following", users: userFollowingList),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Text(userFollowingList.length.toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        const Text("Following"),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 30),
-                                GestureDetector(
-                                  onTap: () => Navigator.push(
-                                    context, 
-                                    MaterialPageRoute(
-                                      builder: (_) => FollowListPage(title: "Following", users: userFollowingList)
-                                    )
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Text(userFollowingList.length.toString(), style: const TextStyle(fontWeight: FontWeight.bold)), 
-                                      const Text("Following")
-                                    ]
-                                  ),
-                                ),
-                              ],
-                            ),
                                 ],
-                              if (!canSeePrivateProfile)
-                                const Text('Private account', style: TextStyle(color: AppColors.textTertiary)),
-                            ),
+                                if (!canSeePrivateProfile)
+                                  const Text(
+                                    'Private account',
+                                    style: TextStyle(color: AppColors.textTertiary),
+                                  ),
+                              ],
+                            )
                           ],
                         ),
                       ),
