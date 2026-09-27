@@ -1,53 +1,18 @@
-// =============================================================================
-// PRO EARN — Profile: ImageCropPage
-// -----------------------------------------------------------------------------
-// Extracted from the original user_profile_features.dart during the
-// feature-based file split (no UI or logic changes — only where this code
-// physically lives). user_profile_features.dart is now a barrel file that
-// re-exports this file.
-// =============================================================================
 
-// =============================================================================
-// PRO EARN — AI-generated content social platform
-// -----------------------------------------------------------------------------
-// This file (user_profile_features.dart) is one of three files this app's
-// UI/logic was split into (equal three-way split of the original
-// single-file main.dart, no UI or logic changes — only where each class
-// physically lives):
-//   1. main.dart
-//   2. social_feed.dart
-//   3. user_profile_features.dart  (this file)
-//
-// user_profile_features.dart contains everything about the user's own
-// account, profile, and account-management screens:
-//   - Profile & social graph: ProfilePage, FollowListPage,
-//     BlockedUsersListScreen, EditProfilePage, ImageCropPage
-//   - Notifications: NotificationPage, PushNotificationPage
-//   - Settings & Security: SettingsPage, SecurityPage, HelpPage
-//   - Analytics: AnalyticsPage
-//
-// Persistence: Supabase (Postgres) is the source of truth for all
-// user/post/social data.
-// =============================================================================
 
-// ---- Dart core ----
 import 'dart:async';
 import 'package:universal_io/universal_io.dart';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-// ---- Flutter framework ----
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
-// ---- Third-party packages ----
 import 'package:path_provider/path_provider.dart';
 
-// ---- App files (split out of the original single-file main.dart) ----
 import '../theme/theme.dart';
 
-// ================= STANDALONE REELS VIEWER (deep-linked / profile grid) =================
  class ImageCropPage extends StatefulWidget {
   final File imageFile;
   const ImageCropPage({super.key, required this.imageFile});
@@ -70,14 +35,12 @@ import '../theme/theme.dart';
       RenderRepaintBoundary boundary = _boundaryKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       ui.Image image = await boundary.toImage(pixelRatio: 2.0); // Better quality resolution
       
-      // FIX: rawRgba ki jagah .png format ka use karein taaki sahi se file encode ho
       ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       
       if (byteData != null) {
         final Uint8List pngBytes = byteData.buffer.asUint8List();
         
         final tempDir = await getTemporaryDirectory();
-        // PNG bytes hain isliye filename extension .png rakhein
         final File croppedFile = File('${tempDir.path}/cropped_profile_${DateTime.now().millisecondsSinceEpoch}.png');
         await croppedFile.writeAsBytes(pngBytes);
 
@@ -104,7 +67,6 @@ import '../theme/theme.dart';
 
   @override
   Widget build(BuildContext context) {
-    // ... baki pura build UI widget same rahega jaisa aapka pehle tha
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -128,9 +90,6 @@ import '../theme/theme.dart';
               aspectRatio: 1,
               child: Stack(
                 children: [
-                  // NOTE: crop canvas + mask below intentionally use literal
-                  // black/white (not theme tokens) — this is a functional
-                  // image-cropping overlay, not themed UI chrome.
                   Container(color: Colors.black),
                   Positioned.fill(
                     child: InteractiveViewer(
