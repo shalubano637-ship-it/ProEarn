@@ -1,8 +1,4 @@
-// =============================================================================
-// PRO EARN — On-device moderation: result types
-// =============================================================================
 
-/// Result of a single pipeline stage.
 class StageResult {
   final String stageName;
   final bool passed;
@@ -23,9 +19,6 @@ class StageResult {
       '${reason != null ? ", reason=$reason" : ""})';
 }
 
-/// Final verdict from the full pipeline, plus every stage's individual
-/// result — kept even on early-exit so the UI/logs can show exactly which
-/// stage rejected the image, not just a generic "unsafe" message.
 class ModerationVerdict {
   final bool isSafe;
   final List<StageResult> stageResults;
