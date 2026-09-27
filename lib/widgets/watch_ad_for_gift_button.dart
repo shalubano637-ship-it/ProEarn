@@ -1,14 +1,3 @@
-// =============================================================================
-// PRO EARN — "Watch ad for random gift" button
-// -----------------------------------------------------------------------------
-// Shared between messaging/chat_gift_sheet.dart and gifts/gift_button.dart's
-// _SendGiftSheet (the reels-page "Bag" sheet), so there's exactly one
-// implementation instead of two copies drifting apart. The daily cap
-// itself lives server-side in claim_random_gift_from_ad/ad_gift_claims
-// (see supabase/migrations/2026_chat_redesign.sql) — using the SAME RPC
-// from both places is what makes the limit shared between them; this
-// widget just displays that shared count and calls the RPC.
-// =============================================================================
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
