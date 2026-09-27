@@ -10,7 +10,6 @@ import 'chest_timer_service.dart';
 import 'dart:async';
 import 'theme/theme.dart';
 import 'legal_text.dart';
-import 'rewards/signup_rewards_popup.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
