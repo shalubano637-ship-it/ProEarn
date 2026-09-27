@@ -141,7 +141,6 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
         .update({
           'termsAcceptedAt': DateTime.now().toUtc().toIso8601String(),
           'termsVersion': kCurrentTermsVersion,
-            'referralCode': referralCodeController.text.trim().toUpperCase(),
         })
         .eq('uid', uid);
     return true;
@@ -386,6 +385,7 @@ class _LoginPageState extends State<LoginPage> {
             'userName': signupUsername,
             'termsAcceptedAt': DateTime.now().toUtc().toIso8601String(),
             'termsVersion': kCurrentTermsVersion,
+            'referralCode': referralCodeController.text.trim().toUpperCase(),
           },
         );
 
