@@ -55,7 +55,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     _loadLastViewedTime(); // App start hote hi Hive se time read karein
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      await SignupRewardsPopup.show(context);
+      await SignupRewardsPopup.showIfEligible(context);
     });
     _watchForLiveBan(); // Admin panel se mid-session ban ho jaaye to turant sign out
   }
