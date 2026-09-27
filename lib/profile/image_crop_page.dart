@@ -33,7 +33,10 @@ import '../theme/theme.dart';
       );
 
       RenderRepaintBoundary boundary = _boundaryKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
-      ui.Image image = await boundary.toImage(pixelRatio: 2.0); // Better quality resolution
+      // Export at 4x so the saved profile image has enough pixels for crisp
+      // display at both avatar and profile sizes. RenderRepaintBoundary's
+      // pixelRatio directly controls the output dimensions.
+      ui.Image image = await boundary.toImage(pixelRatio: 4.0);
       
       ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       
@@ -101,6 +104,8 @@ import '../theme/theme.dart';
                         child: Image.file(
                           widget.imageFile,
                           fit: BoxFit.contain,
+                          filterQuality: FilterQuality.high,
+                          isAntiAlias: true,
                         ),
                       ),
                     ),
