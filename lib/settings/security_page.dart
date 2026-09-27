@@ -1,45 +1,11 @@
-// =============================================================================
-// PRO EARN — Settings: SecurityPage
-// -----------------------------------------------------------------------------
-// Extracted from the original user_profile_features.dart during the
-// feature-based file split (no UI or logic changes — only where this code
-// physically lives). user_profile_features.dart is now a barrel file that
-// re-exports this file.
-// =============================================================================
 
-// =============================================================================
-// PRO EARN — AI-generated content social platform
-// -----------------------------------------------------------------------------
-// This file (user_profile_features.dart) is one of three files this app's
-// UI/logic was split into (equal three-way split of the original
-// single-file main.dart, no UI or logic changes — only where each class
-// physically lives):
-//   1. main.dart
-//   2. social_feed.dart
-//   3. user_profile_features.dart  (this file)
-//
-// user_profile_features.dart contains everything about the user's own
-// account, profile, and account-management screens:
-//   - Profile & social graph: ProfilePage, FollowListPage,
-//     BlockedUsersListScreen, EditProfilePage, ImageCropPage
-//   - Notifications: NotificationPage, PushNotificationPage
-//   - Settings & Security: SettingsPage, SecurityPage, HelpPage
-//   - Analytics: AnalyticsPage
-//
-// Persistence: Supabase (Postgres) is the source of truth for all
-// user/post/social data.
-// =============================================================================
 
-// ---- Dart core ----
 import 'dart:async';
 
-// ---- Flutter framework ----
 import 'package:flutter/material.dart';
 
-// ---- Supabase ----
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// ---- App files (split out of the original single-file main.dart) ----
 import '../models.dart';
 import '../auth_screen.dart';
 import '../theme/theme.dart';
@@ -65,14 +31,12 @@ class _SecurityPageState extends State<SecurityPage> {
   @override
   void initState() {
     super.initState();
-    // Logged-in user ka email automatically fetch karke field me set kar rahe hain
     final currentUserEmail = Supabase.instance.client.auth.currentUser?.email;
     if (currentUserEmail != null) {
       emailController.text = currentUserEmail;
     }
   }
 
-  // STEP 1: Current Password ko Supabase Auth se Verify karna
   Future<void> verifyCurrentPassword() async {
     final user = Supabase.instance.client.auth.currentUser;
     final password = currentPasswordController.text.trim();
@@ -96,8 +60,6 @@ class _SecurityPageState extends State<SecurityPage> {
     });
 
     try {
-      // Supabase has no reauthenticateWithCredential — re-signing in with the
-      // current email/password achieves the same verification.
       await Supabase.instance.client.auth.signInWithPassword(
         email: user.email!,
         password: password,
@@ -123,7 +85,6 @@ class _SecurityPageState extends State<SecurityPage> {
     }
   }
 
-  // STEP 2: Supabase Auth me New Password update karna
   Future<void> saveNewPassword() async {
     final user = Supabase.instance.client.auth.currentUser;
     final newPassword = newPasswordController.text.trim();
@@ -168,7 +129,6 @@ class _SecurityPageState extends State<SecurityPage> {
     }
   }
 
-  // STEP 3: Auto-Detected Email par Reset Link bhejna
   Future<void> sendPasswordResetEmail() async {
     final email = emailController.text.trim();
 
@@ -215,15 +175,6 @@ class _SecurityPageState extends State<SecurityPage> {
     }
   }
 
-  // ACCOUNT DELETION — required by Google Play's Account Deletion policy.
-  // Reuses the same password re-verification gate as the change-password
-  // flow above (passwordMatched) since this is at least as sensitive, then
-  // requires typing "DELETE" to confirm before calling the delete-account
-  // edge function, which removes the account and all associated data
-  // server-side (see supabase/functions/delete-account for exactly what's
-  // deleted). This cannot be undone, so no "soft delete"/deactivate option
-  // is offered — Google's policy explicitly requires real deletion, not
-  // deactivation.
   Future<void> deleteAccountFlow() async {
     if (!passwordMatched) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -291,7 +242,6 @@ class _SecurityPageState extends State<SecurityPage> {
     }
   }
 
-  // LOGOUT METHOD
   Future<void> handleLogout() async {
     try {
       await Supabase.instance.client.auth.signOut();
@@ -357,7 +307,6 @@ class _SecurityPageState extends State<SecurityPage> {
             ListView(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 80),
               children: [
-              // ================= SEGMENT 1: BLOCKED USERS LIVE LIVE STATUS =================
               StreamBuilder<List<Map<String, dynamic>>>(
                 stream: Supabase.instance.client
                     .from(kUsersCollection)
@@ -415,7 +364,6 @@ class _SecurityPageState extends State<SecurityPage> {
               const Divider(),
               const SizedBox(height: 15),
                 
-                // ================= NEW: HIDDEN POSTS LIVE STATUS =================
 StreamBuilder<List<Map<String, dynamic>>>(
   stream: Supabase.instance.client
       .from(kUsersCollection)
@@ -470,11 +418,9 @@ StreamBuilder<List<Map<String, dynamic>>>(
   },
 ),
 
-              // ================= SEGMENT 2: CHANGE PASSWORD =================
               const Text("Change Password", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
               
-              // Current Password Field
               TextField(
                 controller: currentPasswordController,
                 obscureText: hideCurrentPassword,
@@ -497,7 +443,6 @@ StreamBuilder<List<Map<String, dynamic>>>(
               ),
               const SizedBox(height: 15),
               
-              // Verify Button
               if (!passwordMatched)
                 SizedBox(
                   height: 50,
@@ -512,7 +457,6 @@ StreamBuilder<List<Map<String, dynamic>>>(
                   ),
                 ),
 
-              // New Password Segment (Only opens if verified)
               if (passwordMatched) ...[
                 const SizedBox(height: 20),
                 TextField(
@@ -554,7 +498,6 @@ StreamBuilder<List<Map<String, dynamic>>>(
                 child: Divider(),
               ),
 
-              // ================= SEGMENT 3: FORGOT PASSWORD =================
               const Text("Forgot Password?", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
               const Text(
@@ -563,7 +506,6 @@ StreamBuilder<List<Map<String, dynamic>>>(
               ),
               const SizedBox(height: 15),
               
-              // Read-only Textfield
               TextField(
                 controller: emailController,
                 readOnly: true,
