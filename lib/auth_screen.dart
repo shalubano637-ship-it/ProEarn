@@ -10,6 +10,7 @@ import 'chest_timer_service.dart';
 import 'dart:async';
 import 'theme/theme.dart';
 import 'legal_text.dart';
+import 'rewards/signup_rewards_popup.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -141,6 +142,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
         .update({
           'termsAcceptedAt': DateTime.now().toUtc().toIso8601String(),
           'termsVersion': kCurrentTermsVersion,
+            'referralCode': referralCodeController.text.trim().toUpperCase(),
         })
         .eq('uid', uid);
     return true;
@@ -206,6 +208,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
   final TextEditingController usernameController = TextEditingController();
+  final TextEditingController referralCodeController = TextEditingController();
 
   @override
   void initState() {
@@ -446,6 +449,16 @@ class _LoginPageState extends State<LoginPage> {
                   TextField(
                     controller: usernameController,
                     decoration: const InputDecoration(hintText: "Username"),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: referralCodeController,
+                    textCapitalization: TextCapitalization.characters,
+                    maxLength: 6,
+                    decoration: const InputDecoration(
+                      hintText: "Referral Code (optional)",
+                      counterText: "",
+                    ),
                   ),
                   const SizedBox(height: 20),
                 ],
