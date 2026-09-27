@@ -72,6 +72,28 @@ class _CommentGiftSheetState extends State<_CommentGiftSheet> {
     }
   }
 
+  Future<List<Map<String, dynamic>>> _loadAvailableGifts(String uid) async {
+    final post = await Supabase.instance.client
+        .from('posts')
+        .select('userName')
+        .eq('id', widget.postId)
+        .maybeSingle();
+
+    final isOwnPost = post?['userName'] == uid;
+
+    var query = Supabase.instance.client
+        .from('gift_inventory')
+        .select('*, gifts(*)')
+        .eq('ownerUid', uid)
+        .gt('count', 0);
+
+    if (!isOwnPost) {
+      query = query.eq('source', 'purchased');
+    }
+
+    return query;
+  }
+
   @override
   Widget build(BuildContext context) {
     final uid = Supabase.instance.client.auth.currentUser?.id ?? '';
@@ -97,11 +119,7 @@ class _CommentGiftSheetState extends State<_CommentGiftSheet> {
               const SizedBox(height: 12),
               Expanded(
                 child: FutureBuilder<List<Map<String, dynamic>>>(
-                  future: Supabase.instance.client
-                      .from('gift_inventory')
-                      .select('*, gifts(*)')
-                      .eq('ownerUid', uid)
-                      .gt('count', 0),
+                  future: _loadAvailableGifts(uid),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
@@ -125,7 +143,7 @@ class _CommentGiftSheetState extends State<_CommentGiftSheet> {
 
                     if (grouped.isEmpty) {
                       return const Center(
-                        child: Text("No gifts in your Bag yet — buy some or open a chest!", textAlign: TextAlign.center),
+                        child: Text("No purchase gifts in your Bag yet — buy a gift to send it to others.", textAlign: TextAlign.center),
                       );
                     }
 
