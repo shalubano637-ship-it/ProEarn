@@ -29,6 +29,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
     "Hate Speech or Violence",
     "Harassment or Bullying",
     "Nudity or Sexual Content",
+          "Child Safety / CSAE",
     "Intellectual Property Violation",
   ];
 
