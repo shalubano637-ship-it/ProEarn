@@ -1,3 +1,5 @@
+alter table public.users add column if not exists "termsVersion" text;
+
 alter table public.posts
   add column if not exists "moderationStatus" text not null default 'approved',
   add column if not exists "moderationCheckedAt" timestamptz,
