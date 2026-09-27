@@ -1,19 +1,3 @@
-// =============================================================================
-// PRO EARN — Chat image send preview
-// -----------------------------------------------------------------------------
-// Shown right after the camera/gallery picker returns a photo, before it's
-// actually sent. Compresses the image, then runs it through the SAME
-// on-device moderation pipeline every other upload path in this app uses
-// (moderationPipeline — see moderation/moderation_config.dart) while the
-// preview is already visible. If the model flags it, a red warning
-// appears and Send stays disabled — the user can't send it, but nothing
-// is silently swapped or auto-rejected without them seeing why.
-//
-// Returns the ImgBB URL via Navigator.pop once the user taps Send and the
-// upload finishes — chat_page.dart is the one that actually calls
-// send_message with that URL, this page's job ends at "here's a hosted
-// URL for a safe image".
-// =============================================================================
 
 import 'package:universal_io/universal_io.dart';
 import 'package:flutter/material.dart';
