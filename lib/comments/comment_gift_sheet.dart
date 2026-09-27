@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/theme.dart';
 import '../service.dart';
 import '../models.dart';
-import '../widgets/watch_ad_for_gift_button.dart';
 
 void showCommentGiftSheet(BuildContext context, {required String postId}) {
   showModalBottomSheet(
@@ -113,7 +112,6 @@ class _CommentGiftSheetState extends State<_CommentGiftSheet> {
                   const Expanded(
                     child: Text("Send a Gift", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
-                  const WatchAdForGiftButton(),
                 ],
               ),
               const SizedBox(height: 12),
