@@ -1,3 +1,7 @@
+alter table public.gift_inventory drop constraint if exists gift_inventory_source_check;
+alter table public.gift_inventory add constraint gift_inventory_source_check
+  check (source = any (array['purchased','chest','chat','ad','signup','referral']));
+
 alter table public.users
   add column if not exists "referralCode" text,
   add column if not exists "referredBy" uuid references public.users(uid),
