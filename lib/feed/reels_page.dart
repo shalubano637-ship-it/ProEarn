@@ -5,6 +5,7 @@ import 'package:universal_io/universal_io.dart';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
