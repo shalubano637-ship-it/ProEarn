@@ -1,3 +1,5 @@
+const String kCurrentTermsVersion = '2026-09';
+
 const String kTermsAndConditionsText = '''
 PRO EARN — TERMS OF USE
 Last Updated: September 2026
