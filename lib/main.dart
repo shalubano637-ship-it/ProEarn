@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 
 // ---- Flutter framework ----
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
 // ---- Supabase ----
@@ -229,19 +228,8 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 class AiSocialApp extends StatelessWidget {
   const AiSocialApp({super.key});
 
-  static const _sharedPageTransitionsTheme = PageTransitionsTheme(
-    builders: {
-      TargetPlatform.android:
-          CupertinoPageTransitionsBuilder(),
-      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-    },
-  );
   @override
   Widget build(BuildContext context) {
-    // Theme is now centralized in lib/theme/ — see AppTheme.light / AppTheme.dark.
-    // To re-theme the whole app, edit lib/theme/app_colors.dart etc.
-    // (_sharedPageTransitionsTheme above is now unused; kept for reference
-    // since AppTheme defines its own identical page transitions internally.)
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: scaffoldMessengerKey,
