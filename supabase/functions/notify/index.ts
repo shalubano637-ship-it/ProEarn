@@ -1,22 +1,3 @@
-// =============================================================================
-// PRO EARN — notify (Supabase Edge Function)
-// -----------------------------------------------------------------------------
-// Replaces the old client-side sendNotification()/sendOneSignalPushNotification().
-// The app calls this function whenever it wants to notify another user
-// (like, comment, follow, get). The function:
-//   1. Confirms the caller is a logged-in user (the "sender").
-//   2. Looks up the recipient's notification preferences server-side.
-//   3. Writes the in-app notification row.
-//   4. Sends the OneSignal push.
-//
-// The OneSignal REST API key lives only in this function's environment.
-// Previously it was hardcoded in the app, which meant anyone who
-// decompiled the APK could extract it and push arbitrary notifications
-// (spam/phishing) to every one of your users. It's also no longer
-// possible for a client to insert a notification row addressed to
-// someone else with faked sender info — see the RLS policy change in
-// supabase_schema.sql.
-// =============================================================================
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -79,9 +60,6 @@ Deno.serve(async (req) => {
     if (type === "comment" && targetData.notifyComments === false) return json({ success: true });
     if (type === "follow" && targetData.notifyFollow === false) return json({ success: true });
     if (type === "message" && targetData.notifyMessages === false) return json({ success: true });
-    // Per-conversation mute (chat "Mute notifications" toggle) — targetData
-    // stores WHO THEY'VE muted, so this checks whether the sender of this
-    // particular message is on that list.
     if (type === "message" && Array.isArray(targetData.mutedUsers) && targetData.mutedUsers.includes(senderId)) {
       return json({ success: true });
     }
@@ -95,11 +73,6 @@ Deno.serve(async (req) => {
     const activeName = senderData?.userName ?? "User";
     const activeProfile = senderData?.profileUrl ?? "";
 
-    // 1. In-app notification row — skipped for chat messages on purpose.
-    //    "message" should only ever show up as a push notification, not
-    //    as an entry in the in-app Notifications page (that page is for
-    //    likes/comments/follows/gets; unread-message state already lives
-    //    in the chat list itself).
     if (type !== "message") {
       await admin.from("notifications").insert({
         targetOwnerId,
@@ -112,7 +85,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 2. OneSignal push — same wording as before.
     let pushBody = message;
     if (type === "like") pushBody = "Someone liked your post";
     else if (type === "follow") pushBody = "Someone started following you";
