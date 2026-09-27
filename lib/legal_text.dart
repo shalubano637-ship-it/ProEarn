@@ -142,4 +142,4 @@ You can request account and associated-data deletion through the in-app Security
 
 8. CONTACT
 Privacy and safety questions: proearn.in@gmail.com
-''
+''';
