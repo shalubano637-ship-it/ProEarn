@@ -1,41 +1,8 @@
-// =============================================================================
-// PRO EARN — Settings: SettingsPage (menu)
-// -----------------------------------------------------------------------------
-// Extracted from the original user_profile_features.dart during the
-// feature-based file split (no UI or logic changes — only where this code
-// physically lives). user_profile_features.dart is now a barrel file that
-// re-exports this file.
-// =============================================================================
-
-// =============================================================================
-// PRO EARN — AI-generated content social platform
-// -----------------------------------------------------------------------------
-// This file (user_profile_features.dart) is one of three files this app's
-// UI/logic was split into (equal three-way split of the original
-// single-file main.dart, no UI or logic changes — only where each class
-// physically lives):
-//   1. main.dart
-//   2. social_feed.dart
-//   3. user_profile_features.dart  (this file)
-//
-// user_profile_features.dart contains everything about the user's own
-// account, profile, and account-management screens:
-//   - Profile & social graph: ProfilePage, FollowListPage,
-//     BlockedUsersListScreen, EditProfilePage, ImageCropPage
-//   - Notifications: NotificationPage, PushNotificationPage
-//   - Settings & Security: SettingsPage, SecurityPage, HelpPage
-//   - Analytics: AnalyticsPage
-//
-// Persistence: Supabase (Postgres) is the source of truth for all
-// user/post/social data.
-// =============================================================================
 
 
-// ---- Flutter framework ----
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// ---- App files (split out of the original single-file main.dart) ----
 import 'push_notification_page.dart';
 import 'security_page.dart';
 import 'help_page.dart';
@@ -63,9 +30,6 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Admin Panel entry only renders for kAdminEmail — this is just a UI
-    // convenience, though; real enforcement is the server-side RLS in
-    // supabase/migrations/2026_admin_reports_panel.sql.
     final currentEmail = Supabase.instance.client.auth.currentUser?.email?.toLowerCase().trim();
     final isAdmin = currentEmail == kAdminEmail.toLowerCase();
 
