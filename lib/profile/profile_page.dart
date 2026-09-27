@@ -118,6 +118,16 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<Map<String, dynamic>?> _loadProfileData(String uid) async {
+    final profile = await Supabase.instance.client.from('public_profiles').select().eq('uid', uid).maybeSingle();
+    if (profile == null) return null;
+    if (widget.isOwnProfile) {
+      final own = await Supabase.instance.client.from('users').select('followers,following').eq('uid', uid).maybeSingle();
+      return {...profile, 'followers': own?['followers'] ?? const [], 'following': own?['following'] ?? const []};
+    }
+    return profile;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -215,7 +225,7 @@ class _ProfilePageState extends State<ProfilePage> {
         ],
       ),
       body: FutureBuilder<Map<String, dynamic>?>(
-        future: Supabase.instance.client.from('public_profiles').select().eq('uid', targetUid).maybeSingle(),
+        future: _loadProfileData(targetUid),
         builder: (context, userSnapshot) {
           String displayUsername = "Loading...";
           String displayBio = "Creative AI Artist";
@@ -232,23 +242,11 @@ class _ProfilePageState extends State<ProfilePage> {
             profileUrl = uData['profileUrl'] ?? "";
             isPrivateAccount = uData['isPrivateAccount'] == true;
 
-            // public_profiles intentionally does not expose follower/following
-            // arrays. For the owner's own profile, read these private fields
-            // from the authenticated user's row.
-            if (widget.isOwnProfile) {
-              try {
-                final own = await Supabase.instance.client
-                    .from('users')
-                    .select('followers,following')
-                    .eq('uid', targetUid)
-                    .maybeSingle();
-                if (own != null) {
-                  userFollowersList = List<String>.from(own['followers'] ?? const []);
-                  userFollowingList = List<String>.from(own['following'] ?? const []);
-                }
-              } catch (e) {
-                debugPrint('Failed to load own follower lists: $e');
-              }
+            if (uData['followers'] != null) {
+              userFollowersList = List<String>.from(uData['followers']);
+            }
+            if (uData['following'] != null) {
+              userFollowingList = List<String>.from(uData['following']);
             }
 
             if (widget.isOwnProfile) {
