@@ -1,18 +1,3 @@
-// =============================================================================
-// PRO EARN — Messages list page
-// -----------------------------------------------------------------------------
-//   Banner ad
-//     ↓
-//   Search bar
-//     ↓
-//   List:
-//     - If the user has NO conversations yet: shows people they follow,
-//       as a "start a chat" list.
-//     - Once at least one conversation exists: shows the actual
-//       conversations list (who they've messaged), not the followed-users
-//       list — this list grows as they message more people, it isn't
-//       just "the first person messaged".
-// =============================================================================
 
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -28,15 +13,8 @@ import '../user_profile_features.dart';
 import '../widgets/error_retry_view.dart';
 
 class MessagesListPage extends StatefulWidget {
-  /// When set, this page acts as a "Forward to…" picker instead of the
-  /// normal inbox: tapping any conversation/user sends [forwardText] /
-  /// [forwardImageUrl] straight to them (no ChatPage navigation), then
-  /// pops back to the chat the forward was started from.
   final String? forwardText;
   final String? forwardImageUrl;
-  // Forwarding a gallery album (see _groupConsecutiveImages in
-  // chat_page.dart) sends every image in it — set instead of
-  // forwardImageUrl when forwarding a whole group.
   final List<String>? forwardImageUrls;
 
   const MessagesListPage({super.key, this.forwardText, this.forwardImageUrl, this.forwardImageUrls});
@@ -55,11 +33,6 @@ class _MessagesListPageState extends State<MessagesListPage> {
   BannerAd? _bannerAd;
   bool _isBannerLoaded = false;
 
-  // Held in state (not built inline in the FutureBuilder below) so we can
-  // deliberately re-run it — see _refreshConversations. A brand new push
-  // to ChatPage doesn't rebuild this page on its own (it's just covered,
-  // not disposed), so without this the unread dot would never clear
-  // until something else happened to trigger a rebuild.
   Future<List<Map<String, dynamic>>>? _conversationsFuture;
 
   Future<List<Map<String, dynamic>>> _fetchConversations() {
@@ -201,11 +174,6 @@ void _openChat(BuildContext context, String otherUid, String otherUserName, {Voi
   ).then((_) => onReturn?.call());
 }
 
-/// Sends [forwardText]/[forwardImageUrl] (or every URL in
-/// [forwardImageUrls], for a whole forwarded album) directly into a
-/// conversation with [otherUid] (creating the conversation first if it
-/// doesn't exist yet), then pops this picker back to wherever "Forward"
-/// was tapped from.
 Future<void> _forwardTo(
   BuildContext context, {
   required String otherUid,
@@ -225,10 +193,6 @@ Future<void> _forwardTo(
         .rpc('get_or_create_conversation', params: {'p_other_uid': otherUid});
 
     if (forwardImageUrls != null && forwardImageUrls.isNotEmpty) {
-      // Whole album — one send_message per image, back-to-back, same as
-      // a fresh gallery multi-send (see chat_gift_sheet.dart / chat_page.dart's
-      // _pickAndSendMultipleImages): the receiving side's
-      // _groupConsecutiveImages naturally re-groups them into one tile.
       for (final url in forwardImageUrls) {
         await Supabase.instance.client.rpc('send_message', params: {
           'p_conversation_id': conversationId,
@@ -293,10 +257,6 @@ class _ConversationsList extends StatefulWidget {
 }
 
 class _ConversationsListState extends State<_ConversationsList> {
-  // Batch-fetch every "other participant" profile in one round trip
-  // instead of one query per row (same pattern as leaderboard_page.dart /
-  // bag_page.dart's _ReceivedGiftsTab). Computed once in initState so
-  // rebuilds (e.g. from setState in _toggleSave) don't refire the query.
   late Future<Map<String, Map<String, dynamic>>> _profilesFuture;
 
   @override
@@ -390,11 +350,6 @@ class _ConversationsListState extends State<_ConversationsList> {
             final userName = profile?['userName'] ?? 'User';
             final profileUrl = profile?['profileUrl'] ?? '';
 
-            // Unread dot: a message came in after I last opened this
-            // chat. lastReadAt gets bumped both when I OPEN the chat and
-            // whenever I SEND (see chat_page.dart / chat_gift_sheet.dart),
-            // so this only lights up for messages from the other side
-            // that I genuinely haven't seen yet.
             final lastMessageAtRaw = conv['lastMessageAt'];
             final lastReadAtRaw = iAmA ? conv['lastReadAtA'] : conv['lastReadAtB'];
             final bool hasUnread = lastMessageAtRaw != null &&
@@ -409,11 +364,6 @@ class _ConversationsListState extends State<_ConversationsList> {
             return GestureDetector(
               onLongPress: widget.isForwardMode ? null : () => _confirmDelete(conversationId, userName),
               child: ListTile(
-                // Whole tile now opens the chat (or forwards, in forward
-                // mode) — leading/trailing below have their OWN tap
-                // handlers, which Flutter always gives priority to over
-                // this outer onTap, so tapping the avatar or the save
-                // button still does its own separate thing.
                 onTap: widget.isForwardMode
                     ? () => _forwardTo(
                           context,
