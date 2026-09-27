@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -293,6 +294,45 @@ class GlobalCachedImage extends StatelessWidget {
       );
     }
 
+    // CachedNetworkImage has limited web caching support. On web, use the
+    // browser's native image pipeline so a refresh does not depend on the
+    // custom CacheManager implementation.
+    if (kIsWeb) {
+      return Image.network(
+        imageUrl,
+        width: width,
+        height: height,
+        fit: fit,
+        filterQuality: FilterQuality.high,
+        gaplessPlayback: true,
+        loadingBuilder: (context, child, progress) {
+          if (progress == null) return child;
+          return Container(
+            width: width,
+            height: height,
+            color: AppColors.surfaceElevated,
+            child: const Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.textTertiary,
+                ),
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, url, error) => Container(
+          width: width,
+          height: height,
+          color: AppColors.surfaceElevated,
+          child: this.errorWidget ??
+              const Icon(Icons.broken_image, color: AppColors.textTertiary),
+        ),
+      );
+    }
+
     return CachedNetworkImage(
       imageUrl: imageUrl,
       width: width,
@@ -300,6 +340,7 @@ class GlobalCachedImage extends StatelessWidget {
       fit: fit,
       filterQuality: FilterQuality.high,
       cacheManager: CustomImageCacheManager.instance,
+      useOldImageOnUrlChange: true,
       placeholder: (context, url) => Container(
         width: width,
         height: height,
@@ -309,7 +350,9 @@ class GlobalCachedImage extends StatelessWidget {
             width: 20,
             height: 20,
             child: CircularProgressIndicator(
-                strokeWidth: 2, color: AppColors.textTertiary),
+              strokeWidth: 2,
+              color: AppColors.textTertiary,
+            ),
           ),
         ),
       ),
@@ -317,8 +360,8 @@ class GlobalCachedImage extends StatelessWidget {
         width: width,
         height: height,
         color: AppColors.surfaceElevated,
-        child:
-            errorWidget ?? const Icon(Icons.broken_image, color: AppColors.textTertiary),
+        child: this.errorWidget ??
+            const Icon(Icons.broken_image, color: AppColors.textTertiary),
       ),
     );
   }
