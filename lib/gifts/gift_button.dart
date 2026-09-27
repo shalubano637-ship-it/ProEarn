@@ -1,50 +1,15 @@
-// =============================================================================
-// PRO EARN — Gifts: GiftButton + SendGiftSheet
-// -----------------------------------------------------------------------------
-// Extracted from the original social_feed.dart during the feature-based
-// file split (no UI or logic changes — only where this code physically
-// lives). social_feed.dart is now a barrel file that re-exports this file.
-// =============================================================================
 
-// =============================================================================
-// PRO EARN — AI-generated content social platform
-// -----------------------------------------------------------------------------
-// This file (social_feed.dart) is one of three files this app's UI/logic
-// was split into (equal three-way split of the original single-file
-// main.dart, no UI or logic changes — only where each class physically
-// lives):
-//   1. main.dart
-//   2. social_feed.dart            (this file)
-//   3. user_profile_features.dart
-//
-// social_feed.dart contains everything about browsing, creating, and
-// interacting with posts/reels:
-//   - Feed & Reels: ReelsPage, SearchPage, SingleReelScreen
-//   - Upload & Media: UploadPage, GlobalImageAdjuster
-//   - Post interactions: LikeButton, CommentButton, CommentScreen,
-//     ShareButton, MoreOptionsButton, GetPromptButton (creator earnings)
-//
-// Persistence: Supabase (Postgres) is the source of truth for all
-// user/post/social data.
-// =============================================================================
 
-// ---- Dart core ----
 import 'dart:async';
 
-// ---- Flutter framework ----
 import 'package:flutter/material.dart';
 
-// ---- Supabase ----
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// ---- App files (split out of the original single-file main.dart) ----
 import '../service.dart';
 import '../theme/theme.dart';
 import '../widgets/watch_ad_for_gift_button.dart';
 
-
-
-// ================= GIFT BUTTON =================
 class GiftButton extends StatelessWidget {
   final String postId;
 
@@ -157,8 +122,6 @@ class _SendGiftSheetState extends State<_SendGiftSheet> {
                       return DateTime.parse(expiresAt.toString()).isAfter(now);
                     }).toList();
 
-                    // Group by gift, same as the Bag's Owned tab, so a
-                    // gift owned via both purchase and chest shows once.
                     final Map<String, Map<String, dynamic>> grouped = {};
                     for (final row in available) {
                       final gift = row['gifts'] as Map<String, dynamic>?;
