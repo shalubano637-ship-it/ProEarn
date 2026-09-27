@@ -48,20 +48,26 @@
 </p>
 
 <script>
-  // TODO: replace with an actual submission endpoint — this form
-  // currently only confirms receipt in the browser and does not yet send
-  // the request anywhere. Wire this to a Supabase Edge Function (or even
-  // a simple email-forwarding service) that queues a verified deletion
-  // request for manual or automated processing, since this page runs
-  // with no login/session and must not be able to delete an account on
-  // its own without confirming the requester owns it.
-  document.getElementById('deleteForm').addEventListener('submit', function (e) {
-    e.preventDefault();
-    const email = document.getElementById('email').value;
-    document.getElementById('status').textContent =
-      'Request received for ' + email + '. We will email you to confirm before deleting anything.';
-    document.getElementById('submitBtn').disabled = true;
-  });
+const endpoint='https://mltvpfqfhbhgkejcjpmq.supabase.co/functions/v1/delete-account-request';
+document.getElementById('deleteForm').addEventListener('submit',async function(e){
+ e.preventDefault();
+ const status=document.getElementById('status');
+ const button=document.getElementById('submitBtn');
+ button.disabled=true; status.textContent='Submitting…';
+ try{
+  const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+   email:document.getElementById('email').value.trim(),
+   reason:document.getElementById('reason').value.trim()
+  })});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok) throw new Error(data.error||'Request failed');
+  status.textContent='Your deletion request has been submitted. We will process it according to the deletion and retention policy.';
+  document.getElementById('deleteForm').reset();
+ }catch(error){
+  status.textContent='Could not submit the request. Please contact proearn.in@gmail.com.';
+  button.disabled=false;
+ }
+});
 </script>
 
 </body>
