@@ -144,7 +144,8 @@ class _UploadPageState extends State<UploadPage> {
 
       // Second independent moderation pass on Cloudflare Workers AI.
       // This path does not store the image in R2.
-      await CloudflareMediaService.moderateImage(finalCompressedFile);
+      final moderationApprovalToken =
+          await CloudflareMediaService.moderateImage(finalCompressedFile);
 
       setState(() {
         _uploadStatusText = "Uploading to ImgBB...";
@@ -160,6 +161,7 @@ class _UploadPageState extends State<UploadPage> {
           'caption': caption.isEmpty ? "No Caption" : caption,
           'prompt': prompt,
           'link': postLink,
+          'moderationApprovalToken': moderationApprovalToken,
         },
       );
 
