@@ -30,3 +30,24 @@ drop trigger if exists protect_posts_columns on public.posts;
 create trigger protect_posts_columns
 before update on public.posts
 for each row execute function protect_columns('getsCount', 'likedBy', 'multiplier', 'unlockTime');
+
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $function$
+begin
+  insert into public.users (uid, "userName", email, "termsAcceptedAt", "termsVersion")
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'userName', split_part(new.email, '@', 1)),
+    coalesce(new.email, ''),
+    (new.raw_user_meta_data->>'termsAcceptedAt')::timestamptz,
+    new.raw_user_meta_data->>'termsVersion'
+  )
+  on conflict (uid) do nothing;
+  return new;
+end;
+$function$;
