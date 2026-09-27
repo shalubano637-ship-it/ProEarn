@@ -99,22 +99,54 @@ as $function$
 declare
   v_sender uuid := auth.uid();
   v_other uuid;
+  v_private boolean;
+  v_who text;
+  v_is_following boolean;
   v_request public.message_requests;
   v_new_id uuid;
 begin
   if v_sender is null then raise exception 'Not authenticated'; end if;
 
-  select case when "participantA"=v_sender then "participantB" else "participantA" end
+  select case when c."participantA"=v_sender then c."participantB" else c."participantA" end
   into v_other
-  from public.conversations
-  where id=p_conversation_id and ("participantA"=v_sender or "participantB"=v_sender);
+  from public.conversations c
+  where c.id=p_conversation_id
+    and (c."participantA"=v_sender or c."participantB"=v_sender);
 
   if v_other is null then raise exception 'Not a participant in this conversation'; end if;
   if (p_text is null or length(trim(p_text))=0) and p_image_url is null then raise exception 'Message must have text or an image'; end if;
 
-  select * into v_request from public.message_requests where "conversationId"=p_conversation_id;
+  select "isPrivateAccount","whoCanMessage"
+  into v_private,v_who
+  from public.users
+  where uid=v_other;
+
+  select exists(
+    select 1 from public.users
+    where uid=v_other and v_sender::text = any(followers)
+  ) into v_is_following;
+
+  if coalesce(v_who,'everyone')='no_one' then
+    raise exception 'MESSAGES_DISABLED';
+  end if;
+
+  if coalesce(v_who,'everyone')='followers' and not v_is_following then
+    raise exception 'FOLLOW_REQUIRED';
+  end if;
+
+  select * into v_request
+  from public.message_requests
+  where "conversationId"=p_conversation_id;
+
   if v_request.id is not null and v_request.status='pending' and v_request."recipientId"=v_sender then
     raise exception 'MESSAGE_REQUEST_PENDING';
+  end if;
+
+  if v_request.id is null and coalesce(v_private,false) and not v_is_following then
+    insert into public.message_requests ("conversationId","senderId","recipientId")
+    values(p_conversation_id,v_sender,v_other)
+    on conflict ("conversationId") do nothing
+    returning * into v_request;
   end if;
 
   if p_reply_to_message_id is not null and not exists (
