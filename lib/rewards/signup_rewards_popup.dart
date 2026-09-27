@@ -7,13 +7,25 @@ import '../theme/theme.dart';
 class SignupRewardsPopup extends StatefulWidget {
   const SignupRewardsPopup({super.key});
 
-  static Future<void> show(BuildContext context) async {
+  static Future<void> showIfEligible(BuildContext context) async {
+    try {
+      final status = await Supabase.instance.client.rpc('get_signup_reward_status');
+      final data = Map<String, dynamic>.from(status as Map);
+      if (data['enabled'] != true) return;
+    } catch (e) {
+      debugPrint('signup reward eligibility check failed: $e');
+      return;
+    }
+
+    if (!context.mounted) return;
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (_) => const SignupRewardsPopup(),
     );
   }
+
+  static Future<void> show(BuildContext context) => showIfEligible(context);
 
   @override
   State<SignupRewardsPopup> createState() => _SignupRewardsPopupState();
