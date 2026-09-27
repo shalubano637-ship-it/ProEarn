@@ -86,6 +86,15 @@ class _SignupRewardsPopupState extends State<SignupRewardsPopup> {
     await Share.share('Join me on Pro Earn. Use my referral code: $code');
   }
 
+  String _weekdayLabel(int day) {
+    final raw = _status?['rewardStartDate']?.toString();
+    if (raw == null || raw.isEmpty) return 'Day $day';
+    final start = DateTime.tryParse(raw);
+    if (start == null) return 'Day $day';
+    const names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    return names[(start.weekday - 1 + day - 1) % 7];
+  }
+
   String _tierLabel(String tier) {
     switch (tier) {
       case 'low': return 'Low Gift';
@@ -133,7 +142,7 @@ class _SignupRewardsPopupState extends State<SignupRewardsPopup> {
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
                           decoration: BoxDecoration(color: AppColors.surfaceElevated, borderRadius: BorderRadius.circular(10)),
                           child: Row(children: [
-                            SizedBox(width: 48, child: Text('Day $n', style: const TextStyle(fontWeight: FontWeight.bold))),
+                            SizedBox(width: 82, child: Text(_weekdayLabel(n), style: const TextStyle(fontWeight: FontWeight.bold))),
                             Expanded(child: Text(_tierLabel(tier))),
                             if (claimed) const Icon(Icons.check_circle, color: AppColors.accent)
                             else if (available) SizedBox(height: 34, child: FilledButton(onPressed: _claimingDay ? null : () => _claimDay(n), child: const Text('Claim')))
