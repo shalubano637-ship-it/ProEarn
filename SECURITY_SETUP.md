@@ -1,7 +1,6 @@
 # Pro Earn — full security migration setup
 
-Every hardcoded secret and every client-trusted value has been moved
-server-side, into 6 Supabase Edge Functions. The app itself no longer
+Sensitive server-side operations are kept behind Supabase Edge Functions. The app itself no longer
 holds any credential — nothing to recover by decompiling the APK/IPA.
 
 | Old (in the app)                          | Now (server-side)              |
@@ -10,7 +9,6 @@ holds any credential — nothing to recover by decompiling the APK/IPA.
 | Gmail App Password + client OTP compare     | `send-otp` + `verify-otp`       |
 | OneSignal REST API key                      | `notify` function               |
 | Google Vision API key                       | `check-image-safety` function   |
-| Client-computed payout amount               | `request-payout` function       |
 
 Image uploads are back on **ImgBB** (Cloudflare R2 setup is on hold for
 now) — but the ImgBB key lives only inside `imgbb-upload`. The app sends
@@ -22,7 +20,6 @@ Plus database-level fixes in `supabase_schema.sql` (see the
 modified client could otherwise hit directly:
 - Any signed-in user could previously edit **any** post, not just their own.
 - Any signed-in user could insert a fake notification addressed to anyone.
-- Payout requests trusted whatever amount the client sent.
 - Sensitive columns (`isEmailVerified`, `totalGets`, `followers`, etc.)
   could be set directly by the row's own owner via a raw PATCH.
 
@@ -39,7 +36,6 @@ supabase functions deploy send-otp
 supabase functions deploy verify-otp
 supabase functions deploy notify
 supabase functions deploy check-image-safety
-supabase functions deploy request-payout
 ```
 
 ## 3. Set the secrets
@@ -76,14 +72,11 @@ fresh ones and use *those* above:
 - `lib/service.dart`: `uploadImageToImgBB()` now calls the `imgbb-upload`
   edge function (base64 body) instead of hitting `api.imgbb.com`
   directly with a hardcoded key. `sendNotification()` / `isImageSafe()`
-  call `notify` / `check-image-safety`. Added `requestCreatorOtp()`,
-  `verifyCreatorOtp()`, `requestPayout()`.
+  call `notify` / `check-image-safety`. 
 - `lib/social_feed.dart`, `lib/user_profile_features.dart`: call sites
   unchanged (`uploadImageToImgBB(...)`), just calling the new secure
   implementation.
-- `lib/main.dart`: OTP dialog calls `verifyCreatorOtp()`; withdrawal
-  flow calls `requestPayout()`; removed the local Gmail SMTP sender and
-  the `mailer` package dependency.
+- `lib/main.dart`: authentication and OTP flows use Supabase Auth and server-side verification; the local Gmail SMTP sender and `mailer` package dependency are removed.
 - `pubspec.yaml`: removed `mailer`.
 
 ## Switching to R2 later
