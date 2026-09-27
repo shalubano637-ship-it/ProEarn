@@ -8,7 +8,6 @@ import '../service.dart';
 import '../chest_timer_service.dart';
 
 const List<String> _chestDurationLabels = ["1 min", "5 min", "10 min", "30 min", "45 min"];
-const List<String> _coinChestDurationLabels = ["1 min", "5 min", "10 min", "30 min", "45 min"];
 
 class ChestsPage extends StatefulWidget {
   const ChestsPage({super.key});
@@ -24,7 +23,6 @@ class _ChestsPageState extends State<ChestsPage> {
   RewardedAd? _rewardedAd;
   bool _isAdLoading = false;
   bool _isClaiming = false;
-  bool _isClaimingCoin = false;
 
   @override
   void initState() {
@@ -33,9 +31,6 @@ class _ChestsPageState extends State<ChestsPage> {
     _loadRewardedAd();
     if (!chestTimerService.isLoaded) {
       chestTimerService.initialize();
-    }
-    if (!coinChestTimerService.isLoaded) {
-      coinChestTimerService.initialize();
     }
   }
 
@@ -71,12 +66,10 @@ class _ChestsPageState extends State<ChestsPage> {
   }
 
   Future<void> _openChest() => _claimChest(isCoin: false);
-  Future<void> _openCoinChest() => _claimChest(isCoin: true);
 
-  Future<void> _claimChest({required bool isCoin}) async {
-    final service = isCoin ? coinChestTimerService : chestTimerService;
-    final isBusy = isCoin ? _isClaimingCoin : _isClaiming;
-    if (!service.isUnlocked || isBusy) return;
+  Future<void> _openChest() async {
+    final service = chestTimerService;
+    if (!service.isUnlocked || _isClaiming) return;
     if (_rewardedAd == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Ad not ready yet — try again in a moment.")),
@@ -86,28 +79,22 @@ class _ChestsPageState extends State<ChestsPage> {
     }
 
     final adToShow = _rewardedAd!;
-    _rewardedAd = null; // a shown RewardedAd instance can't be reused
+    _rewardedAd = null;
     final chestIndexBeingClaimed = service.currentChestIndex;
 
     adToShow.show(onUserEarnedReward: (ad, reward) async {
-      setState(() {
-        if (isCoin) { _isClaimingCoin = true; } else { _isClaiming = true; }
-      });
+      if (mounted) setState(() => _isClaiming = true);
       try {
         final result = await Supabase.instance.client.rpc(
-          isCoin ? 'claim_coin_chest_reward' : 'claim_chest_reward',
+          'claim_chest_reward',
           params: {'p_chest_index': chestIndexBeingClaimed},
         );
 
         if (mounted) {
-          final String message;
-          if (isCoin) {
-            final coins = result['coins'];
-            message = "Chest opened! You got $coins 🪙!";
-          } else {
-            final giftName = result['giftName'] as String?;
-            message = giftName != null ? "Chest opened! You got a $giftName! Check your Bag." : "Chest opened!";
-          }
+          final giftName = result['giftName'] as String?;
+          final message = giftName != null
+              ? "Chest opened! You got a $giftName! Check your Bag."
+              : "Chest opened!";
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(message), duration: const Duration(seconds: 4)),
           );
@@ -117,15 +104,14 @@ class _ChestsPageState extends State<ChestsPage> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Couldn't claim chest — please try again."), backgroundColor: AppColors.error),
+            const SnackBar(
+              content: Text("Couldn't claim chest — please try again."),
+              backgroundColor: AppColors.error,
+            ),
           );
         }
       } finally {
-        if (mounted) {
-          setState(() {
-            if (isCoin) { _isClaimingCoin = false; } else { _isClaiming = false; }
-          });
-        }
+        if (mounted) setState(() => _isClaiming = false);
       }
     });
   }
@@ -195,52 +181,6 @@ class _ChestsPageState extends State<ChestsPage> {
                         }),
                       ),
                       const SizedBox(height: 28),
-                      const Divider(),
-                      const SizedBox(height: 8),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 4),
-                        child: Text("Coin Chests", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      ),
-                      const SizedBox(height: 10),
-                      AnimatedBuilder(
-                        animation: coinChestTimerService,
-                        builder: (context, _) {
-                          if (!coinChestTimerService.isLoaded) {
-                            return const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 20),
-                              child: Center(child: CircularProgressIndicator()),
-                            );
-                          }
-                          if (coinChestTimerService.loadError != null) {
-                            return Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: Text(coinChestTimerService.loadError!),
-                            );
-                          }
-                          return Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: List.generate(5, (index) {
-                              final isPast = index < coinChestTimerService.currentChestIndex;
-                              final isActive = index == coinChestTimerService.currentChestIndex;
-                              final isFuture = index > coinChestTimerService.currentChestIndex;
-                              final isUnlockedHere = isActive && coinChestTimerService.isUnlocked;
-
-                              return _ChestSlot(
-                                label: "Chest ${index + 1}",
-                                durationLabel: _coinChestDurationLabels[index],
-                                isPast: isPast,
-                                isActive: isActive,
-                                isFuture: isFuture,
-                                isUnlocked: isUnlockedHere,
-                                timeLabel: isActive ? _formatTime(coinChestTimerService.remainingSeconds) : null,
-                                isClaiming: isActive && _isClaimingCoin,
-                                onOpen: isUnlockedHere ? _openCoinChest : null,
-                                icon: Icons.monetization_on_outlined,
-                              );
-                            }),
-                          );
-                        },
-                      ),
                       const SizedBox(height: 28),
                       const Divider(),
                       const SizedBox(height: 8),
