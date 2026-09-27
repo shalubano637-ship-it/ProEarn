@@ -35,7 +35,7 @@ class HelpPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 4, // Four tabs: Support, About Us, Terms, Privacy Policy
+      length: 6, // Support, About, Terms, Privacy, Community Guidelines, Child Safety
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
@@ -56,6 +56,8 @@ class HelpPage extends StatelessWidget {
               Tab(icon: Icon(Icons.info_outline), text: "About Us"),
               Tab(icon: Icon(Icons.gavel), text: "Terms"),
               Tab(icon: Icon(Icons.privacy_tip), text: "Privacy"),
+              Tab(icon: Icon(Icons.groups_2_outlined), text: "Guidelines"),
+              Tab(icon: Icon(Icons.child_care_outlined), text: "Child Safety"),
             ],
           ),
         ),
@@ -68,6 +70,10 @@ class HelpPage extends StatelessWidget {
             _buildLegalTab(_getTermsAndConditionsText()),
 
             _buildLegalTab(_getPrivacyPolicyText()),
+
+            _buildLegalTab(kCommunityGuidelinesText),
+
+            _buildLegalTab(kChildSafetyStandardsText),
           ],
         ),
       ),
