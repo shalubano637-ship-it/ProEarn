@@ -104,7 +104,7 @@ class _ChatGiftSheetState extends State<_ChatGiftSheet> {
                   Expanded(
                     child: Text("Send a Gift", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
-                  const WatchAdForGiftButton(),
+                  const SizedBox.shrink(),
                 ],
               ),
               const SizedBox(height: 8),
@@ -114,6 +114,7 @@ class _ChatGiftSheetState extends State<_ChatGiftSheet> {
                       .from('gift_inventory')
                       .select('*, gifts(*)')
                       .eq('ownerUid', uid)
+                      .eq('source', 'purchased')
                       .gt('count', 0),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -138,7 +139,7 @@ class _ChatGiftSheetState extends State<_ChatGiftSheet> {
 
                     if (grouped.isEmpty) {
                       return const Center(
-                        child: Text("No gifts in your Bag yet — buy some, open a chest, or watch an ad above!", textAlign: TextAlign.center),
+                        child: Text("No purchase gifts in your Bag yet — buy a gift to send it in chat.", textAlign: TextAlign.center),
                       );
                     }
 
