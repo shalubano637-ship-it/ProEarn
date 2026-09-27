@@ -303,7 +303,7 @@ class GlobalCachedImage extends StatelessWidget {
         width: width,
         height: height,
         fit: fit,
-        filterQuality: FilterQuality.high,
+        filterQuality: FilterQuality.medium,
         gaplessPlayback: true,
         loadingBuilder: (context, child, progress) {
           if (progress == null) return child;
@@ -338,7 +338,7 @@ class GlobalCachedImage extends StatelessWidget {
       width: width,
       height: height,
       fit: fit,
-      filterQuality: FilterQuality.high,
+      filterQuality: FilterQuality.medium,
       cacheManager: CustomImageCacheManager.instance,
       useOldImageOnUrlChange: true,
       placeholder: (context, url) => Container(
