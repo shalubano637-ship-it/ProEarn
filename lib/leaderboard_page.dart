@@ -1,22 +1,3 @@
-// =============================================================================
-// PRO EARN — Leaderboard page (v3: podium redesign)
-// -----------------------------------------------------------------------------
-// Three periods — Yesterday | Today | All Time — shown as a pill-style
-// segmented control (matches the app's Dark Premium / gold theme instead of
-// a default Material TabBar). Ranks 1-3 render as a podium (gold/silver/
-// bronze), ranks 4+ as a list with a rank-change indicator (vs the previous
-// period — not shown for All Time, since there's no "previous all-time").
-//
-// The signed-in user's own rank is ALWAYS visible as a floating card
-// pinned to the bottom of the screen, even if they're outside the visible
-// top-50 — computed via a count() query rather than scanning the full
-// ranked list client-side, so it stays cheap regardless of how many users
-// there are.
-//
-// Tapping any avatar or username (podium, list row, or the own-rank card)
-// opens that user's profile, exactly like every other tap-to-profile spot
-// in the app (see _openProfile below, same pattern as post authors etc).
-// =============================================================================
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -58,7 +39,6 @@ class _OwnRank {
 
   int get percentile {
     if (totalRanked <= 0) return 100;
-    // "Top X%" — rank 1 of 100 => top 1%, not top 0%.
     return ((rank / totalRanked) * 100).ceil().clamp(1, 100);
   }
 }
@@ -73,18 +53,12 @@ void _openProfile(BuildContext context, String uid) {
   );
 }
 
-/// Returns the date string (YYYY-MM-DD, IST) for `daysAgo` days before the
-/// server's current IST date — same day-boundary the chest-reset/streak
-/// logic already relies on (see `ist_today` RPC).
 Future<String> _istDate(int daysAgo) async {
   final today = await Supabase.instance.client.rpc('ist_today') as String;
   final date = DateTime.parse(today).subtract(Duration(days: daysAgo));
   return "${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
 }
 
-/// Rank-ordered uid list for a single IST day (daily_popularity_counts),
-/// used only to compute rank-change deltas against the CURRENT period's
-/// list — we don't need scores here, just the ordering.
 Future<List<String>> _rankedUidsForDay(String istDate) async {
   final rows = await Supabase.instance.client
       .from('daily_popularity_counts')
@@ -96,9 +70,6 @@ Future<List<String>> _rankedUidsForDay(String istDate) async {
 }
 
 Future<List<_RankedUser>> _fetchLeaderboard(_Period period, _Metric metric) async {
-  // Gets/Likes have no daily-snapshot table (see migration note) — always
-  // Gets and Likes now both have a daily breakdown too (daily_get_counts
-  // / daily_like_counts), same as Popularity — see the migration.
   if (metric == _Metric.gets || metric == _Metric.likes) {
     List<Map<String, dynamic>> list;
     if (period != _Period.allTime) {
@@ -170,10 +141,6 @@ Future<List<_RankedUser>> _fetchLeaderboard(_Period period, _Metric metric) asyn
       }).toList();
     }
 
-    // Comparison day: Today compares to Yesterday, Yesterday compares to
-    // the day before that. Best-effort — if this fails (e.g. that day has
-    // no rows yet), deltas just come back null below instead of failing
-    // the whole leaderboard load.
     try {
       final previousIstDate = await _istDate(daysAgo + 1);
       previousRanking = await _rankedUidsForDay(previousIstDate);
@@ -236,13 +203,6 @@ Future<_OwnRank?> _fetchOwnRank(_Period period, _Metric metric) async {
     return _OwnRank(rank: index + 1, score: myScore, totalRanked: rows.length);
   }
 
-  // Ordered-uid-list + indexOf, same proven pattern _rankedUidsForDay above
-  // already uses — deliberately not using postgrest's count()/CountOption
-  // API here, since nothing else in this codebase has exercised that path
-  // yet and it can't be compiler-verified in this environment. Capped at
-  // 1000 rows: on a leaderboard this size that's "essentially everyone",
-  // and if it ever isn't, worst case is the percentile is approximate for
-  // users ranked beyond #1000 rather than the page crashing.
   const cap = 1000;
 
   if (period == _Period.allTime) {
@@ -285,8 +245,6 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
   _Period _period = _Period.today;
   _Metric _metric = _Metric.popularity;
 
-  // Bumped on every retry/period-change so FutureBuilders below re-run
-  // instead of replaying a cached (possibly errored) Future.
   Key _bodyKey = UniqueKey();
   Key _footerKey = UniqueKey();
 
@@ -308,10 +266,6 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
           children: [
             const Text("Leaderboard"),
             const Spacer(),
-            // Ranking metric toggle — Popularity (existing default) | Gets |
-            // Likes. Gets/Likes have no daily history, so switching to
-            // either of them also hides the Yesterday/Today/All Time pills
-            // below (they'd have nothing to show for those two metrics).
             _MetricToggle(
               selected: _metric,
               onChanged: (m) {
@@ -328,9 +282,6 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
       ),
       body: Column(
         children: [
-          // Popularity, Gets, and Likes all have daily history now, so
-          // the Yesterday/Today/All Time pills apply no matter which
-          // metric is selected.
           Padding(
             padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.md),
             child: _PeriodToggle(
@@ -354,9 +305,6 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
   }
 }
 
-/// Popularity | Gets | Likes — small text buttons to the right of the
-/// "Leaderboard" title, same idea as _PeriodToggle but compact enough to
-/// fit in the AppBar.
 class _MetricToggle extends StatelessWidget {
   final _Metric selected;
   final ValueChanged<_Metric> onChanged;
@@ -399,8 +347,6 @@ class _MetricToggle extends StatelessWidget {
   }
 }
 
-/// Pill-style segmented control — Yesterday | Today | All Time — matching
-/// the app's dark/gold theme instead of a stock Material TabBar underline.
 class _PeriodToggle extends StatelessWidget {
   final _Period selected;
   final ValueChanged<_Period> onChanged;
@@ -703,7 +649,6 @@ class _RankDelta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (delta == null) {
-      // New entry this period, or All Time (no "previous" to compare to).
       return const Text("NEW", style: TextStyle(color: AppColors.info, fontSize: 11, fontWeight: FontWeight.w600));
     }
     if (delta == 0) {
@@ -733,10 +678,6 @@ class _RankDelta extends StatelessWidget {
   }
 }
 
-/// Floating card pinned to the bottom of the leaderboard showing the
-/// signed-in user's own rank for the selected period — a light/white
-/// surface so it visually stands out against the dark list above it,
-/// exactly like a "you are here" marker.
 class _OwnRankCard extends StatelessWidget {
   final _Period period;
   final _Metric metric;
@@ -759,7 +700,6 @@ class _OwnRankCard extends StatelessWidget {
 
         final ownRank = snapshot.data;
         if (ownRank == null) {
-          // Not ranked yet for this period (e.g. no gets received today).
           return Container(
             margin: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
             padding: const EdgeInsets.all(AppSpacing.md),
