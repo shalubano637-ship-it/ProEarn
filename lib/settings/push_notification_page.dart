@@ -1,47 +1,12 @@
-// =============================================================================
-// PRO EARN — Settings: PushNotificationPage
-// -----------------------------------------------------------------------------
-// Extracted from the original user_profile_features.dart during the
-// feature-based file split (no UI or logic changes — only where this code
-// physically lives). user_profile_features.dart is now a barrel file that
-// re-exports this file.
-// =============================================================================
 
-// =============================================================================
-// PRO EARN — AI-generated content social platform
-// -----------------------------------------------------------------------------
-// This file (user_profile_features.dart) is one of three files this app's
-// UI/logic was split into (equal three-way split of the original
-// single-file main.dart, no UI or logic changes — only where each class
-// physically lives):
-//   1. main.dart
-//   2. social_feed.dart
-//   3. user_profile_features.dart  (this file)
-//
-// user_profile_features.dart contains everything about the user's own
-// account, profile, and account-management screens:
-//   - Profile & social graph: ProfilePage, FollowListPage,
-//     BlockedUsersListScreen, EditProfilePage, ImageCropPage
-//   - Notifications: NotificationPage, PushNotificationPage
-//   - Settings & Security: SettingsPage, SecurityPage, HelpPage
-//   - Analytics: AnalyticsPage
-//
-// Persistence: Supabase (Postgres) is the source of truth for all
-// user/post/social data.
-// =============================================================================
 
-// ---- Dart core ----
 import 'dart:async';
 
-// ---- Flutter framework ----
 import 'package:flutter/material.dart';
 
-// ---- Supabase ----
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 
-
-// ---- App files (split out of the original single-file main.dart) ----
 import '../models.dart';
 import '../theme/theme.dart';
 
@@ -51,7 +16,6 @@ import '../theme/theme.dart';
   @override
   State<PushNotificationPage> createState() => _PushNotificationPageState();
 }
-// 1. WidgetsBindingObserver mixin add kiya lifecycle events listen karne ke liye
 class _PushNotificationPageState extends State<PushNotificationPage> with WidgetsBindingObserver {
   final String _currentUid = Supabase.instance.client.auth.currentUser?.id ?? '';
   bool _isDevicePermissionGranted = false;
@@ -59,19 +23,16 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
   @override
   void initState() {
     super.initState();
-    // Observer ko register kiya
     WidgetsBinding.instance.addObserver(this);
     _checkCurrentDevicePermission();
   }
 
   @override
   void dispose() {
-    // Observer ko remove kiya memory leaks se bachne ke liye
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  // 2. Jab bhi app background se foreground (wapas screen par) aayegi, ye function chalega
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -79,7 +40,6 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
     }
   }
 
-  // Device level system permission check karne ka function
   Future<void> _checkCurrentDevicePermission() async {
     final granted = OneSignal.Notifications.permission;
     if (mounted) {
@@ -126,7 +86,6 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
             messages = userData['notifyMessages'] ?? true;
           }
 
-          // Ab FutureBuilder ki zaroorat nahi hai, real-time lifecycle variable use hoga
           bool finalPushState = dbPushEnabled && _isDevicePermissionGranted;
 
           return ListView(
@@ -189,7 +148,6 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
       if (!isDeviceGranted) {
         final accepted = await OneSignal.Notifications.requestPermission(true);
         
-        // Agar user ne system settings se block kiya hua hai, toh use refresh karke check karenge
         if (!accepted) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -216,7 +174,6 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
       }).eq('uid', _currentUid);
     }
     
-    // Status update karne ke baad state refresh karein
     await _checkCurrentDevicePermission();
   }
 
