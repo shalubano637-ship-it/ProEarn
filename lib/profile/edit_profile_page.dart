@@ -1,59 +1,23 @@
-// =============================================================================
-// PRO EARN — Profile: EditProfilePage
-// -----------------------------------------------------------------------------
-// Extracted from the original user_profile_features.dart during the
-// feature-based file split (no UI or logic changes — only where this code
-// physically lives). user_profile_features.dart is now a barrel file that
-// re-exports this file.
-// =============================================================================
 
-// =============================================================================
-// PRO EARN — AI-generated content social platform
-// -----------------------------------------------------------------------------
-// This file (user_profile_features.dart) is one of three files this app's
-// UI/logic was split into (equal three-way split of the original
-// single-file main.dart, no UI or logic changes — only where each class
-// physically lives):
-//   1. main.dart
-//   2. social_feed.dart
-//   3. user_profile_features.dart  (this file)
-//
-// user_profile_features.dart contains everything about the user's own
-// account, profile, and account-management screens:
-//   - Profile & social graph: ProfilePage, FollowListPage,
-//     BlockedUsersListScreen, EditProfilePage, ImageCropPage
-//   - Notifications: NotificationPage, PushNotificationPage
-//   - Settings & Security: SettingsPage, SecurityPage, HelpPage
-//   - Analytics: AnalyticsPage
-//
-// Persistence: Supabase (Postgres) is the source of truth for all
-// user/post/social data.
-// =============================================================================
 
-// ---- Dart core ----
 import 'dart:async';
 import 'package:universal_io/universal_io.dart';
 
-// ---- Flutter framework ----
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-// ---- Supabase ----
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// ---- Third-party packages ----
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
-// ---- App files (split out of the original single-file main.dart) ----
 import '../models.dart';
 import '../service.dart';
 import '../moderation/moderation_config.dart';
 import '../theme/theme.dart';
 import 'image_crop_page.dart';
 
-           // ================= STRUCTURAL ISOLATED CELEBRATION WIDGET (24-Hour Auto-Expire) =================
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
 
@@ -79,7 +43,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     nameController = TextEditingController(text: currentUserName);
     bioController = TextEditingController(text: currentUserBio);
     
-
 
     _loadCurrentUserData();
   }
@@ -138,8 +101,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
-
-
   @override
   void dispose() {
     nameController.dispose();
@@ -167,7 +128,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
             ),
             const SizedBox(height: 15),
             
-            // Profile Picture Container
             GestureDetector(
               onTap: _pickProfileImage,
               child: Stack(
@@ -268,7 +228,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
                   if (confirmSave != true) return;
 
-                  // 1. Show Loading Indicator immediately
                   if (!context.mounted) return;
                   showDialog(
                     context: context,
@@ -278,7 +237,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
                   String targetProfilePicUrl = currentCloudPicUrl;
 
-                  // 2. Process image compression and safety check
                   if (_selectedProfileImage != null) {
                     try {
                       final tempDir = await getTemporaryDirectory();
@@ -294,14 +252,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       if (compressedXFile != null) {
                         File finalUploadFile = File(compressedXFile.path);
                         
-                        // 🚨 ON-DEVICE SAFETY FILTER (Nudity Check) — same
-                        // pipeline used for post uploads (see
-                        // lib/moderation/), now the sole moderation layer
-                        // since Google Vision was removed.
                         final onDeviceVerdict = await moderationPipeline.check(finalUploadFile);
 
                         if (!onDeviceVerdict.isSafe) {
-                          // Garbage file clean up
                           if (await finalUploadFile.exists()) {
                             await finalUploadFile.delete();
                           }
@@ -319,7 +272,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           return; // Code execution breaks here safely
                         }
                         
-                        // Image safe hai, ab Cloudflare R2 par bheinjein
                         String? uploadedProfileUrl = await uploadImageToImgBB(
                           finalUploadFile,
                           folder: 'profile',
@@ -347,7 +299,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     }
                   }
 
-                  // 3. Save Data to Supabase
                   try {
                     currentUserName = nameController.text.trim();
                     currentUserBio = bioController.text.trim();
@@ -363,7 +314,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         .update(updatedFields)
                         .eq('uid', user.id);
                     
-                    // Old posts data synchronization update pipeline
                     if (_selectedProfileImage != null) {
                       await Supabase.instance.client
                           .from(kPostsCollection)
