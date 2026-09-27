@@ -1,49 +1,16 @@
-// =============================================================================
-// PRO EARN — Feed: SingleReelScreen (deep-linked single post view)
-// -----------------------------------------------------------------------------
-// Extracted from the original social_feed.dart during the feature-based
-// file split (no UI or logic changes — only where this code physically
-// lives). social_feed.dart is now a barrel file that re-exports this file.
-// =============================================================================
 
-// =============================================================================
-// PRO EARN — AI-generated content social platform
-// -----------------------------------------------------------------------------
-// This file (social_feed.dart) is one of three files this app's UI/logic
-// was split into (equal three-way split of the original single-file
-// main.dart, no UI or logic changes — only where each class physically
-// lives):
-//   1. main.dart
-//   2. social_feed.dart            (this file)
-//   3. user_profile_features.dart
-//
-// social_feed.dart contains everything about browsing, creating, and
-// interacting with posts/reels:
-//   - Feed & Reels: ReelsPage, SearchPage, SingleReelScreen
-//   - Upload & Media: UploadPage, GlobalImageAdjuster
-//   - Post interactions: LikeButton, CommentButton, CommentScreen,
-//     ShareButton, MoreOptionsButton, GetPromptButton (creator earnings)
-//
-// Persistence: Supabase (Postgres) is the source of truth for all
-// user/post/social data.
-// =============================================================================
 
-// ---- Dart core ----
 import 'package:universal_io/universal_io.dart';
 import 'dart:math';
 
-// ---- Flutter framework ----
 import 'package:flutter/material.dart';
 
-// ---- Supabase ----
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// ---- App files (split out of the original single-file main.dart) ----
 import '../models.dart';
 import '../service.dart';
 import '../user_profile_features.dart';
 import '../theme/theme.dart';
-
 
 import 'admob_reel_item.dart';
 import '../posts/like_button.dart';
@@ -129,7 +96,6 @@ class _SingleReelScreenState extends State<SingleReelScreen> {
           if (isAdIndex) {
   return AdMobReelItem(
     onAdClosed: () {
-      // ऐड कट होने पर ऑटोमैटिक अगली रील पर स्क्रॉल करने के लिए
       if (_pageController.hasClients) {
         _pageController.nextPage(
           duration: const Duration(milliseconds: 300),
