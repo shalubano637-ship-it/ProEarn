@@ -1,21 +1,3 @@
-// =============================================================================
-// PRO EARN — Admin: Reports moderation panel
-// -----------------------------------------------------------------------------
-// In-app screen (Settings → Admin Panel), visible only when the signed-in
-// user's email matches kAdminEmail (see models.dart). That client-side
-// check only hides the entry point — the real access boundary is the RLS
-// policies in supabase/migrations/2026_admin_reports_panel.sql, which use
-// is_admin() (checks the JWT email server-side) for every read/write this
-// page performs. Even if someone reached this screen without being the
-// admin, every query below would simply return nothing / fail.
-//
-// Shows every report with:
-//   - who reported (username + profile pic)
-//   - who was reported (username + profile pic)
-//   - reason, source (post / chat_message / chat_settings), status, time
-//   - a content preview (post thumbnail+caption, or the reported message)
-// and lets the admin Ban User, Delete Post, or Dismiss.
-// =============================================================================
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -63,8 +45,6 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
       final reports = await query.order('createdAt', ascending: false).limit(300);
       final reportList = List<Map<String, dynamic>>.from(reports);
 
-      // Collect every user uid (reporter + reported) and post id involved,
-      // then fetch each in one batched query instead of N+1 look-ups.
       final userIds = <String>{};
       final postIds = <String>{};
       final commentIds = <String>{};
@@ -367,9 +347,6 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
   Widget build(BuildContext context) {
     final currentEmail = _client.auth.currentUser?.email?.toLowerCase().trim();
     if (currentEmail != kAdminEmail.toLowerCase()) {
-      // Belt-and-suspenders: even if this page is reached without going
-      // through the gated Settings entry, don't render admin content.
-      // The real enforcement is server-side RLS (is_admin()) regardless.
       return const Scaffold(body: Center(child: Text("Not authorized.")));
     }
 
