@@ -15,7 +15,6 @@
 // ============================================================================
 
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'app_colors.dart';
 import 'app_text_styles.dart';
 import 'app_dimens.dart';
@@ -24,12 +23,6 @@ import 'app_theme_extension.dart';
 class AppTheme {
   AppTheme._();
 
-  static const _pageTransitions = PageTransitionsTheme(
-    builders: {
-      TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-    },
-  );
 
   // ---------------------------------------------------------------------
   // DARK THEME (primary — this app is designed dark-first)
@@ -56,7 +49,6 @@ class AppTheme {
       highlightColor: Colors.transparent,
       hoverColor: Colors.transparent,
       dividerColor: AppColors.divider,
-      pageTransitionsTheme: _pageTransitions,
       fontFamily: AppTextStyles.bodyMedium.fontFamily,
 
       textTheme: _textTheme(AppColors.textPrimary, AppColors.textSecondary),
