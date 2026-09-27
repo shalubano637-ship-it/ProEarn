@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/theme.dart';
 import '../service.dart';
-import '../widgets/watch_ad_for_gift_button.dart';
 
 void showChatGiftSheet(
   BuildContext context, {
