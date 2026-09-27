@@ -32,13 +32,13 @@ async function getUser(request: Request, env: Env) {
   const user = await response.json<{ id: string; email?: string }>();
 
   const profileResponse = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/users?uid=eq.${encodeURIComponent(user.id)}&select=termsAcceptedAt,isBanned&limit=1`,
+    `${env.SUPABASE_URL}/rest/v1/users?uid=eq.${encodeURIComponent(user.id)}&select=termsAcceptedAt,termsVersion,isBanned&limit=1`,
     { headers: { Authorization: auth, apikey: env.SUPABASE_ANON_KEY } },
   );
   if (!profileResponse.ok) return null;
-  const profiles = await profileResponse.json<Array<{ termsAcceptedAt?: string | null; isBanned?: boolean }>>();
+  const profiles = await profileResponse.json<Array<{ termsAcceptedAt?: string | null; termsVersion?: string | null; isBanned?: boolean }>>();
   const profile = profiles[0];
-  if (!profile || !profile.termsAcceptedAt || profile.isBanned === true) return null;
+  if (!profile || !profile.termsAcceptedAt || profile.termsVersion !== '2026-09' || profile.isBanned === true) return null;
   return user;
 }
 
