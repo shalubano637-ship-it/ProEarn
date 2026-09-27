@@ -1,15 +1,7 @@
-// =============================================================================
-// PRO EARN — Auth & Splash screens
-// -----------------------------------------------------------------------------
-// Split out of main.dart. Contains SplashPage, LoginPage (login + sign-up),
-// and VerifyEmailPage — the screens that resolve/establish auth state
-// before handing off to MainNavigationScreen.
-// =============================================================================
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
-
 
 import 'models.dart';
 import 'service.dart';
@@ -19,14 +11,12 @@ import 'dart:async';
 import 'theme/theme.dart';
 import 'legal_text.dart';
 
-// ================= SPLASH PAGE (FIXED SYNTAX) =================
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
 
   @override
   State<SplashPage> createState() => _SplashPageState();
 }
-
 
 class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateMixin {
   late AnimationController controller;
@@ -37,10 +27,8 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
   void initState() {
     super.initState(); // Sahi tareeqa super call karne ka
     
-    // App khulte hi check karega ki authenticated user ka document hai ya nahi
     _checkUserDocument();
 
-    // Animation Controller initialization ab initState ke andar hai
     controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -59,7 +47,6 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
 
     Future.delayed(const Duration(seconds: 4), () async {
       if (mounted) {
-        // Supabase Auth se check karenge user status
         final user = Supabase.instance.client.auth.currentUser;
 
         if (user != null && user.emailConfirmedAt != null) {
@@ -125,10 +112,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
   }
 }
 
-
-
       
-// ================= LOGIN PAGE =================
 class LoginPage extends StatefulWidget {
   final bool bannedMessage;
   const LoginPage({super.key, this.bannedMessage = false});
@@ -137,14 +121,12 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-
 class _LoginPageState extends State<LoginPage> {
   bool isLogin = true;
   bool hidePassword = true;
   bool hideConfirmPassword = true;
   bool acceptTerms = false;
   bool showTerms = false;
-  // Reset Password ke liye state variables
   bool showResetFields = false;
   bool isSendingReset = false;
   bool resetLinkSent = false;
@@ -172,15 +154,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // Security note: this used to be a two-step flow — a "verify email"
-  // step (lookup_account_for_reset RPC) that displayed the matching
-  // account's username + profile photo *before* sending anything, then a
-  // separate "confirm & send" step. That let anyone type in emails and
-  // learn (a) whether they're registered and (b) the username/photo tied
-  // to them — a PII leak with no auth required. Now it's a single step:
-  // enter email, tap send, always show the same generic confirmation.
-  // Supabase's resetPasswordForEmail doesn't reveal whether the account
-  // exists either, so this whole flow no longer leaks anything.
   Future<void> sendResetLink() async {
     final email = resetEmailController.text.trim();
     if (email.isEmpty) {
@@ -195,10 +168,6 @@ class _LoginPageState extends State<LoginPage> {
     try {
       await Supabase.instance.client.auth.resetPasswordForEmail(email);
     } catch (e) {
-      // Deliberately swallowed — a real failure (network, rate-limit) and
-      // "that email doesn't exist" should look identical from the outside.
-      // If this becomes a support problem in practice, log e to Sentry
-      // server-side instead of surfacing it here.
     }
 
     if (!mounted) return;
@@ -226,7 +195,6 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    // Show Progress Loader
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -235,17 +203,7 @@ class _LoginPageState extends State<LoginPage> {
 
     if (isLogin) {
               
-       // ================= LOGIN FLOW =================
       try {
-        // Security note: we deliberately do NOT pre-check whether the email
-        // is registered before attempting sign-in (no email_is_registered
-        // RPC call here anymore). Doing that turns the login screen into an
-        // email-enumeration oracle — anyone could type in emails and learn
-        // which ones have accounts. Supabase's own "Invalid login
-        // credentials" error is already identical whether the email doesn't
-        // exist or the password is wrong, so we just go straight to
-        // sign-in and let that generic error do its job (see the catch
-        // block below).
         AuthResponse authResponse = await Supabase.instance.client.auth
             .signInWithPassword(email: email, password: password);
 
@@ -283,10 +241,6 @@ class _LoginPageState extends State<LoginPage> {
           currentUserId = signedInUser!.id;
           chestTimerService.initialize();
           coinChestTimerService.initialize();
-          // Fetches the real userName/bio/profileUrl from the users table,
-          // replacing the email-derived placeholder above with accurate
-          // data as soon as it's login (see loadUserDataOnStartup in
-          // service.dart — this used to only run on the NEXT cold start).
           loadUserDataOnStartup();
 
           if (mounted) {
@@ -303,8 +257,6 @@ class _LoginPageState extends State<LoginPage> {
 
         String errorMessage = "Login Failed: ${e.message}";
 
-        // Supabase blocks sign-in until the email is confirmed, so this
-        // path takes the place of the old "unverified" branch above.
         if (e.message.toLowerCase().contains('email not confirmed')) {
           if (mounted) {
             Navigator.push(
@@ -316,12 +268,8 @@ class _LoginPageState extends State<LoginPage> {
           }
           return;
         } else if (e.message.toLowerCase().contains('invalid login credentials')) {
-          // Deliberately generic — do NOT say "incorrect password" (which
-          // would confirm the email is registered) or "email not found"
-          // (which would confirm it isn't). Same wording either way.
           errorMessage = "Incorrect email or password. Please try again.";
         }
-
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -337,7 +285,6 @@ class _LoginPageState extends State<LoginPage> {
         }
       }
     } else {
-      // ================= SIGNUP FLOW =================
       final signupUsername = usernameController.text.trim();
       if (signupUsername.isEmpty) {
         if (mounted) Navigator.pop(context); // Close Loader
@@ -369,10 +316,6 @@ class _LoginPageState extends State<LoginPage> {
           },
         );
 
-        // The public.users row is created by the `on_auth_user_created`
-        // Postgres trigger (see supabase_schema.sql) using this metadata —
-        // a client-side insert here would be rejected by RLS since there's
-        // no session yet until the email is confirmed.
         if (authResponse.user != null) {
           debugPrint("Signed up — user row will be created by the DB trigger.");
         }
@@ -461,9 +404,6 @@ class _LoginPageState extends State<LoginPage> {
                       onTap: () {
                         setState(() {
                           showResetFields = !showResetFields;
-                          // Reset the mini-flow's own state when it's
-                          // hidden/reopened so a stale "sent!" confirmation
-                          // doesn't linger for a different email later.
                           resetLinkSent = false;
                           isSendingReset = false;
                           resetEmailController.clear();
@@ -625,10 +565,7 @@ if (showTerms)
   }
 }
 
-
-
   
-        // ================= PROFESSIONAL EMAIL VERIFICATION PAGE =================
 class VerifyEmailPage extends StatefulWidget {
   final String email;
   final String password;
@@ -643,7 +580,6 @@ class VerifyEmailPage extends StatefulWidget {
   State<VerifyEmailPage> createState() => _VerifyEmailPageState();
 }
 
-
 class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingObserver {
   bool isEmailVerified = false;
   bool canResendEmail = true;
@@ -656,18 +592,10 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     
-    // Initial status fetch check
     isEmailVerified = Supabase.instance.client.auth.currentUser?.emailConfirmedAt != null;
 
     if (!isEmailVerified) {
-      // Supabase already dispatches the confirmation email itself when
-      // signUp()/signInWithPassword() is called, so there's no separate
-      // "send" step to fire on launch here — just start polling.
 
-      // Continuous real-time status scan listener mapping (Every 3 seconds).
-      // Supabase gives an unconfirmed user no local session, so instead of
-      // FirebaseAuth's user.reload(), we retry sign-in — success there means
-      // the email just got confirmed.
       _timer = Timer.periodic(
         const Duration(seconds: 3),
         (_) => _checkEmailVerifiedStatus(),
@@ -683,7 +611,6 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
     super.dispose();
   }
 
-  // Lifecycle resume monitor strategy 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -692,8 +619,6 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
   }
 
   Future<void> _checkEmailVerifiedStatus() async {
-    // No local session exists yet for an unconfirmed user, so we probe by
-    // re-attempting sign-in: it only succeeds once the email is confirmed.
     try {
       final response = await Supabase.instance.client.auth.signInWithPassword(
         email: widget.email,
@@ -711,10 +636,8 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
 
           OneSignal.login(response.user!.id);
 
-          // Instant background profile builder processing node trigger
           await ensureUserDocumentExists();
 
-          // Safe pipeline redirection inside context tree
           if (mounted) {
             Navigator.pushReplacement(
               context,
@@ -724,7 +647,6 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
         }
       }
     } catch (e) {
-      // Still unconfirmed (or a transient error) — keep polling silently.
       debugPrint("Verification poll: not confirmed yet ($e)");
     }
   }
@@ -816,7 +738,6 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // ================= PREMIUM SHIELD HUD ICON =================
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
@@ -831,7 +752,6 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
                 ),
                 const SizedBox(height: 32),
 
-                // ================= SCREEN TITLE =================
                 Text(
                   "Verify your email",
                   style: AppTextStyles.displayMedium.copyWith(
@@ -840,7 +760,6 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
                 ),
                 const SizedBox(height: 12),
 
-                // ================= EMAIL HUD INFO WRAPPER =================
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: RichText(
@@ -865,7 +784,6 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
                 ),
                 const SizedBox(height: 40),
 
-                // ================= CARD SEPARATOR FOR STATUS INFO =================
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
@@ -897,7 +815,6 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
                 ),
                 const SizedBox(height: 32),
 
-                // ================= ACTION UTILITY CONTROLS =================
                 SizedBox(
   width: double.infinity,
   height: 55,
@@ -928,7 +845,6 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
 ),
                 const SizedBox(height: 20),
                 
-                // Back-To-Login helper shortcut
                 TextButton(
                   onPressed: () async {
                     _timer?.cancel();
