@@ -1,63 +1,24 @@
-// =============================================================================
-// PRO EARN — Comments: CommentScreen
-// -----------------------------------------------------------------------------
-// Extracted from the original social_feed.dart during the feature-based
-// file split (no UI or logic changes — only where this code physically
-// lives). social_feed.dart is now a barrel file that re-exports this file.
-// =============================================================================
 
-// =============================================================================
-// PRO EARN — AI-generated content social platform
-// -----------------------------------------------------------------------------
-// This file (social_feed.dart) is one of three files this app's UI/logic
-// was split into (equal three-way split of the original single-file
-// main.dart, no UI or logic changes — only where each class physically
-// lives):
-//   1. main.dart
-//   2. social_feed.dart            (this file)
-//   3. user_profile_features.dart
-//
-// social_feed.dart contains everything about browsing, creating, and
-// interacting with posts/reels:
-//   - Feed & Reels: ReelsPage, SearchPage, SingleReelScreen
-//   - Upload & Media: UploadPage, GlobalImageAdjuster
-//   - Post interactions: LikeButton, CommentButton, CommentScreen,
-//     ShareButton, MoreOptionsButton, GetPromptButton (creator earnings)
-//
-// Persistence: Supabase (Postgres) is the source of truth for all
-// user/post/social data.
-// =============================================================================
 
-// ---- Dart core ----
 import 'dart:async';
 import 'package:universal_io/universal_io.dart';
 
-// ---- Flutter framework ----
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
-// ---- Supabase ----
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// ---- Third-party packages ----
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 
-// ---- App files (split out of the original single-file main.dart) ----
 import '../models.dart';
 import '../service.dart';
 import '../user_profile_features.dart';
 import '../theme/theme.dart';
 import '../utils.dart';
-// Images/gifts in comments reuse the exact same picker/compress/moderate/
-// upload pipeline chat already has — same UI, same behavior, on purpose
-// (that's what was asked for), just posting into `comments` instead of
-// calling send_message.
 import '../messaging/chat_image_preview_page.dart';
 import '../messaging/chat_multi_image_preview_page.dart';
 import 'comment_gift_sheet.dart';
-
-
 
   class CommentScreen extends StatefulWidget {
   final String postId;
@@ -68,12 +29,6 @@ import 'comment_gift_sheet.dart';
   @override
   State<CommentScreen> createState() => _CommentScreenState();
 }
-// Same trick as chat's _groupConsecutiveImages: a gallery multi-send posts
-// several image-only comments back-to-back (same sender, no text, not a
-// reply), so this clusters adjacent ones from the stream into one album
-// tile — no new column/table needed. Only applied to TOP-LEVEL comments
-// (not replies), since a multi-photo reply is a rare enough case to skip
-// for now.
 List<List<Map<String, dynamic>>> _groupConsecutiveImageComments(List<Map<String, dynamic>> comments) {
   bool isPlainImage(Map<String, dynamic> c) =>
       (c['imageUrl'] as String?)?.isNotEmpty == true &&
@@ -105,23 +60,15 @@ class _CommentScreenState extends State<CommentScreen> {
   final ImagePicker _picker = ImagePicker();
   String? _currentlyHighlightedId;
 
-  // Track reply context
   String? _replyingToUserId;
   String? _replyingToUsername;
   String? _replyingToCommentId; // This acts as parentCommentId
   String? _editingCommentId; // non-null while the input bar is editing an existing comment instead of posting a new one
 
-  // Track which comment threads are expanded (unfolded)
   final Set<String> _expandedCommentIds = {};
 
-    // 🔥 Stream Cache Map
   final Map<String, Future<Map<String, dynamic>?>> _userProfileCache = {};
 
-  // Cached per-uid profile fetch for comment/reply authors — was a Stream
-  // cache pointed at the full `users` table. Comment author name/avatar
-  // doesn't need to be live, and Supabase Realtime doesn't fire on views
-  // anyway, so this is now a one-time Future cache against public_profiles
-  // (no email/upiId/address exposure, same de-dup-by-uid benefit as before).
   Future<Map<String, dynamic>?> _getUserProfile(String uid) {
     if (uid.isEmpty) {
       return Future.value(null);
@@ -197,13 +144,6 @@ class _CommentScreenState extends State<CommentScreen> {
     "Intellectual Property Violation",
   ];
 
-  // Long-press menu for a comment/reply — options shown depend on who's
-  // looking:
-  //   - Wrote it themselves: Reply, Edit, Delete (no Report — can't
-  //     report your own comment).
-  //   - Owns the POST (but didn't write this comment): Reply, Report,
-  //     Delete (moderation — can remove any comment on their own post).
-  //   - Anyone else: Reply, Report.
   void _showCommentOptions({
     required String commentId,
     required String commentUid,
@@ -265,10 +205,6 @@ class _CommentScreenState extends State<CommentScreen> {
     );
   }
 
-  // Edit happens INLINE in the same input box used for posting/replying
-  // (not a popup) — this just switches the bar into "editing" mode; see
-  // _postComment for where the save actually happens, and the "Editing
-  // comment" chip in the input bar for the cancel (X) button.
   void _editComment(String commentId, String currentText) {
     setState(() {
       _editingCommentId = commentId;
@@ -307,9 +243,6 @@ class _CommentScreenState extends State<CommentScreen> {
       if (isAuthor) {
         await Supabase.instance.client.rpc('delete_own_comment', params: {'p_comment_id': commentId});
       } else {
-        // Not the author — this must be the post owner moderating a
-        // comment on their own post, which needs elevated privilege
-        // (normal RLS wouldn't let you delete someone else's row).
         await Supabase.instance.client.rpc('delete_comment_as_post_owner', params: {
           'p_comment_id': commentId,
           'p_post_id': widget.postId,
@@ -429,10 +362,6 @@ class _CommentScreenState extends State<CommentScreen> {
     _focusNode.unfocus();
   }
 
-  // Camera / single gallery photo — same compress+moderate+upload pipeline
-  // as chat (chat_image_preview_page.dart), just posted as a comment
-  // instead of a chat message. Replies-to-a-comment can carry a photo
-  // too (parentId/replyTo carry over same as a text reply).
   Future<void> _pickAndSendImage(ImageSource source) async {
     try {
       final picked = await _picker.pickImage(source: source, imageQuality: 90);
@@ -448,10 +377,6 @@ class _CommentScreenState extends State<CommentScreen> {
     }
   }
 
-  // Gallery multi-select (up to 20) — same album trick chat uses: post
-  // several image-only comments back-to-back, close together in time,
-  // and the rendering side (_groupConsecutiveComments) re-groups them
-  // into one tile automatically.
   Future<void> _pickAndSendMultipleImages() async {
     try {
       final picked = await _picker.pickMultiImage(imageQuality: 90, limit: 20);
@@ -516,8 +441,6 @@ class _CommentScreenState extends State<CommentScreen> {
     final currentUser = Supabase.instance.client.auth.currentUser;
     if (currentUser == null) return;
 
-    // Editing an existing comment — save and stop here, don't fall
-    // through to posting a brand new one.
     if (_editingCommentId != null) {
       final commentId = _editingCommentId!;
       _cancelEdit();
@@ -544,7 +467,6 @@ class _CommentScreenState extends State<CommentScreen> {
     _cancelReply();
 
     try {
-      // 1. Save comment in Supabase
       await Supabase.instance.client
           .from(kCommentsCollection)
           .insert({
@@ -556,7 +478,6 @@ class _CommentScreenState extends State<CommentScreen> {
         'parentCommentId': parentId, // Stores parent comment ID if it's a reply
       });
 
-      // Auto expand the parent comment thread so user sees their posted reply immediately
       if (parentId != null) {
         setState(() {
           _expandedCommentIds.add(parentId);
@@ -564,9 +485,7 @@ class _CommentScreenState extends State<CommentScreen> {
       }
 
       try {
-        // ================= NEW NOTIFICATION LOGIC =================
         if (repliedUserId != null && repliedUserId.isNotEmpty) {
-          // 1. REPLIED USER NOTIFICATION (Sirf jisko reply kiya hai usko jayega)
           if (repliedUserId != currentUser.id) {
             await sendNotification(
               targetOwnerId: repliedUserId,
@@ -576,7 +495,6 @@ class _CommentScreenState extends State<CommentScreen> {
             );
           }
         } else {
-          // 2. POST OWNER NOTIFICATION (Normal comment hone par sirf post owner ko jayega)
           final postDoc = await Supabase.instance.client
               .from(kPostsCollection)
               .select()
@@ -596,11 +514,7 @@ class _CommentScreenState extends State<CommentScreen> {
             }
           }
         }
-        // =========================================================
       } catch (notificationError) {
-        // The comment itself already saved successfully above — a failure
-        // here is just a missed push notification, not a failed comment,
-        // so this stays a silent debug log rather than a user-facing error.
         debugPrint("Comment posted but notification failed: $notificationError");
       }
 
@@ -627,7 +541,6 @@ class _CommentScreenState extends State<CommentScreen> {
 
     
 
-  // Format Timestamp Helper
   String _formatCommentTimestamp(dynamic timestamp) => formatRelativeTimestamp(timestamp);
 
   void _toggleExpandThread(String commentId) {
@@ -641,7 +554,6 @@ class _CommentScreenState extends State<CommentScreen> {
   }
 
   
-       // Perfect Inline Layout: [Jerry_Avatar] Jerry replying to [Nasir_Avatar] @nasir hello
   Widget _buildCommentTile({
     required Map<String, dynamic> cDoc,
     required Map<String, dynamic> cData,
@@ -655,8 +567,6 @@ class _CommentScreenState extends State<CommentScreen> {
     final String replyToUserId = cData['replyToUserId'] ?? ''; 
     final dynamic timestamp = cData['timestamp'];
     final String? imageUrl = cData['imageUrl'] as String?;
-    // Gift comments (from comment_gift_sheet.dart) are tagged the same
-    // way chat tags them — a "🎁 " text prefix, no separate column.
     final bool isGift = commentText.startsWith('🎁');
     final bool isImage = imageUrl != null && imageUrl.isNotEmpty;
     final bool isEdited = cData['isEdited'] == true;
@@ -690,7 +600,6 @@ class _CommentScreenState extends State<CommentScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. MAIN COMMENTER AVATAR (Jerry's Main Avatar)
                 GestureDetector(
                   onTap: () => _navigateToProfile(commentUid),
                   child: CircleAvatar(
@@ -705,7 +614,6 @@ class _CommentScreenState extends State<CommentScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 2. INLINE TEXT WITH INLINE REPLIED AVATAR
                       RichText(
                         text: TextSpan(
                           style: TextStyle(
@@ -713,21 +621,18 @@ class _CommentScreenState extends State<CommentScreen> {
                             fontSize: 14,
                           ),
                           children: [
-                            // Comment Creator Name (e.g., "Jerry ")
                             TextSpan(
                               text: "$name ", 
                               style: const TextStyle(fontWeight: FontWeight.bold),
                               recognizer: TapGestureRecognizer()..onTap = () => _navigateToProfile(commentUid),
                             ),
 
-                            // Reply Section
                             if (replyToUsername.isNotEmpty) ...[
                               const TextSpan(
                                 text: "replying to ",
                                 style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
                               ),
 
-                              // 🔥 INLINE REPLIED USER AVATAR (Nasir's Avatar)
                               if (replyToUserId.isNotEmpty)
                                 WidgetSpan(
                                   alignment: PlaceholderAlignment.middle,
@@ -759,7 +664,6 @@ class _CommentScreenState extends State<CommentScreen> {
                                   ),
                                 ),
 
-                              // Replied Username (e.g., "@nasir ")
                               TextSpan(
                                 text: "@$replyToUsername ", 
                                 style: TextStyle(
@@ -776,14 +680,10 @@ class _CommentScreenState extends State<CommentScreen> {
                               ),
                             ],
 
-                            // Actual Comment Text (empty for a photo-only comment; "🎁 Sent X" for a gift)
                             TextSpan(text: commentText),
                           ],
                         ),
                       ),
-                      // Photo / gift — same visual treatment as chat:
-                      // gift shows small (just a receipt), a real photo
-                      // shows bigger; tap opens fullscreen, no crop.
                       if (isImage) ...[
                         const SizedBox(height: 6),
                         GestureDetector(
@@ -801,7 +701,6 @@ class _CommentScreenState extends State<CommentScreen> {
                       ],
                       const SizedBox(height: 4),
                       
-                      // Timestamp & Reply Button
                       Row(
                         children: [
                           Text(
@@ -897,7 +796,6 @@ class _CommentScreenState extends State<CommentScreen> {
 
                     final allDocs = snapshot.data!;
 
-                    // Separate main comments vs replies
                     final mainComments = allDocs.where((data) {
                       final parentId = data['parentCommentId'];
                       return parentId == null || parentId.toString().isEmpty;
@@ -914,12 +812,6 @@ class _CommentScreenState extends State<CommentScreen> {
                         final String parentId = parentData['id'].toString();
 
                         if (group.length > 1) {
-                          // Gallery-multi-send album — grid tile, tap opens
-                          // a swipeable viewer. Kept simple (no per-photo
-                          // Reply/Forward/Remove menu like chat has) since
-                          // these are rare in comments; long-press the tile
-                          // itself still offers Delete/Report for the batch
-                          // via its first photo.
                           final imageUrls = group.map((c) => c['imageUrl'] as String).toList();
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 6),
@@ -964,19 +856,16 @@ class _CommentScreenState extends State<CommentScreen> {
                           );
                         }
 
-                        // Find child replies corresponding to this main comment
                         final childReplies = allDocs.where((data) {
                           return data['parentCommentId'] == parentId;
                         }).toList();
 
-                        // Reverse child list so oldest replies show first in child thread
                         final sortedChildReplies = childReplies.reversed.toList();
                         bool isExpanded = _expandedCommentIds.contains(parentId);
 
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Main Comment Tile
                             _buildCommentTile(
                               cDoc: parentData,
                               cData: parentData,
@@ -985,7 +874,6 @@ class _CommentScreenState extends State<CommentScreen> {
                               isReply: false,
                             ),
 
-                            // Fold / Unfold Arrow Action
                             if (sortedChildReplies.isNotEmpty)
                               Padding(
                                 padding: const EdgeInsets.only(left: 48.0, top: 2.0, bottom: 6.0),
@@ -1022,7 +910,6 @@ class _CommentScreenState extends State<CommentScreen> {
                                 ),
                               ),
 
-                            // Nested Child Replies (Displayed when expanded)
                             if (isExpanded && sortedChildReplies.isNotEmpty)
                               Column(
                                 children: sortedChildReplies.map((replyData) {
@@ -1043,11 +930,6 @@ class _CommentScreenState extends State<CommentScreen> {
                 ),
               ),
               
-              // Bottom Input Bar Area — same layout as chat_page.dart's
-              // input bar on purpose (Camera | text field | Gallery |
-              // Gift | Send), so comments and chat feel identical.
-              // Wrapped in SafeArea (not manual MediaQuery arithmetic)
-              // so the icons never sit behind a 3-button nav bar.
               SafeArea(
                 top: false,
                 child: Container(
