@@ -1,16 +1,3 @@
-// ============================================================================
-// APP THEME EXTENSION — carries brand/semantic tokens that Flutter's built-in
-// ThemeData/ColorScheme has no slot for (gradients, success/warning/info,
-// shimmer colors, glow shadows). Access anywhere via:
-//
-//   final ext = Theme.of(context).extension<AppThemeExtension>()!;
-//   ext.accentGradient
-//   ext.success
-//
-// This is what makes the theme swappable from ONE place: change the values
-// in AppColors/AppDimens, and every screen that reads via the extension (or
-// via ColorScheme) updates automatically — no per-screen edits needed.
-// ============================================================================
 
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
@@ -79,8 +66,6 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     accentGlow: AppElevation.accentGlow,
   );
 
-  // Light mode reuses the same semantic/brand colors — only surfaces/text
-  // differ, and those are handled by ColorScheme, not this extension.
   static const AppThemeExtension light = dark;
 
   @override
@@ -129,13 +114,10 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   @override
   AppThemeExtension lerp(ThemeExtension<AppThemeExtension>? other, double t) {
     if (other is! AppThemeExtension) return this;
-    // Colors here are treated as fixed brand tokens rather than animated
-    // between light/dark, so we simply switch at t >= 0.5.
     return t < 0.5 ? this : other;
   }
 }
 
-/// Convenience getter: `context.appColors.success`
 extension AppThemeExtensionContext on BuildContext {
   AppThemeExtension get appColors =>
       Theme.of(this).extension<AppThemeExtension>() ?? AppThemeExtension.dark;
