@@ -47,14 +47,14 @@ async function getUser(request: Request, env: Env) {
   const user = await response.json<{ id: string; email?: string }>();
 
   const profileResponse = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/users?uid=eq.${encodeURIComponent(user.id)}&select=termsAcceptedAt,termsVersion,isBanned&limit=1`,
+    `${env.SUPABASE_URL}/rest/v1/users?uid=eq.${encodeURIComponent(user.id)}&select=termsAcceptedAt,termsVersion,isBanned,isPrivateAccount&limit=1`,
     { headers: { Authorization: auth, apikey: env.SUPABASE_ANON_KEY } },
   );
   if (!profileResponse.ok) return null;
   const profiles = await profileResponse.json<Array<{ termsAcceptedAt?: string | null; termsVersion?: string | null; isBanned?: boolean }>>();
   const profile = profiles[0];
   if (!profile || !profile.termsAcceptedAt || profile.termsVersion !== '2026-09' || profile.isBanned === true) return null;
-  return user;
+  return { ...user, isPrivateAccount: profile.isPrivateAccount === true };
 }
 
 function r2Key(userId: string, folder: string, extension: string) {
@@ -252,7 +252,7 @@ export default {
 
         const imageUrl = `${env.R2_PUBLIC_BASE_URL.replace(/\/$/, "")}/${objectKey}`;
         try {
-          const post = await createPost(env, user.id, body, imageUrl, objectKey, false);
+          const post = await createPost(env, user.id, body, imageUrl, objectKey, user.isPrivateAccount);
           return json({ post, url: imageUrl });
         } catch (error) {
           await env.R2_BUCKET.delete(objectKey);
