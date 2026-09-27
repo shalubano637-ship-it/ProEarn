@@ -231,12 +231,24 @@ class _ProfilePageState extends State<ProfilePage> {
             displayBio = uData['bio'] ?? "No Bio Yet";
             profileUrl = uData['profileUrl'] ?? "";
             isPrivateAccount = uData['isPrivateAccount'] == true;
-            
-            if (uData['followers'] != null) {
-              userFollowersList = List<String>.from(uData['followers']);
-            }
-            if (uData['following'] != null) {
-              userFollowingList = List<String>.from(uData['following']);
+
+            // public_profiles intentionally does not expose follower/following
+            // arrays. For the owner's own profile, read these private fields
+            // from the authenticated user's row.
+            if (widget.isOwnProfile) {
+              try {
+                final own = await Supabase.instance.client
+                    .from('users')
+                    .select('followers,following')
+                    .eq('uid', targetUid)
+                    .maybeSingle();
+                if (own != null) {
+                  userFollowersList = List<String>.from(own['followers'] ?? const []);
+                  userFollowingList = List<String>.from(own['following'] ?? const []);
+                }
+              } catch (e) {
+                debugPrint('Failed to load own follower lists: $e');
+              }
             }
 
             if (widget.isOwnProfile) {
