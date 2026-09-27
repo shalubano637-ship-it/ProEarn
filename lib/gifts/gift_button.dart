@@ -8,7 +8,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../service.dart';
 import '../theme/theme.dart';
-import '../widgets/watch_ad_for_gift_button.dart';
 
 class GiftButton extends StatelessWidget {
   final String postId;
@@ -121,7 +120,6 @@ class _SendGiftSheetState extends State<_SendGiftSheet> {
                   const Expanded(
                     child: Text("Send a Gift", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
-                  const WatchAdForGiftButton(),
                 ],
               ),
               const SizedBox(height: 12),
