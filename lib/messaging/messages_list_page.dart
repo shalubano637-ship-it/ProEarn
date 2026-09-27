@@ -9,6 +9,7 @@ import '../ad_unit_ids.dart';
 import '../theme/theme.dart';
 import '../service.dart';
 import 'chat_page.dart';
+import 'message_requests_page.dart';
 import '../user_profile_features.dart';
 import '../widgets/error_retry_view.dart';
 
@@ -35,13 +36,25 @@ class _MessagesListPageState extends State<MessagesListPage> {
 
   Future<List<Map<String, dynamic>>>? _conversationsFuture;
 
-  Future<List<Map<String, dynamic>>> _fetchConversations() {
+  Future<List<Map<String, dynamic>>> _fetchConversations() async {
     final currentUid = Supabase.instance.client.auth.currentUser?.id ?? '';
-    return Supabase.instance.client
+    final conversations = await Supabase.instance.client
         .from('conversations')
         .select()
         .or('participantA.eq.$currentUid,participantB.eq.$currentUid')
         .order('lastMessageAt', ascending: false);
+
+    final requests = await Supabase.instance.client
+        .from('message_requests')
+        .select('conversationId')
+        .eq('recipientId', currentUid)
+        .eq('status', 'pending');
+
+    final pendingIds = requests.map((r) => r['conversationId'].toString()).toSet();
+
+    return List<Map<String, dynamic>>.from(conversations).where((conv) {
+      return !pendingIds.contains(conv['id'].toString());
+    }).toList();
   }
 
   void _refreshConversations() {
@@ -89,7 +102,23 @@ class _MessagesListPageState extends State<MessagesListPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.isForwardMode ? "Forward to…" : "Messages")),
+      appBar: AppBar(
+        title: Text(widget.isForwardMode ? "Forward to…" : "Messages"),
+        actions: [
+          if (!widget.isForwardMode)
+            IconButton(
+              icon: const Icon(Icons.mail_outline),
+              tooltip: "Message Requests",
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MessageRequestsPage()),
+                );
+                _refreshConversations();
+              },
+            ),
+        ],
+      ),
       body: Column(
         children: [
           if (_isBannerLoaded && _bannerAd != null)
