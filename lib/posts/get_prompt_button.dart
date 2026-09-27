@@ -1,54 +1,18 @@
-// =============================================================================
-// PRO EARN — Posts: GetPromptButton (creator prompt-unlock earnings)
-// -----------------------------------------------------------------------------
-// Extracted from the original social_feed.dart during the feature-based
-// file split (no UI or logic changes — only where this code physically
-// lives). social_feed.dart is now a barrel file that re-exports this file.
-// =============================================================================
 
-// =============================================================================
-// PRO EARN — AI-generated content social platform
-// -----------------------------------------------------------------------------
-// This file (social_feed.dart) is one of three files this app's UI/logic
-// was split into (equal three-way split of the original single-file
-// main.dart, no UI or logic changes — only where each class physically
-// lives):
-//   1. main.dart
-//   2. social_feed.dart            (this file)
-//   3. user_profile_features.dart
-//
-// social_feed.dart contains everything about browsing, creating, and
-// interacting with posts/reels:
-//   - Feed & Reels: ReelsPage, SearchPage, SingleReelScreen
-//   - Upload & Media: UploadPage, GlobalImageAdjuster
-//   - Post interactions: LikeButton, CommentButton, CommentScreen,
-//     ShareButton, MoreOptionsButton, GetPromptButton (creator earnings)
-//
-// Persistence: Supabase (Postgres) is the source of truth for all
-// user/post/social data.
-// =============================================================================
 
-// ---- Dart core ----
 import 'dart:async';
 
-// ---- Flutter framework ----
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-// ---- Supabase ----
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// ---- Third-party packages ----
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
-// ---- App files (split out of the original single-file main.dart) ----
 import '../models.dart';
 import '../theme/theme.dart';
 import '../ad_unit_ids.dart';
 
-
-
-// ================= GET-PROMPT UNLOCK BUTTON (creator earnings) =================
 class GetPromptButton extends StatefulWidget {
   final String postId;
   final String ownerId;
@@ -71,11 +35,8 @@ class _GetPromptButtonState extends State<GetPromptButton> {
   String _cooldownRemainingText = "";
   bool _isLocalCooldownActive = false;
 
-  // The actual unlock time, fetched once (not re-queried every second — see
-  // _startLiveCooldownTracker below for why).
   DateTime? _unlockTime;
 
-  // AdMob State Variables
   RewardedAd? _rewardedAd;
   bool _isAdLoading = false;
 
@@ -93,7 +54,6 @@ class _GetPromptButtonState extends State<GetPromptButton> {
     super.dispose();
   }
 
-  // Load Rewarded Ad from AdMob
   void _loadRewardedAd() {
     if (_isAdLoading) return;
     setState(() => _isAdLoading = true);
@@ -119,10 +79,8 @@ class _GetPromptButtonState extends State<GetPromptButton> {
     );
   }
 
-  // Show the loaded AdMob ad
   void _showRewardedAdPipeline(VoidCallback onAdCompleted) {
     if (_rewardedAd == null) {
-      // Fallback: If ad is not ready, notify user and try reloading
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Something wrong! Please try again later.")),
       );
@@ -130,7 +88,6 @@ class _GetPromptButtonState extends State<GetPromptButton> {
       return;
     }
 
-    // Set full screen content callbacks
     _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
@@ -142,15 +99,8 @@ class _GetPromptButtonState extends State<GetPromptButton> {
       },
     );
 
-    // Show the ad and capture reward event
     _rewardedAd!.show(
       onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
-        // Triggered only if the user watches the whole video. Coin earning
-        // now happens directly via handle_get_action (see
-        // supabase_schema_coins_economy.sql) when the unlocked prompt is
-        // redeemed below — there's no separate AdMob-revenue-settlement
-        // step to log toward anymore (that was the old real-money model's
-        // rewarded_completions/settle-revenue path, now unused).
         onAdCompleted();
       },
     );
@@ -158,9 +108,6 @@ class _GetPromptButtonState extends State<GetPromptButton> {
     _rewardedAd = null; // Clear current instance reference after triggering show
   }
 
-  // One-time fetch of the existing cooldown (if any) when this widget
-  // mounts — e.g. the user redeemed this post's prompt in an earlier
-  // session and the cooldown is still active.
   Future<void> _fetchCooldownOnce() async {
     if (widget.currentUserId.isEmpty) return;
 
@@ -180,13 +127,6 @@ class _GetPromptButtonState extends State<GetPromptButton> {
     _startLiveCooldownTracker();
   }
 
-  // Local-only countdown display. Previously this ran a Supabase query every
-  // second per visible post — with N posts rendered in the feed, that was N
-  // network reads/sec running indefinitely, for a value that only needs to
-  // change once (when the cooldown ends), not every tick. _unlockTime is
-  // already known (from _fetchCooldownOnce, or set directly after a redeem —
-  // see _handleGetPromptPipeline), so this just recomputes the label from
-  // that local value with zero network calls.
   void _startLiveCooldownTracker() {
     _localUiUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       final unlockTime = _unlockTime;
@@ -254,13 +194,11 @@ class _GetPromptButtonState extends State<GetPromptButton> {
       return;
     }
 
-    // Ad successfully dekhne ke baad ka process
     _showRewardedAdPipeline(() async {
       int baseMinutes = 1; 
       int finalMinutesDuration = baseMinutes * currentMultiplier;
       DateTime nextUnlockTarget = DateTime.now().add(Duration(minutes: finalMinutesDuration));
 
-      // Atomic RPC: cooldown upsert + getsCount/totalGets increments (see supabase_schema.sql)
       await Supabase.instance.client.rpc('redeem_get_prompt', params: {
         'p_post_id': widget.postId,
         'p_user_id': widget.currentUserId,
@@ -278,7 +216,6 @@ class _GetPromptButtonState extends State<GetPromptButton> {
       }
     });
   }
-
 
   void _showPromptResultPopup(BuildContext context, String unlockedText, int currentSessionMinutes) {
     showDialog(
