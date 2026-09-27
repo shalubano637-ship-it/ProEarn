@@ -17,6 +17,7 @@ import 'chests/chests_page.dart';
 import 'chest_timer_service.dart';
 import 'leaderboard_page.dart';
 import 'bag_page.dart';
+import 'rewards/signup_rewards_popup.dart';
 
     
  
@@ -52,6 +53,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void initState() {
     super.initState();
     _loadLastViewedTime(); // App start hote hi Hive se time read karein
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await SignupRewardsPopup.show(context);
+    });
     _watchForLiveBan(); // Admin panel se mid-session ban ho jaaye to turant sign out
   }
 
