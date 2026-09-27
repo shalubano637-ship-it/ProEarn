@@ -1,9 +1,3 @@
-// ============================================================================
-// APP DIMENS — single source of truth for spacing, radius, icon sizes, and
-// elevation/shadows. Previously the app had 11 different border-radius
-// values (4,6,8,10,12,14,15,16,20,24,30) used ad-hoc. This collapses that
-// into a deliberate, consistent scale.
-// ============================================================================
 
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
@@ -50,17 +44,14 @@ class AppIconSize {
 class AppElevation {
   AppElevation._();
 
-  /// Standard soft shadow for cards on dark surfaces.
   static const List<BoxShadow> card = [
     BoxShadow(color: AppColors.shadow, blurRadius: 12, offset: Offset(0, 4)),
   ];
 
-  /// Slightly stronger shadow for floating/raised elements (FAB, sheets).
   static const List<BoxShadow> raised = [
     BoxShadow(color: AppColors.shadow, blurRadius: 20, offset: Offset(0, 8)),
   ];
 
-  /// Subtle glow used behind the accent color for premium CTA emphasis.
   static const List<BoxShadow> accentGlow = [
     BoxShadow(color: Color(0x40D4AF37), blurRadius: 16, offset: Offset(0, 4)),
   ];
