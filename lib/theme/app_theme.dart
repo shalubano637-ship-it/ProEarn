@@ -1,18 +1,3 @@
-// ============================================================================
-// APP THEME — assembles the final ThemeData objects consumed by MaterialApp.
-//
-// This is the ONE place that wires AppColors + AppTextStyles + AppDimens
-// into component-level themes (buttons, inputs, cards, app bar, etc).
-// Individual screens should almost never set colors/radii inline anymore —
-// they should either:
-//   (a) rely on the component defaults set up here (e.g. just use
-//       `ElevatedButton(...)` and it already looks right), or
-//   (b) reference a token directly (AppColors.accent, AppTextStyles.h1)
-//       for one-off cases.
-//
-// To re-theme the WHOLE app: edit AppColors / AppTextStyles / AppDimens.
-// This file rarely needs to change.
-// ============================================================================
 
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
@@ -23,10 +8,6 @@ import 'app_theme_extension.dart';
 class AppTheme {
   AppTheme._();
 
-
-  // ---------------------------------------------------------------------
-  // DARK THEME (primary — this app is designed dark-first)
-  // ---------------------------------------------------------------------
   static ThemeData get dark {
     const colorScheme = ColorScheme.dark(
       primary: AppColors.accent,
@@ -244,9 +225,6 @@ class AppTheme {
     );
   }
 
-  // ---------------------------------------------------------------------
-  // LIGHT THEME (secondary — kept for ThemeMode.system users on light OS)
-  // ---------------------------------------------------------------------
   static ThemeData get light {
     const colorScheme = ColorScheme.light(
       primary: AppColors.accentMuted,
