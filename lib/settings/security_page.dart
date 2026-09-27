@@ -193,7 +193,7 @@ class _SecurityPageState extends State<SecurityPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "This permanently deletes your account, posts, comments, and earnings history. This cannot be undone.",
+              "This permanently deletes your account, posts, comments, and associated account data. This cannot be undone.",
             ),
             const SizedBox(height: 12),
             const Text("Type DELETE to confirm:"),
@@ -539,7 +539,7 @@ StreamBuilder<List<Map<String, dynamic>>>(
               ),
               const SizedBox(height: 4),
               const Text(
-                "Permanently delete your account, posts, comments, and earnings history. This cannot be undone.",
+                "Permanently delete your account, posts, comments, and associated account data. This cannot be undone.",
                 style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
               ),
               const SizedBox(height: 12),
