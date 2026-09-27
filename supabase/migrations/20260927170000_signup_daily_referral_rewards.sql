@@ -2,7 +2,13 @@ alter table public.users
   add column if not exists "referralCode" text,
   add column if not exists "referredBy" uuid references public.users(uid),
   add column if not exists "firstLoginRewardClaimedAt" timestamptz,
-  add column if not exists "signupRewardStartedAt" timestamptz;
+  add column if not exists "signupRewardStartedAt" timestamptz,
+  add column if not exists "signupRewardEligible" boolean not null default true;
+
+update public.users
+set "signupRewardEligible" = false,
+    "firstLoginRewardClaimedAt" = coalesce("firstLoginRewardClaimedAt", now())
+where "createdAt" < now();
 
 create unique index if not exists users_referral_code_unique
   on public.users ("referralCode")
@@ -120,6 +126,10 @@ begin
     raise exception 'User profile not found';
   end if;
 
+  if not coalesce(v_user."signupRewardEligible", false) then
+    return jsonb_build_object('alreadyClaimed', true, 'eligible', false);
+  end if;
+
   if v_user."firstLoginRewardClaimedAt" is not null then
     return jsonb_build_object('alreadyClaimed', true);
   end if;
@@ -210,10 +220,14 @@ begin
     raise exception 'User profile not found';
   end if;
 
-  v_start := coalesce(
-    (v_user."signupRewardStartedAt" at time zone 'Asia/Kolkata')::date,
-    v_today
-  );
+  if not coalesce(v_user."signupRewardEligible", false) or v_user."signupRewardStartedAt" is null then
+    return jsonb_build_object(
+      'enabled', false,
+      'referralCode', v_user."referralCode"
+    );
+  end if;
+
+  v_start := (v_user."signupRewardStartedAt" at time zone 'Asia/Kolkata')::date;
   v_current_day := greatest(1, least(7, (v_today - v_start) + 1));
 
   for i in 1..7 loop
@@ -266,6 +280,10 @@ begin
   end if;
 
   select * into v_user from public.users where uid = v_me for update;
+
+  if not coalesce(v_user."signupRewardEligible", false) then
+    raise exception 'REWARD_NOT_AVAILABLE';
+  end if;
 
   if v_user."firstLoginRewardClaimedAt" is null then
     raise exception 'FIRST_LOGIN_REWARD_REQUIRED';
