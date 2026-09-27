@@ -65,8 +65,6 @@ class _ChestsPageState extends State<ChestsPage> {
     );
   }
 
-  Future<void> _openChest() => _claimChest(isCoin: false);
-
   Future<void> _openChest() async {
     final service = chestTimerService;
     if (!service.isUnlocked || _isClaiming) return;
@@ -180,7 +178,6 @@ class _ChestsPageState extends State<ChestsPage> {
                           );
                         }),
                       ),
-                      const SizedBox(height: 28),
                       const SizedBox(height: 28),
                       const Divider(),
                       const SizedBox(height: 8),
