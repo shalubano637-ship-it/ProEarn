@@ -51,3 +51,28 @@ begin
   return new;
 end;
 $function$;
+
+
+create or replace function public.set_report_severity()
+returns trigger
+language plpgsql
+set search_path = public
+as $function$
+declare
+  r text := lower(coalesce(new.reason, ''));
+begin
+  if r like '%child%' or r like '%csae%' or r like '%csam%' or r like '%groom%' or r like '%minor%' or r like '%sextortion%' then
+    new.severity := 'critical';
+  elsif r like '%violence%' or r like '%threat%' or r like '%harassment%' then
+    new.severity := 'high';
+  else
+    new.severity := coalesce(new.severity, 'normal');
+  end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists reports_set_severity on public.reports;
+create trigger reports_set_severity
+before insert or update of reason on public.reports
+for each row execute function public.set_report_severity();
