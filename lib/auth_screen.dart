@@ -50,6 +50,18 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
         final user = Supabase.instance.client.auth.currentUser;
 
         if (user != null && user.emailConfirmedAt != null) {
+          final termsOk = await _ensureCurrentTermsAccepted(user.id);
+          if (!mounted) return;
+          if (!termsOk) {
+            await Supabase.instance.client.auth.signOut();
+            if (!mounted) return;
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginPage()),
+            );
+            return;
+          }
+
           final banned = await isCurrentUserBanned();
           if (!mounted) return;
           if (banned) {
@@ -74,6 +86,64 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
         }
       }
     });
+  }
+
+  Future<bool> _ensureCurrentTermsAccepted(String uid) async {
+    final row = await Supabase.instance.client
+        .from(kUsersCollection)
+        .select('termsAcceptedAt,termsVersion')
+        .eq('uid', uid)
+        .maybeSingle();
+
+    if (row != null &&
+        row['termsAcceptedAt'] != null &&
+        row['termsVersion'] == kCurrentTermsVersion) {
+      return true;
+    }
+
+    if (!mounted) return false;
+    var accepted = false;
+    accepted = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) {
+            return AlertDialog(
+              title: const Text('Updated Terms & Safety Rules'),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 420,
+                child: SingleChildScrollView(
+                  child: Text(
+                    '$kTermsAndConditionsText\n\n$kCommunityGuidelinesText\n\n$kChildSafetyStandardsText',
+                    style: const TextStyle(height: 1.45),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Sign out'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: const Text('Agree & Continue'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!accepted) return false;
+
+    await Supabase.instance.client
+        .from(kUsersCollection)
+        .update({
+          'termsAcceptedAt': DateTime.now().toUtc().toIso8601String(),
+          'termsVersion': kCurrentTermsVersion,
+        })
+        .eq('uid', uid);
+    return true;
   }
 
   Future<void> _checkUserDocument() async {
@@ -313,6 +383,7 @@ class _LoginPageState extends State<LoginPage> {
           data: {
             'userName': signupUsername,
             'termsAcceptedAt': DateTime.now().toUtc().toIso8601String(),
+            'termsVersion': kCurrentTermsVersion,
           },
         );
 
