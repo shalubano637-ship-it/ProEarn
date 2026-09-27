@@ -1,10 +1,3 @@
-// =============================================================================
-// PRO EARN — Navigation shell
-// -----------------------------------------------------------------------------
-// Split out of main.dart. Contains MainNavigationScreen: the bottom-nav
-// host (Reels / Search / Upload / Settings) plus the app bar with profile
-// avatar and notification bell.
-// =============================================================================
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,7 +9,6 @@ import 'models.dart';
 import 'service.dart';
 import 'auth_screen.dart';
 
-
 import 'social_feed.dart';
 import 'user_profile_features.dart';
 import 'theme/theme.dart';
@@ -26,13 +18,11 @@ import 'chest_timer_service.dart';
 import 'leaderboard_page.dart';
 import 'bag_page.dart';
 
-
     
  
     
            
           
-        // ================= MAIN NAVIGATION SCREEN (UPDATED WITH BACK ACTION LOGIC) =================
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
 
@@ -40,14 +30,12 @@ class MainNavigationScreen extends StatefulWidget {
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
   final Box settingsBox = Hive.box('app_settings');
   DateTime? lastNotificationViewedTime;
   StreamSubscription<List<Map<String, dynamic>>>? _banWatchSub;
   
-  // Track last back press time for exit cooldown validation
   DateTime? _lastPressedTime;
 
   final List<Widget> _pages = const [
@@ -67,11 +55,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     _watchForLiveBan(); // Admin panel se mid-session ban ho jaaye to turant sign out
   }
 
-  // Live ban enforcement: agar admin isi session ke beech mein user ko ban
-  // kare (isBanned = true set kare), to app khud realtime sign out kar dega
-  // — user ko app restart karne / khud se realize karne ka wait nahi karna
-  // padega. One-shot check (isCurrentUserBanned in service.dart) sirf
-  // login/splash ke waqt chalta hai; ye stream chalte session ke liye hai.
   void _watchForLiveBan() {
     final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null) return;
@@ -94,7 +77,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     });
   }
 
-  // Hive se time load karne ka function
   void _loadLastViewedTime() {
     final savedTimeStr = settingsBox.get('last_notification_time');
     if (savedTimeStr != null) {
@@ -104,7 +86,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     }
   }
 
-  // Hive me time save karne ka function
   void _saveLastViewedTime() {
     final now = DateTime.now();
     settingsBox.put('last_notification_time', now.toIso8601String()); // Hive write operation
@@ -125,13 +106,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final theme = Theme.of(context);
     final currentUser = Supabase.instance.client.auth.currentUser;
 
-    // PopScope provides modern interceptive engine for system back gesture buttons
     return PopScope(
       canPop: false, // Disables standard automatic page pop/app termination routing
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
 
-        // STEP 1: Agar user Reels page (index 0) par nahi hai, toh Reels par transfer karo
         if (_selectedIndex != 0) {
           setState(() {
             _selectedIndex = 0;
@@ -146,7 +125,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         if (backButtonHasNotBeenPressedRecently) {
           _lastPressedTime = now;
 
-          // Display clean message bar without showing any countdown digits/seconds
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
@@ -159,7 +137,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             ),
           );
         } else {
-          // STEP 3: Agar 3 seconds ke andar doobara press kiya, toh app quit karo
           ScaffoldMessenger.of(context).clearSnackBars();
           await SystemNavigator.pop(); // Standard clean platform exit line
         }
@@ -315,12 +292,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             const BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: "Messages"),
             const BottomNavigationBarItem(icon: Icon(Icons.add_box_outlined), label: "Upload"),
             BottomNavigationBarItem(
-              // Red dot when EITHER chest track (gift chests OR coin
-              // chests) has finished its countdown and is ready to open
-              // — same visual as the notification bell's unread dot.
-              // Both services are global ChangeNotifiers (see
-              // chest_timer_service.dart); Listenable.merge watches both
-              // so this updates live the moment either hits zero.
               icon: AnimatedBuilder(
                 animation: Listenable.merge([chestTimerService, coinChestTimerService]),
                 builder: (context, _) => Stack(
@@ -351,24 +322,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 }
 
-// Shows the signed-in user's coin balance next to their profile pic in
-// the top app bar. Used to combine two separate sources (bonus_coin_balances
-// + users.mainCoins) because coins were earned into a separate "bonus"
-// pool first — that split (and the whole bonus/monetization system) has
-// been removed: every coin now lands straight in `users.mainCoins`
-// (see redeem_get_prompt / claim_coin_chest_reward / purchase_gift etc.),
-// so this only needs the one stream.
-//
-// The stream is created ONCE in initState (not inline inside build()) and
-// cached as a field. This used to be a StatelessWidget that called
-// .stream() directly in build() — every rebuild (e.g. every time
-// navigation_shell's setState() ran, such as switching bottom-nav tabs)
-// created a BRAND NEW stream, tearing down the old realtime subscription
-// and starting a fresh one from ConnectionState.waiting. That's exactly
-// why the balance would flash/stick at 0.00 right after switching tabs:
-// the new subscription's first event just hadn't arrived back yet. Now
-// the same subscription stays alive across rebuilds, so the number stays
-// correct continuously instead of resetting.
 class _CoinBalanceIndicator extends StatefulWidget {
   const _CoinBalanceIndicator();
 
