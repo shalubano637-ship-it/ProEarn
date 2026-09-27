@@ -1,6 +1,7 @@
 
 
 import 'dart:async';
+import 'dart:convert';
 import 'package:universal_io/universal_io.dart';
 
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -13,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../service.dart';
+import '../cloudflare_media_service.dart';
 import '../theme/theme.dart';
 import '../moderation/moderation_config.dart';
 
@@ -137,31 +139,34 @@ class _UploadPageState extends State<UploadPage> {
       }
 
       setState(() {
-        _uploadStatusText = "Uploading and server-checking...";
+        _uploadStatusText = "Checking server-side safety...";
+      });
+
+      // Second independent moderation pass on Cloudflare Workers AI.
+      // This path does not store the image in R2.
+      await CloudflareMediaService.moderateImage(finalCompressedFile);
+
+      setState(() {
+        _uploadStatusText = "Uploading to ImgBB...";
+        _uploadPercentage = 0.0;
       });
 
       final postLink = "app://post/${DateTime.now().millisecondsSinceEpoch}";
-      final imageUrl = await uploadImageToMediaGateway(
-        finalCompressedFile,
-        folder: 'posts',
-        onProgress: (bytes, total) {
-          if (mounted && total > 0) {
-            setState(() => _uploadPercentage = (bytes / total) * 100);
-          }
+      final bytes = await finalCompressedFile.readAsBytes();
+      final response = await Supabase.instance.client.functions.invoke(
+        'imgbb-upload',
+        body: {
+          'imageBase64': base64Encode(bytes),
+          'caption': caption.isEmpty ? "No Caption" : caption,
+          'prompt': prompt,
+          'link': postLink,
         },
       );
 
-      if (imageUrl == null || imageUrl.isEmpty) {
-        throw StateError("Image upload failed");
+      final data = response.data;
+      if (data is! Map || data['url'] == null || data['url'].toString().isEmpty) {
+        throw StateError("ImgBB upload failed");
       }
-
-      await Supabase.instance.client.from(kPostsCollection).insert({
-        'userName': Supabase.instance.client.auth.currentUser!.id,
-        'caption': caption.isEmpty ? "No Caption" : caption,
-        'prompt': prompt,
-        'link': postLink,
-        'imageUrl': imageUrl,
-      });
 
       if (await finalCompressedFile.exists()) {
         await finalCompressedFile.delete();
