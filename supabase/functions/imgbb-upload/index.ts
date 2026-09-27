@@ -51,7 +51,29 @@ Deno.serve(async (req) => {
       return json({ error: "Upload failed" }, 502);
     }
 
-    return json({ url: data.data.url as string });
+    const imageUrl = data.data.url as string;
+    const { data: post, error: postError } = await authed
+      .from("posts")
+      .insert({
+        userName: userData.user.id,
+        caption: String(body.caption ?? "No Caption"),
+        prompt: String(body.prompt ?? ""),
+        link: String(body.link ?? `app://post/${Date.now()}`),
+        imageUrl,
+        moderationStatus: "approved",
+        moderationCheckedAt: new Date().toISOString(),
+        moderationReason: null,
+        mediaObjectKey: null,
+      })
+      .select()
+      .single();
+
+    if (postError) {
+      console.error("Post insert failed:", postError);
+      return json({ error: "Post creation failed" }, 500);
+    }
+
+    return json({ url: imageUrl, post });
   } catch (e) {
     console.error("imgbb-upload error:", e);
     return json({ error: "Internal error" }, 500);
