@@ -1,10 +1,3 @@
-// =============================================================================
-// PRO EARN — Gift shop page
-// -----------------------------------------------------------------------------
-// Browse the gift catalog and purchase gifts with coins (mainCoins).
-// Purchased gifts land in the Bag's Owned tab (source='purchased', never
-// expires) via the purchase_gift RPC.
-// =============================================================================
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
