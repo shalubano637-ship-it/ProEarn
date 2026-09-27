@@ -189,8 +189,9 @@ class _ReelsPageState extends State<ReelsPage> {
               
               bool isBlocked = liveBlockedUsers.contains(postOwnerUid);
               bool isHidden = liveHiddenPosts.contains(postId);
+              bool isPrivatePost = data['isPrivatePost'] == true;
 
-              return !isBlocked && !isHidden;
+              return !isBlocked && !isHidden && !isPrivatePost;
             }).toList();
             String currentDocIds = filteredDocs.map((e) => e['id'].toString()).join(",");
 
