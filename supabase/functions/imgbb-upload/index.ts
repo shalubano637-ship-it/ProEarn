@@ -127,6 +127,15 @@ Deno.serve(async (req) => {
     }
 
     const imageUrl = data.data.url as string;
+    const { data: owner, error: ownerError } = await authed
+      .from("users")
+      .select("isPrivateAccount")
+      .eq("uid", userData.user.id)
+      .maybeSingle();
+    if (ownerError) {
+      console.error("Owner privacy lookup failed:", ownerError);
+      return json({ error: "Post privacy lookup failed" }, 500);
+    }
     const { data: post, error: postError } = await authed
       .from("posts")
       .insert({
@@ -139,6 +148,7 @@ Deno.serve(async (req) => {
         moderationCheckedAt: new Date().toISOString(),
         moderationReason: null,
         mediaObjectKey: null,
+        isPrivatePost: owner?.isPrivateAccount === true,
       })
       .select()
       .single();
