@@ -269,7 +269,6 @@ class AppTheme {
       highlightColor: Colors.transparent,
       hoverColor: Colors.transparent,
       dividerColor: AppColors.dividerLight,
-      pageTransitionsTheme: _pageTransitions,
       fontFamily: AppTextStyles.bodyMedium.fontFamily,
 
       textTheme: _textTheme(AppColors.textPrimaryLight, AppColors.textSecondaryLight),
