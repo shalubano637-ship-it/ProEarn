@@ -1,51 +1,16 @@
-// =============================================================================
-// PRO EARN — Profile: ProfilePage
-// -----------------------------------------------------------------------------
-// Extracted from the original user_profile_features.dart during the
-// feature-based file split (no UI or logic changes — only where this code
-// physically lives). user_profile_features.dart is now a barrel file that
-// re-exports this file.
-// =============================================================================
 
-// =============================================================================
-// PRO EARN — AI-generated content social platform
-// -----------------------------------------------------------------------------
-// This file (user_profile_features.dart) is one of three files this app's
-// UI/logic was split into (equal three-way split of the original
-// single-file main.dart, no UI or logic changes — only where each class
-// physically lives):
-//   1. main.dart
-//   2. social_feed.dart
-//   3. user_profile_features.dart  (this file)
-//
-// user_profile_features.dart contains everything about the user's own
-// account, profile, and account-management screens:
-//   - Profile & social graph: ProfilePage, FollowListPage,
-//     BlockedUsersListScreen, EditProfilePage, ImageCropPage
-//   - Notifications: NotificationPage, PushNotificationPage
-//   - Settings & Security: SettingsPage, SecurityPage, HelpPage
-//   - Analytics: AnalyticsPage
-//
-// Persistence: Supabase (Postgres) is the source of truth for all
-// user/post/social data.
-// =============================================================================
 
-// ---- Dart core ----
 import 'dart:async';
 import 'package:universal_io/universal_io.dart';
 
-// ---- Flutter framework ----
 import 'package:flutter/material.dart';
 
-// ---- Supabase ----
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// ---- Third-party packages ----
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:share_plus/share_plus.dart';
 
-// ---- App files (split out of the original single-file main.dart) ----
 import '../models.dart';
 import '../service.dart';
 import '../ad_unit_ids.dart';
@@ -59,7 +24,6 @@ import '../bag_page.dart';
 import 'edit_profile_page.dart';
 import 'analytics_page.dart';
 
- // ================= FIXED PROFILE PAGE (CORRECTED AD SIZES FOR BANNER & MEDIUM RECTANGLE) =================
 class ProfilePage extends StatefulWidget {
   final bool isOwnProfile;
   final String? otherUser;
@@ -85,9 +49,7 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadAds();
   }
 
-  // Dono Ads ko alag-alag size ke sath load karne ka function
   void _loadAds() {
-    // 1. Profile ke upar dikhane ke liye standard Banner Ad
     _bannerAd = BannerAd(
       adUnitId: AdUnitIds.banner,
       size: AdSize.banner,
@@ -105,7 +67,6 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     )..load();
 
-    // 2. Grid ke andar dikhane ke liye Medium Rectangle Ad
     _gridMediumAd = BannerAd(
       adUnitId: AdUnitIds.banner,
       size: AdSize.mediumRectangle,
@@ -134,7 +95,6 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> deleteSelectedPosts() async {
     final postIdsToDelete = List<String>.from(selectedPosts);
     try {
-      // Single batch delete instead of one round-trip per post.
       await Supabase.instance.client
           .from(kPostsCollection)
           .delete()
@@ -218,10 +178,6 @@ class _ProfilePageState extends State<ProfilePage> {
               icon: const Icon(Icons.close),
             ),
           ],
-          // Normal (non-selection) view: Share is always here — top-right
-          // corner, both own and other profiles. Settings (→ Chat
-          // Settings for THIS user) is only on someone ELSE's profile;
-          // there's nothing to "chat settings" about on your own profile.
           if (!selectionMode) ...[
             IconButton(
               icon: const Icon(Icons.share_outlined),
@@ -359,7 +315,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 25),
                 
-                // Action buttons row
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
@@ -442,10 +397,6 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      // Bag icon — own profile: your own Bag (Owned tab).
-                      // Someone else's profile: THEIR Bag, opened
-                      // straight on the Received tab (what they've been
-                      // gifted), not what they have stocked to send.
                       IconButton(
                         icon: const Icon(Icons.shopping_bag_outlined),
                         tooltip: widget.isOwnProfile ? "Your Bag" : "$displayUsername's received gifts",
@@ -466,7 +417,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 
                 const SizedBox(height: 15),
 
-                // ================= TOP BANNER AD (SIZE: AdSize.banner) =================
                 if (_isAdLoaded && _bannerAd != null)
                   Container(
                     alignment: Alignment.center,
@@ -476,7 +426,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: AdWidget(ad: _bannerAd!),
                   ),
 
-                // USER POSTS GRID REAL TIME MONITORING PIPELINE
                 StreamBuilder<List<Map<String, dynamic>>>(
                   stream: Supabase.instance.client
                       .from(kPostsCollection)
@@ -501,7 +450,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     
                     final userPostDocs = postSnapshot.data!;
 
-                    // Har 5 posts ke baad ek Medium Rectangle Ad dikhane ka logic
                     const int adInterval = 5;
                     int totalAdsCount = (_isGridAdLoaded && _gridMediumAd != null) ? (userPostDocs.length ~/ adInterval) : 0;
                     int totalItemCount = userPostDocs.length + totalAdsCount;
@@ -519,7 +467,6 @@ class _ProfilePageState extends State<ProfilePage> {
                         bool isAdPosition = _isGridAdLoaded && _gridMediumAd != null && ((index + 1) % (adInterval + 1) == 0);
 
                         if (isAdPosition) {
-                          // Grid ke andar Medium Rectangle Ad Container
                           return Container(
                             alignment: Alignment.center,
                             color: theme.colorScheme.surfaceContainerHighest,
@@ -531,7 +478,6 @@ class _ProfilePageState extends State<ProfilePage> {
                           );
                         }
 
-                        // Real post index calculate karna
                         int adCountBeforeIndex = 0;
                         if (_isGridAdLoaded && _gridMediumAd != null) {
                           for (int i = 0; i <= index; i++) {
