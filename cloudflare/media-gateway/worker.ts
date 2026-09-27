@@ -10,11 +10,25 @@ interface Env {
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   INTERNAL_DELETE_TOKEN: string;
+  MODERATION_SHARED_SECRET: string;
   AI: Ai;
 }
 
 const MAX_IMAGE_BYTES = 9 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+
+function b64url(bytes: Uint8Array) { let s=""; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
+function bytesToHex(bytes: Uint8Array) { return Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join(""); }
+async function makeModerationApprovalToken(env: Env, userId: string, bytes: Uint8Array) {
+  if (!env.MODERATION_SHARED_SECRET) throw new Error("MODERATION_SHARED_SECRET missing");
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const payload = b64url(new TextEncoder().encode(JSON.stringify({ approved:true, sub:userId, sha256:bytesToHex(new Uint8Array(digest)), exp:Math.floor(Date.now()/1000)+300 })));
+  const header = b64url(new TextEncoder().encode(JSON.stringify({ alg:"HS256", typ:"MODERATION" })));
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(env.MODERATION_SHARED_SECRET), {name:"HMAC",hash:"SHA-256"}, false, ["sign"]);
+  const signature = b64url(new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(header+"."+payload))));
+  return header+"."+payload+"."+signature;
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -118,7 +132,7 @@ async function moderate(env: Env, objectKey: string, userId: string) {
   return moderateBytes(env, bytes, contentType, userId);
 }
 
-async function createPost(env: Env, userId: string, body: Record<string, unknown>, imageUrl: string, objectKey: string) {
+async function createPost(env: Env, userId: string, body: Record<string, unknown>, imageUrl: string, objectKey: string, isPrivateAccount: boolean) {
   const response = await fetch(`${env.SUPABASE_URL}/rest/v1/posts`, {
     method: "POST",
     headers: {
@@ -137,6 +151,7 @@ async function createPost(env: Env, userId: string, body: Record<string, unknown
       moderationCheckedAt: new Date().toISOString(),
       moderationReason: null,
       mediaObjectKey: objectKey,
+      isPrivatePost: isPrivateAccount,
     }),
   });
   if (!response.ok) throw new Error(`post_insert_failed:${response.status}`);
@@ -169,7 +184,7 @@ export default {
         if (!moderation.safe) {
           return json({ safe: false, reason: moderation.reason ?? "Content rejected" }, 422);
         }
-        return json({ safe: true });
+        return json({ safe: true, approvalToken: await makeModerationApprovalToken(env, user.id, bytes) });
       }
 
       if (url.pathname === "/internal/delete-user-media" && request.method === "POST") {
@@ -237,7 +252,7 @@ export default {
 
         const imageUrl = `${env.R2_PUBLIC_BASE_URL.replace(/\/$/, "")}/${objectKey}`;
         try {
-          const post = await createPost(env, user.id, body, imageUrl, objectKey);
+          const post = await createPost(env, user.id, body, imageUrl, objectKey, false);
           return json({ post, url: imageUrl });
         } catch (error) {
           await env.R2_BUCKET.delete(objectKey);
