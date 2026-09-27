@@ -223,6 +223,7 @@ class _ProfilePageState extends State<ProfilePage> {
           
           List<String> userFollowersList = [];
           List<String> userFollowingList = [];
+          bool isPrivateAccount = false;
 
           if (userSnapshot.hasData && userSnapshot.data != null) {
             final uData = userSnapshot.data!;
@@ -243,6 +244,9 @@ class _ProfilePageState extends State<ProfilePage> {
               currentUserProfile = profileUrl;
             }
           }
+
+          final bool viewerIsFollowing = currentUser != null && userFollowersList.contains(currentUser.id);
+          final bool canSeePrivateProfile = widget.isOwnProfile || !isPrivateAccount || viewerIsFollowing;
 
           return SingleChildScrollView(
             child: Column(
@@ -266,6 +270,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             const SizedBox(height: 15),
                             Row(
                               children: [
+                                if (canSeePrivateProfile) ...[
                                 GestureDetector(
                                   onTap: () => Navigator.push(
                                     context, 
@@ -296,6 +301,10 @@ class _ProfilePageState extends State<ProfilePage> {
                                   ),
                                 ),
                               ],
+                            ),
+                                ],
+                              if (!canSeePrivateProfile)
+                                const Text('Private account', style: TextStyle(color: AppColors.textTertiary)),
                             ),
                           ],
                         ),
@@ -417,7 +426,17 @@ class _ProfilePageState extends State<ProfilePage> {
                 
                 const SizedBox(height: 15),
 
-                if (_isAdLoaded && _bannerAd != null)
+                if (!canSeePrivateProfile)
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(24, 35, 24, 50),
+                    child: Text(
+                      'Follow this account to see their posts and follower/following lists.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.textTertiary),
+                    ),
+                  ),
+
+                if (canSeePrivateProfile && _isAdLoaded && _bannerAd != null)
                   Container(
                     alignment: Alignment.center,
                     width: _bannerAd!.size.width.toDouble(),
@@ -426,7 +445,8 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: AdWidget(ad: _bannerAd!),
                   ),
 
-                StreamBuilder<List<Map<String, dynamic>>>(
+                if (canSeePrivateProfile)
+                  StreamBuilder<List<Map<String, dynamic>>>(
                   stream: Supabase.instance.client
                       .from(kPostsCollection)
                       .stream(primaryKey: ['id'])
