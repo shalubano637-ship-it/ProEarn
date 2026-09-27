@@ -1,4 +1,3 @@
-
 import 'dart:async';
 import 'dart:convert';
 import 'package:universal_io/universal_io.dart';
@@ -10,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import 'cloudflare_media_service.dart';
 import 'models.dart';
 import 'theme/theme.dart';
 
@@ -154,11 +154,6 @@ Future<void> sendNotification({
   }
 }
 
-      
-      
-
-    
-
 Future<String?> uploadImageToMediaGateway(
   File imageFile, {
   String folder = 'posts',
@@ -281,7 +276,7 @@ class GlobalCachedImage extends StatelessWidget {
     super.key,
     required this.imageUrl,
     this.fit = BoxFit
-        .cover, // Enforces Aspect-Ratio Cover globally to stop shrinking/stretching
+        .cover,
     this.width,
     this.height,
     this.errorWidget,
@@ -302,7 +297,7 @@ class GlobalCachedImage extends StatelessWidget {
       imageUrl: imageUrl,
       width: width,
       height: height,
-      fit: fit, // proportional fitting mechanism
+      fit: fit,
       filterQuality: FilterQuality.high,
       cacheManager: CustomImageCacheManager.instance,
       placeholder: (context, url) => Container(
