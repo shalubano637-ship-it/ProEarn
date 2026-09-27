@@ -1,19 +1,3 @@
-// =============================================================================
-// PRO EARN — Chat settings page
-// -----------------------------------------------------------------------------
-// Opened from the settings icon in ChatPage's AppBar. Shows the other
-// participant's profile, then:
-//   - Mute notifications: toggles ONLY push notifications from this one
-//     person (see toggle_mute_user RPC + the "mutedUsers" check added to
-//     the notify Edge Function) — doesn't block or hide anything, they're
-//     still a normal contact.
-//   - Block: reuses the exact same block_user_and_hide_post RPC the posts
-//     "more options" sheet uses, just with no specific post to hide
-//     (p_target_post_id: '').
-//   - Report: same report-reasons list/insert pattern as
-//     posts/more_options_button.dart, just against this user directly
-//     (reportedUserId) instead of a post.
-// =============================================================================
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -36,9 +20,6 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
   bool? _muted; // null while loading
   bool _isBusy = false;
 
-  // Report + Block toggles — same one-shot pattern as
-  // posts/more_options_button.dart: Report ON forces Block ON too
-  // (mandatory safety pairing), Block can be toggled alone.
   bool _isReportOn = false;
   bool _isBlockOn = false;
   String? _selectedReason;
@@ -136,11 +117,6 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
       }
 
       if (!mounted) return;
-      // Pop back to ChatPage only (not all the way out) — it re-checks
-      // block status via the returned value and shows its own "you
-      // blocked them, tap to unblock" banner right there, plus the
-      // matching snackbar (this page is about to be disposed, so it
-      // can't reliably show one itself).
       Navigator.pop(context, _isBlockOn ? 'blocked' : 'reported');
     } catch (e) {
       if (mounted) {
@@ -193,10 +169,6 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
               activeColor: AppColors.accent,
             ),
             const Divider(height: 1),
-            // Report + Block toggles — exactly like posts/more_options_button.dart:
-            // turning Report ON forces Block ON too (mandatory pairing);
-            // Block can be switched on by itself. Nothing happens until
-            // CONFIRM is tapped below.
             SwitchListTile(
               title: const Text("Report", style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
               subtitle: const Text("Report this user to Pro Earn"),
