@@ -272,7 +272,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           return; // Code execution breaks here safely
                         }
                         
-                        String? uploadedProfileUrl = await uploadImageToImgBB(
+                        String? uploadedProfileUrl = await uploadImageToMediaGateway(
                           finalUploadFile,
                           folder: 'profile',
                         );
