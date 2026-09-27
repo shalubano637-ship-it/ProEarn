@@ -1,55 +1,21 @@
-// =============================================================================
-// PRO EARN — Feed: SearchPage
-// -----------------------------------------------------------------------------
-// Extracted from the original social_feed.dart during the feature-based
-// file split (no UI or logic changes — only where this code physically
-// lives). social_feed.dart is now a barrel file that re-exports this file.
-// =============================================================================
 
-// =============================================================================
-// PRO EARN — AI-generated content social platform
-// -----------------------------------------------------------------------------
-// This file (social_feed.dart) is one of three files this app's UI/logic
-// was split into (equal three-way split of the original single-file
-// main.dart, no UI or logic changes — only where each class physically
-// lives):
-//   1. main.dart
-//   2. social_feed.dart            (this file)
-//   3. user_profile_features.dart
-//
-// social_feed.dart contains everything about browsing, creating, and
-// interacting with posts/reels:
-//   - Feed & Reels: ReelsPage, SearchPage, SingleReelScreen
-//   - Upload & Media: UploadPage, GlobalImageAdjuster
-//   - Post interactions: LikeButton, CommentButton, CommentScreen,
-//     ShareButton, MoreOptionsButton, GetPromptButton (creator earnings)
-//
-// Persistence: Supabase (Postgres) is the source of truth for all
-// user/post/social data.
-// =============================================================================
 
-// ---- Dart core ----
 import 'dart:async';
 import 'package:universal_io/universal_io.dart';
 import 'dart:math';
 
-// ---- Flutter framework ----
 import 'package:flutter/material.dart';
 
-// ---- Supabase ----
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// ---- Third-party packages ----
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
-// ---- App files (split out of the original single-file main.dart) ----
 import '../models.dart';
 import '../service.dart';
 import '../user_profile_features.dart';
 import '../theme/theme.dart';
 import '../ad_unit_ids.dart';
 import '../widgets/error_retry_view.dart';
-
 
 import 'single_reel_screen.dart';
 
@@ -64,11 +30,9 @@ class _SearchPageState extends State<SearchPage> {
   Timer? _searchDebounce;
   String _debouncedQuery = '';
 
-  // --- Banner Ad ke liye variables (Search bar ke upar wala) ---
   BannerAd? _bannerAd;
   bool _isBannerAdLoaded = false;
 
-  // --- Grid Ad ke liye variables (Grid ke beech mein aane wale ads) ---
   int _nextAdTarget = 5; 
   BannerAd? _gridBannerAd;
   bool _isGridAdLoaded = false;
@@ -92,7 +56,6 @@ class _SearchPageState extends State<SearchPage> {
     });
   }
 
-  // Search bar ke upar wala Banner Ad load karne ka function
   void _loadBannerAd() {
     final String adUnitId = AdUnitIds.banner;
 
@@ -114,7 +77,6 @@ class _SearchPageState extends State<SearchPage> {
     )..load();
   }
 
-  // Grid ke bich me dikhane ke liye AdMob Banner Ad load karne ka function
   void _loadGridBannerAd() {
     final String adUnitId = AdUnitIds.banner;
 
@@ -179,14 +141,6 @@ class _SearchPageState extends State<SearchPage> {
           Expanded(
             child: query.isEmpty
                 ? StreamBuilder<List<Map<String, dynamic>>>(
-                    // Bounded to the 60 most recent posts — was an
-                    // unfiltered stream of the entire table, which meant the
-                    // full dataset (and every future insert/update/delete
-                    // anywhere in the app) was pushed to every client
-                    // viewing the discovery grid. This still updates live
-                    // within that recent-60 window; full infinite-scroll
-                    // pagination beyond that would need a separate
-                    // non-realtime paged query, not attempted here.
                     stream: Supabase.instance.client
                         .from(kPostsCollection)
                         .stream(primaryKey: ['id'])
@@ -208,7 +162,6 @@ class _SearchPageState extends State<SearchPage> {
                           bool isAdIndex = (index > 0 && index % (_nextAdTarget + 1) == 0);
 
                           if (isAdIndex) {
-                            // --- YAHAN DUMMY AD KI JAGAH ADMOB TEST AD LAGA DIYA GAYA HAI ---
                             return Container(
                               color: AppColors.surfaceElevated,
                               child: Center(
@@ -368,7 +321,6 @@ class _SearchPageState extends State<SearchPage> {
                               bool isAdIndex = (index > 0 && index % (_nextAdTarget + 1) == 0);
 
                               if (isAdIndex) {
-                                // --- FILTERED GRID AD UI ---
                                 return Container(
                                   color: AppColors.surfaceElevated,
                                   child: Center(
