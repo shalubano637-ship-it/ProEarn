@@ -12,7 +12,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../models.dart';
 import '../service.dart';
 import '../theme/theme.dart';
 import '../moderation/moderation_config.dart';
@@ -71,25 +70,6 @@ class _UploadPageState extends State<UploadPage> {
     }
   }
 
-  Future<String?> uploadWithProgress(File file) async {
-    try {
-      return await uploadImageToImgBB(
-        file,
-        folder: 'posts',
-        onProgress: (bytes, total) {
-          if (mounted) {
-            setState(() {
-              _uploadPercentage = (bytes / total) * 100;
-            });
-          }
-        },
-      );
-    } catch (e) {
-      debugPrint("Progress Upload Error: $e");
-    }
-    return null;
-  }
-
   void createPost() async {
     final prompt = promptController.text.trim(); 
     final caption = captionController.text.trim(); 
@@ -108,8 +88,7 @@ class _UploadPageState extends State<UploadPage> {
       return;
     }
      
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
+    if (Supabase.instance.client.auth.currentUser == null) return;
 
     setState(() {
       _isUploading = true;
@@ -158,33 +137,21 @@ class _UploadPageState extends State<UploadPage> {
       }
 
       setState(() {
-        _uploadStatusText = "Uploading content...";
+        _uploadStatusText = "Uploading and server-checking...";
       });
 
-      String? cloudImageUrl = await uploadWithProgress(finalCompressedFile);
-
-      if (cloudImageUrl == null) {
-        if (!mounted) return;
-        setState(() { _isUploading = false; });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Image upload failed, try again.")), 
-        );
-        return;
-      }
-      
-      setState(() {
-        _uploadStatusText = "Finalizing post metadata...";
-      });
-
-      String postLink = "app://post/${DateTime.now().millisecondsSinceEpoch}"; 
-
-      await Supabase.instance.client.from(kPostsCollection).insert({
-        'link': postLink,
-        kPostOwnerUidField: user.id,
-        'caption': caption.isEmpty ? "No Caption" : caption, 
-        'prompt': prompt,
-        'imageUrl': cloudImageUrl,
-      });
+      final postLink = "app://post/${DateTime.now().millisecondsSinceEpoch}";
+      await createPostThroughCloudflare(
+        imageFile: finalCompressedFile,
+        caption: caption.isEmpty ? "No Caption" : caption,
+        prompt: prompt,
+        link: postLink,
+        onProgress: (bytes, total) {
+          if (mounted && total > 0) {
+            setState(() => _uploadPercentage = (bytes / total) * 100);
+          }
+        },
+      );
 
       if (await finalCompressedFile.exists()) {
         await finalCompressedFile.delete();
