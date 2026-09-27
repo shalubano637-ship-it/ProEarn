@@ -60,10 +60,10 @@ class _PrivacyPageState extends State<PrivacyPage> {
       }
 
       if (whoCanMessage != null) {
-        await Supabase.instance.client
-            .from('users')
-            .update({'whoCanMessage': nextWho})
-            .eq('uid', uid); 
+        await Supabase.instance.client.rpc(
+          'set_who_can_message',
+          params: {'p_who_can_message': nextWho},
+        );
       }
       if (!mounted) return;
       setState(() {
