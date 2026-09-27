@@ -1,45 +1,11 @@
-// =============================================================================
-// PRO EARN — Notifications: NotificationPage
-// -----------------------------------------------------------------------------
-// Extracted from the original user_profile_features.dart during the
-// feature-based file split (no UI or logic changes — only where this code
-// physically lives). user_profile_features.dart is now a barrel file that
-// re-exports this file.
-// =============================================================================
 
-// =============================================================================
-// PRO EARN — AI-generated content social platform
-// -----------------------------------------------------------------------------
-// This file (user_profile_features.dart) is one of three files this app's
-// UI/logic was split into (equal three-way split of the original
-// single-file main.dart, no UI or logic changes — only where each class
-// physically lives):
-//   1. main.dart
-//   2. social_feed.dart
-//   3. user_profile_features.dart  (this file)
-//
-// user_profile_features.dart contains everything about the user's own
-// account, profile, and account-management screens:
-//   - Profile & social graph: ProfilePage, FollowListPage,
-//     BlockedUsersListScreen, EditProfilePage, ImageCropPage
-//   - Notifications: NotificationPage, PushNotificationPage
-//   - Settings & Security: SettingsPage, SecurityPage, HelpPage
-//   - Analytics: AnalyticsPage
-//
-// Persistence: Supabase (Postgres) is the source of truth for all
-// user/post/social data.
-// =============================================================================
 
-// ---- Flutter framework ----
 import 'package:flutter/material.dart';
 
-// ---- Supabase ----
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// ---- Third-party packages ----
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
-// ---- App files (split out of the original single-file main.dart) ----
 import '../models.dart';
 import '../service.dart';
 import '../ad_unit_ids.dart';
@@ -49,7 +15,6 @@ import '../theme/theme.dart';
 import '../profile/profile_page.dart';
 import '../widgets/error_retry_view.dart';
 
- // ================= SAFE & ISOLATED NOTIFICATION PAGE (CRASH PROOF + ADMOB BANNER) =================
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
 
@@ -80,7 +45,6 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
     }
   }
 
-  // AdMob Banner Ad Load karne ka function
   void _loadBannerAd() {
     _bannerAd = BannerAd(
       adUnitId: AdUnitIds.banner,
@@ -109,7 +73,6 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
     super.dispose();
   }
 
-  // Helper method: Date ko group name me convert karne ke liye
   String _getGroupLabel(DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -125,7 +88,6 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
     }
   }
 
-  // Helper method: Formatted Time nikalne ke liye
   String _formatTime(DateTime date) => formatClockTime(date);
 
   @override
@@ -145,7 +107,6 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
       ),
       body: Column(
         children: [
-          // ================= NEW: ADMOB BANNER AD AT THE TOP =================
           if (_isAdLoaded && _bannerAd != null)
             Container(
               alignment: Alignment.center,
@@ -154,7 +115,6 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
               child: AdWidget(ad: _bannerAd!),
             ),
 
-          // ================= AREA 2: NORMAL NOTIFICATIONS LIST =================
           Expanded(
             child: StreamBuilder<List<Map<String, dynamic>>>(
               stream: Supabase.instance.client
@@ -189,7 +149,6 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
                   );
                 }
 
-                // Normal notifications grouping logic
                 final Map<String, List<Map<String, dynamic>>> groupedNotifications = {};
                 for (var data in notificationDocs) {
                   try {
@@ -204,10 +163,6 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
                     }
                     groupedNotifications[label]!.add(data);
                   } catch (e) {
-                    // Malformed/unparseable timestamp on one notification
-                    // row shouldn't take down the whole list — just skip
-                    // that row, but log it so a bad row doesn't go
-                    // completely unnoticed.
                     debugPrint("Notification grouping: skipped a row with a bad timestamp: $e");
                   }
                 }
@@ -218,12 +173,10 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
                     final String dateHeader = entry.key;
                     final List<Map<String, dynamic>> docsInGroup = entry.value;
 
-                    // 1. Agar group me koi doc nahi hai, to pure header ko skip karein
                     if (docsInGroup.isEmpty) {
                       return const SizedBox.shrink();
                     }
 
-                    // 2. Filter out valid items
                     final validWidgets = docsInGroup.map<Widget?>((data) {
                       try {
                         final String type = data['type'] ?? '';
@@ -318,7 +271,6 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
                       }
                     }).whereType<Widget>().toList();
 
-                    // Agar sare documents invalid nikle to empty widget return karein
                     if (validWidgets.isEmpty) {
                       return const SizedBox.shrink();
                     }
