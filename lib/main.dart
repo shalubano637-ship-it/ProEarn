@@ -131,89 +131,16 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
         Sentry.captureException(e, stackTrace: st);
       }
 
-      // Safe OneSignal Initialization
-      try {
-        OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
-        OneSignal.initialize("d82b1c8e-4add-4022-9f3d-8af0bcdf7915");
-
-        // Click routing — reads the data payload the notify edge function
-        // attaches (see supabase/functions/notify) to decide where to
-        // navigate. Uses navigatorKey since this runs outside any widget's
-        // BuildContext (the app may not even be in the foreground yet
-        // when this fires).
-        OneSignal.Notifications.addClickListener((event) {
-          final data = event.notification.additionalData;
-          if (data == null) return;
-          final type = data['type'] as String?;
-          final nav = navigatorKey.currentState;
-          if (nav == null) return;
-
-          if (type == 'message') {
-            final senderId = data['senderId'] as String?;
-            final senderName = data['senderName'] as String? ?? 'User';
-            if (senderId != null) {
-              nav.push(MaterialPageRoute(
-                builder: (_) => ChatPage(otherUid: senderId, otherUserName: senderName),
-              ));
-            }
-          } else if (type == 'chest_ready') {
-            nav.push(MaterialPageRoute(builder: (_) => const ChestsPage()));
-          } else if (type == 'like' || type == 'follow' || type == 'comment' || type == 'get') {
-            nav.push(MaterialPageRoute(builder: (_) => const NotificationPage()));
-          }
-        });
-      } catch (e, st) {
-        debugPrint("OneSignal Init Error: $e");
-        Sentry.captureException(e, stackTrace: st);
-      }
-
-      // On-Device Moderation Pipeline Initialization — loaded here so the
-      // model is already warm by the time the user reaches the upload
-      // screen, instead of adding a multi-second first-load delay to that
-      // flow. Google Vision has been removed entirely — this is now the
-      // ONLY moderation layer. If this fails to initialize (missing model
-      // asset, corrupt file), the pipeline's fail-closed design means
-      // uploads get blocked rather than silently unmoderated — but that
-      // also means a failure here effectively disables uploads until
-      // fixed, so this is reported to Sentry as a real incident, not a
-      // routine non-fatal log.
-      try {
-        await moderationPipeline.initialize();
-      } catch (e, st) {
-        debugPrint("Moderation Pipeline Init Error: $e");
-        Sentry.captureException(e, stackTrace: st);
-      }
-
-      // Global chest timer — starts ticking immediately if a session
-      // already exists (cold start with an existing login). If there's no
-      // session yet, this no-ops; auth_screen.dart calls initialize()
-      // again right after a successful login so it starts as soon as one
-      // exists either way.
-      chestTimerService.initialize();
-      coinChestTimerService.initialize();
-
-      // Same reasoning for the cached profile fields (currentUserName,
-      // currentUserBio, currentUserProfile, etc.) — on a cold start with
-      // an already-restored Supabase session, nothing had previously
-      // populated these until the user happened to open a screen that
-      // fetched them itself. auth_screen.dart calls this again right
-      // after a fresh login for the same reason.
-      loadUserDataOnStartup();
-
-      // Start preloading a rewarded ad right away so "watch ad" buttons
-      // (chat gift sheet, get-prompt cooldown skip, chests) have one
-      // ready as soon as the user reaches them instead of loading fresh
-      // on tap. See ad_preloader.dart.
-      RewardedAdPreloader.preload();
-
-      // App-wide lifecycle observer — clears ephemeral chats AND
-      // pauses/resumes the global chest timer on background/foreground.
-      // Registered directly with the binding (not a widget) so it's active
-      // for the whole app lifetime regardless of which screen is showing.
+      // Launch the UI as soon as the essential Supabase setup is ready.
+      // Non-critical services are initialized after the first frame so a
+      // cold start is not blocked by push, moderation model, profile fetch,
+      // or rewarded-ad preloading.
       WidgetsBinding.instance.addObserver(_AppLifecycleObserver());
-
-      // App Launch
       runApp(const AiSocialApp());
+
+      // These services are intentionally deferred. They remain available,
+      // but no longer delay the first screen from appearing.
+      unawaited(_initializeDeferredServices());
     },
     (error, stackTrace) {
       debugPrint('CRITICAL ASYNC ERROR: $error');
@@ -225,6 +152,51 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
          
 
 
+
+
+Future<void> _initializeDeferredServices() async {
+  // Safe OneSignal Initialization
+  try {
+    OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
+    OneSignal.initialize("d82b1c8e-4add-4022-9f3d-8af0bcdf7915");
+    OneSignal.Notifications.addClickListener((event) {
+      final data = event.notification.additionalData;
+      if (data == null) return;
+      final type = data['type'] as String?;
+      final nav = navigatorKey.currentState;
+      if (nav == null) return;
+      if (type == 'message') {
+        final senderId = data['senderId'] as String?;
+        final senderName = data['senderName'] as String? ?? 'User';
+        if (senderId != null) {
+          nav.push(MaterialPageRoute(
+            builder: (_) => ChatPage(otherUid: senderId, otherUserName: senderName),
+          ));
+        }
+      } else if (type == 'chest_ready') {
+        nav.push(MaterialPageRoute(builder: (_) => const ChestsPage()));
+      } else if (type == 'like' || type == 'follow' || type == 'comment' || type == 'get') {
+        nav.push(MaterialPageRoute(builder: (_) => const NotificationPage()));
+      }
+    });
+  } catch (e, st) {
+    debugPrint("OneSignal Init Error: $e");
+    Sentry.captureException(e, stackTrace: st);
+  }
+
+  // Heavy native moderation model: warm it after the UI is visible.
+  try {
+    await moderationPipeline.initialize();
+  } catch (e, st) {
+    debugPrint("Moderation Pipeline Init Error: $e");
+    Sentry.captureException(e, stackTrace: st);
+  }
+
+  chestTimerService.initialize();
+  coinChestTimerService.initialize();
+  unawaited(loadUserDataOnStartup());
+  RewardedAdPreloader.preload();
+}
 class AiSocialApp extends StatelessWidget {
   const AiSocialApp({super.key});
 
