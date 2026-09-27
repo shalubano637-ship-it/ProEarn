@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'push_notification_page.dart';
 import 'security_page.dart';
 import 'help_page.dart';
+import 'privacy_page.dart';
 import '../models.dart';
 import '../admin/admin_reports_page.dart';
 
@@ -38,6 +39,7 @@ class SettingsPage extends StatelessWidget {
         children: [
           buildTile(context: context, icon: Icons.person_outline, title: "Push Notification", page: const PushNotificationPage()),
           buildTile(context: context, icon: Icons.security, title: "Security", page: const SecurityPage()),
+          buildTile(context: context, icon: Icons.lock_outline, title: "Privacy", page: const PrivacyPage()),
           buildTile(context: context, icon: Icons.help_outline, title: "Help", page: const HelpPage()),
           if (isAdmin)
             buildTile(context: context, icon: Icons.shield_outlined, title: "Admin Panel", page: const AdminReportsPage()),
