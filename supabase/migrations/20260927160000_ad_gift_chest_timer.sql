@@ -140,7 +140,7 @@ begin
     v_caller,
     v_gift.id,
     1,
-    'ad'
+    'chest'
   )
   on conflict ("ownerUid", "giftId")
   where "expiresAt" is null
