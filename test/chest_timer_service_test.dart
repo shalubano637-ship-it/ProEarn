@@ -1,12 +1,3 @@
-// Unit tests for ChestTimerService.
-//
-// Run with: flutter test test/chest_timer_service_test.dart
-//
-// Uses a hand-rolled FakeChestRepository (via mocktail's Mock, so we get
-// verify()/when() for free) instead of touching the real Supabase client —
-// see lib/chest_timer_service.dart's ChestRepository interface. Timer
-// ticking is driven deterministically with package:fake_async, so these
-// tests run in milliseconds regardless of the 60-second countdown.
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,7 +12,6 @@ void main() {
 
   setUp(() {
     repo = MockChestRepository();
-    // Default happy-path stubs; individual tests override as needed.
     when(() => repo.currentUserId).thenReturn(uid);
     when(() => repo.syncRemaining(any())).thenAnswer((_) async {});
     when(() => repo.sendChestReadyNotification(any())).thenAnswer((_) async {});
@@ -59,7 +49,6 @@ void main() {
         expect(service.currentChestIndex, 2);
         expect(service.remainingSeconds, 37);
         expect(service.isTickingForTest, isTrue);
-        // No fresh row created — this path must NOT call syncRemaining(60).
         verifyNever(() => repo.syncRemaining(60));
       });
     });
@@ -96,7 +85,6 @@ void main() {
         expect(service.remainingSeconds, 50);
         verify(() => repo.syncRemaining(50)).called(1);
 
-        // Background time must NOT count down while paused.
         async.elapse(const Duration(seconds: 20));
         expect(service.remainingSeconds, 50);
       });
@@ -133,8 +121,6 @@ void main() {
         async.flushMicrotasks();
         expect(service.isTickingForTest, isFalse);
 
-        // Simulate another device having advanced the countdown while we
-        // were backgrounded: repo now reports fewer seconds left.
         when(() => repo.fetchProgress(uid)).thenAnswer(
           (_) async => const ChestProgress(currentChestIndex: 0, remainingSeconds: 30, isUnlocked: false),
         );
@@ -205,9 +191,6 @@ void main() {
         async.flushMicrotasks();
         verify(() => repo.sendChestReadyNotification(uid)).called(1);
 
-        // App backgrounded/foregrounded again (or the same claim button
-        // mashed twice) while still on the same unlocked chest — the
-        // repository now reports the persisted "already unlocked" state.
         when(() => repo.fetchProgress(uid)).thenAnswer(
           (_) async => const ChestProgress(currentChestIndex: 0, remainingSeconds: 0, isUnlocked: true),
         );
@@ -217,7 +200,6 @@ void main() {
         service.resumeFromForeground();
         async.flushMicrotasks();
 
-        // Still exactly 1 — not 2 or 3.
         verify(() => repo.sendChestReadyNotification(uid)).called(1);
       });
     });
@@ -235,7 +217,6 @@ void main() {
         async.flushMicrotasks();
         verify(() => repo.sendChestReadyNotification(uid)).called(1);
 
-        // Claim succeeded server-side; caller advances to chest #2.
         when(() => repo.fetchProgress(uid)).thenAnswer(
           (_) async => const ChestProgress(currentChestIndex: 1, remainingSeconds: 1, isUnlocked: false),
         );
@@ -246,7 +227,6 @@ void main() {
         async.elapse(const Duration(seconds: 1));
         async.flushMicrotasks();
 
-        // A second, independent notification for the NEW chest is expected.
         verify(() => repo.sendChestReadyNotification(uid)).called(2);
       });
     });
@@ -263,7 +243,6 @@ void main() {
         service.initialize();
         async.flushMicrotasks();
 
-        // Signed out between initialize() and the tick firing.
         when(() => repo.currentUserId).thenReturn(null);
 
         async.elapse(const Duration(seconds: 1));
