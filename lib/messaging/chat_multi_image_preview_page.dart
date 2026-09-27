@@ -1,16 +1,3 @@
-// =============================================================================
-// PRO EARN — Chat MULTI-image send preview
-// -----------------------------------------------------------------------------
-// Same idea as chat_image_preview_page.dart (compress → moderate → upload)
-// but for up to 20 images picked at once from the gallery. Each image runs
-// through the same moderation pipeline independently; a flagged image can
-// be removed from the batch (tap its X) without blocking the rest. Returns
-// the list of successfully uploaded URLs — chat_page.dart sends one
-// send_message call per URL in a tight sequence, which is also what makes
-// the receiving side group them into one "album" tile (see
-// _groupConsecutiveImages in chat_page.dart): no new message "type" or
-// column needed, just messages close enough in time from the same sender.
-// =============================================================================
 
 import 'package:universal_io/universal_io.dart';
 import 'package:flutter/material.dart';
