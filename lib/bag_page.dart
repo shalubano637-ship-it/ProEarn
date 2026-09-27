@@ -82,21 +82,75 @@ class _OwnedGiftsTab extends StatelessWidget {
   final String uid;
   const _OwnedGiftsTab({required this.uid});
 
+  Future<List<Map<String, dynamic>>> _loadRows(String source) {
+    var query = Supabase.instance.client
+        .from('gift_inventory')
+        .select('*, gifts(*)')
+        .eq('ownerUid', uid)
+        .gt('count', 0);
+
+    if (source == 'free') {
+      query = query.neq('source', 'purchased');
+    } else {
+      query = query.eq('source', 'purchased');
+    }
+
+    return query.order('expiresAt', ascending: true, nullsFirst: false);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (uid.isEmpty) return const Center(child: Text("Please log in."));
 
+    return Column(
+      children: [
+        Expanded(child: _GiftInventorySection(uid: uid, source: 'free', title: 'Free Gifts')),
+        const Divider(height: 1),
+        Expanded(child: _GiftInventorySection(uid: uid, source: 'purchased', title: 'Purchase Gifts')),
+      ],
+    );
+  }
+}
+
+class _GiftInventorySection extends StatelessWidget {
+  final String uid;
+  final String source;
+  final String title;
+
+  const _GiftInventorySection({
+    required this.uid,
+    required this.source,
+    required this.title,
+  });
+
+  Future<List<Map<String, dynamic>>> _loadRows() {
+    var query = Supabase.instance.client
+        .from('gift_inventory')
+        .select('*, gifts(*)')
+        .eq('ownerUid', uid)
+        .gt('count', 0);
+
+    query = source == 'free'
+        ? query.neq('source', 'purchased')
+        : query.eq('source', 'purchased');
+
+    return query.order('expiresAt', ascending: true, nullsFirst: false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: Supabase.instance.client
-          .from('gift_inventory')
-          .select('*, gifts(*)')
-          .eq('ownerUid', uid)
-          .gt('count', 0)
-          .order('expiresAt', ascending: true, nullsFirst: false),
+      future: _loadRows(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return Column(
+            children: [
+              _sectionHeader(title),
+              const Expanded(child: Center(child: CircularProgressIndicator())),
+            ],
+          );
         }
+
         final allRows = snapshot.data ?? [];
         final now = DateTime.now();
         final rows = allRows.where((r) {
@@ -110,64 +164,100 @@ class _OwnedGiftsTab extends StatelessWidget {
           final gift = row['gifts'] as Map<String, dynamic>?;
           if (gift == null) continue;
           final giftId = gift['id'] as String;
-          if (!grouped.containsKey(giftId)) {
-            grouped[giftId] = {
-              'gift': gift,
-              'count': 0,
-              'soonestExpiry': row['expiresAt'],
-            };
-          }
-          grouped[giftId]!['count'] = (grouped[giftId]!['count'] as int) + (row['count'] as int);
+          grouped.putIfAbsent(giftId, () => {
+                'gift': gift,
+                'count': 0,
+                'soonestExpiry': row['expiresAt'],
+              });
+          grouped[giftId]!['count'] =
+              (grouped[giftId]!['count'] as int) + (row['count'] as int);
         }
 
-        if (grouped.isEmpty) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(24.0),
-              child: Text("No gifts yet — buy some or open a chest!", textAlign: TextAlign.center),
+        return Column(
+          children: [
+            _sectionHeader(title),
+            Expanded(
+              child: grouped.isEmpty
+                  ? Center(
+                      child: Text(
+                        source == 'free'
+                            ? "No free gifts yet — open a chest or claim a reward."
+                            : "No purchase gifts yet — buy some from the Gift Shop.",
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  : GridView.builder(
+                      padding: const EdgeInsets.all(12),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        childAspectRatio: 0.8,
+                      ),
+                      itemCount: grouped.length,
+                      itemBuilder: (context, index) {
+                        final entry = grouped.values.elementAt(index);
+                        final gift = entry['gift'] as Map<String, dynamic>;
+                        final count = entry['count'] as int;
+                        final expiresAt = entry['soonestExpiry'];
+
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceElevated,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.all(8),
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: GlobalCachedImage(
+                                  imageUrl: gift['gifUrl'] ?? '',
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                gift['name'] ?? '',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                "x$count",
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textTertiary,
+                                ),
+                              ),
+                              if (expiresAt != null)
+                                _ExpiryCountdown(
+                                  expiresAt:
+                                      DateTime.parse(expiresAt.toString()),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
             ),
-          );
-        }
-
-        final entries = grouped.values.toList();
-        return GridView.builder(
-          padding: const EdgeInsets.all(12),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 0.8,
-          ),
-          itemCount: entries.length,
-          itemBuilder: (context, index) {
-            final entry = entries[index];
-            final gift = entry['gift'] as Map<String, dynamic>;
-            final count = entry['count'] as int;
-            final expiresAt = entry['soonestExpiry'];
-
-            return Container(
-              decoration: BoxDecoration(
-                color: AppColors.surfaceElevated,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: GlobalCachedImage(imageUrl: gift['gifUrl'] ?? '', fit: BoxFit.contain),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(gift['name'] ?? '', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                  Text("x$count", style: const TextStyle(fontSize: 11, color: AppColors.textTertiary)),
-                  if (expiresAt != null)
-                    _ExpiryCountdown(expiresAt: DateTime.parse(expiresAt.toString())),
-                ],
-              ),
-            );
-          },
+          ],
         );
       },
+    );
+  }
+
+  Widget _sectionHeader(String text) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
     );
   }
 }
