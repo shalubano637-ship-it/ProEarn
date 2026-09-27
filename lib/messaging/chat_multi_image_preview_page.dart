@@ -88,7 +88,7 @@ class _ChatMultiImagePreviewPageState extends State<_ChatMultiImagePreviewPage> 
     final urls = <String>[];
     try {
       for (final item in _sendableItems) {
-        final url = await uploadImageToImgBB(item.compressed!, folder: 'chat');
+        final url = await uploadImageToMediaGateway(item.compressed!, folder: 'chat');
         if (url != null) urls.add(url);
       }
       if (mounted) Navigator.pop(context, urls);

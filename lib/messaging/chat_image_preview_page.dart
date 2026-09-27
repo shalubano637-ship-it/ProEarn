@@ -70,7 +70,7 @@ class _ChatImagePreviewPageState extends State<_ChatImagePreviewPage> {
     setState(() { _isSending = true; });
 
     try {
-      final url = await uploadImageToImgBB(_compressedFile!, folder: 'chat');
+      final url = await uploadImageToMediaGateway(_compressedFile!, folder: 'chat');
       if (url == null) throw Exception("Upload failed");
       if (mounted) Navigator.pop(context, url);
     } catch (e) {

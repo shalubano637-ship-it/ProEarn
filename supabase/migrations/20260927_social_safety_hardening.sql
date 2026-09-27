@@ -1,0 +1,78 @@
+alter table public.users add column if not exists "termsVersion" text;
+
+alter table public.posts
+  add column if not exists "moderationStatus" text not null default 'approved',
+  add column if not exists "moderationCheckedAt" timestamptz,
+  add column if not exists "moderationReason" text,
+  add column if not exists "mediaObjectKey" text;
+
+alter table public.reports
+  add column if not exists severity text not null default 'normal',
+  add column if not exists "reviewedAt" timestamptz,
+  add column if not exists "reviewedBy" uuid,
+  add column if not exists "actionTaken" text;
+
+create table if not exists public.account_deletion_requests (
+  id uuid primary key default gen_random_uuid(),
+  email text not null,
+  reason text,
+  status text not null default 'pending',
+  created_at timestamptz not null default now(),
+  processed_at timestamptz
+);
+
+alter table public.account_deletion_requests enable row level security;
+revoke all on public.account_deletion_requests from anon, authenticated;
+
+drop policy if exists posts_insert_own on public.posts;
+
+drop trigger if exists protect_posts_columns on public.posts;
+create trigger protect_posts_columns
+before update on public.posts
+for each row execute function protect_columns('getsCount', 'likedBy', 'multiplier', 'unlockTime');
+
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $function$
+begin
+  insert into public.users (uid, "userName", email, "termsAcceptedAt", "termsVersion")
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'userName', split_part(new.email, '@', 1)),
+    coalesce(new.email, ''),
+    (new.raw_user_meta_data->>'termsAcceptedAt')::timestamptz,
+    new.raw_user_meta_data->>'termsVersion'
+  )
+  on conflict (uid) do nothing;
+  return new;
+end;
+$function$;
+
+
+create or replace function public.set_report_severity()
+returns trigger
+language plpgsql
+set search_path = public
+as $function$
+declare
+  r text := lower(coalesce(new.reason, ''));
+begin
+  if r like '%child%' or r like '%csae%' or r like '%csam%' or r like '%groom%' or r like '%minor%' or r like '%sextortion%' then
+    new.severity := 'critical';
+  elsif r like '%violence%' or r like '%threat%' or r like '%harassment%' then
+    new.severity := 'high';
+  else
+    new.severity := coalesce(new.severity, 'normal');
+  end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists reports_set_severity on public.reports;
+create trigger reports_set_severity
+before insert or update of reason on public.reports
+for each row execute function public.set_report_severity();

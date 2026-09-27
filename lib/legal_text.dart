@@ -1,68 +1,145 @@
-// =============================================================================
-// PRO EARN — Legal text (Terms & Conditions, Privacy Policy)
-// -----------------------------------------------------------------------------
-// Single source of truth. Previously this exact text was duplicated inline
-// in both auth_screen.dart and user_profile_features.dart — they drifted
-// apart over time (the auth_screen copy correctly said "Supabase", the
-// user_profile_features copy still said "Google Firebase Authentication and
-// Firestore DB" from before the Supabase migration). Both files now import
-// and display these constants instead of holding their own copy, so there
-// is only ever one place to update.
-//
-// NOTE: this is in-app text only, not a substitute for a publicly hosted
-// privacy policy page — Play Console requires a public URL in the store
-// listing, separate from this in-app display.
-//
-// Monetization section reflects the AdMob-rewarded-ad revenue-share model
-// (40% of real rewarded-ad revenue, split by completions) — update the
-// percentage/threshold here if those numbers change, and nowhere else.
-// =============================================================================
+const String kCurrentTermsVersion = '2026-09';
 
 const String kTermsAndConditionsText = '''
-PRO EARN - TERMS AND CONDITIONS
-Last Updated: August 2026
+PRO EARN — TERMS OF USE
+Last Updated: September 2026
 
-Welcome to PRO EARN ("App"). By downloading, installing, or registering an account, you strictly agree to comply with the following terms.
+By creating an account or using PRO EARN, you agree to these Terms of Use and the Community Guidelines.
 
-1. REGISTRATION AND SECURITY
-- You must provide accurate registration details (Username, Email).
-- Users are limited to ONE account per individual. Mass creation or pipeline automated accounts will result in immediate termination.
+1. ELIGIBILITY AND ACCOUNTS
+- Provide accurate account information and keep your account secure.
+- Do not create or operate accounts through bots, scripts, credential stuffing, or other automated abuse.
+- We may suspend or terminate accounts that violate these Terms or applicable law.
 
-2. PROHIBITION OF NUDITY AND EXPLICIT SEXUAL CONTENT
-- PRO EARN maintains a ZERO-TOLERANCE policy for sexually explicit material.
-- You are STRICTLY PROHIBITED from uploading, creating, or sharing any media displaying pornography, nudity, semi-nudity, sexual acts, highly suggestive underwear/lingerie depictions, or any form of sexually explicit text node pipelines.
-- All uploads undergo automated classification layers (Google Cloud Vision API). Any trigger matching 'Adult', 'Racy', or 'Sexually Suggestive' classification scales results in immediate structural suppression of the post.
-- Severe or repeat violations will trigger an irreversible device-level hardware hash BAN and absolute termination of your wallet parameters.
+2. USER-GENERATED CONTENT
+- You are responsible for content you upload, post, message, or otherwise distribute.
+- You must not upload or share pornography, sexually explicit content, child sexual abuse or exploitation material, grooming or sexual solicitation of minors, credible threats, targeted harassment, hate-based abuse, graphic violent content intended to shock or glorify violence, scams, illegal goods/services, malware, doxxing, or content that infringes another person's rights.
+- Attempts to bypass moderation, including modified clients or direct API abuse, are prohibited.
+- Content may be automatically screened and may also be reviewed after reports or other safety signals.
 
-3. MONETIZATION & COINS
-- Pro Earn uses an in-app virtual coin system. Coins have no cash value, cannot be exchanged for real money, cryptocurrency, or gift cards, and are not a financial product.
-- Eligible engagement (post "Gets") earns Bonus Coins at a fixed rate shown in the app.
-- Bonus Coins can be claimed into your Main Balance once you cross the minimum threshold shown in the app. Claiming is an in-app transfer only — no bank account, UPI ID, or payment method is involved.
-- Engagement manipulation through scripts, bot rings, or coordinated farms will result in immediate coin forfeiture.
+3. MODERATION AND ENFORCEMENT
+- PRO EARN uses device-side and server-side safety checks for uploaded media and server-side text moderation for supported UGC.
+- Reported content and accounts may be reviewed and removed when appropriate.
+- We may restrict, suspend, or terminate accounts for repeated or severe violations.
+- Child sexual abuse and exploitation content is strictly prohibited. We will take appropriate action when we obtain actual knowledge of such content and follow applicable reporting obligations.
 
-4. ADS POLICY & USER ENGAGEMENT
-- Interacting with Ad environments using deceptive methods, clicking advertisements systematically to manipulate monetization mechanics, or using automated script triggers violates Google AdMob/Ad Policies. Detected infringements trigger instant suspension.
+4. REPORTING AND BLOCKING
+- Users can report objectionable content and accounts in the app.
+- Users can block other users, including for direct interactions.
+- Reports may be retained as necessary for safety, abuse prevention, legal compliance, and moderation records.
+
+5. COINS AND REWARDS
+- PRO EARN uses in-app virtual coins and gifts.
+- Virtual coins and gifts have no cash value unless the app explicitly states otherwise in a future approved feature.
+- Coins must not be obtained through bots, fraud, self-dealing, or coordinated engagement manipulation.
+
+6. ADS
+- Do not click, view, or interact with advertisements through automated, deceptive, or manipulative methods.
+- Rewarded advertisements provide in-app rewards only and do not create a guaranteed cash entitlement.
+
+7. COPYRIGHT AND RIGHTS
+- Upload only content you have the right to use.
+- We may remove content after valid rights complaints or when required by law.
+
+8. ACCOUNT DELETION
+- You can request deletion of your account and associated data from the in-app Security settings and through the public account-deletion web resource.
+- Some information may be retained when reasonably necessary for fraud prevention, safety, legal compliance, dispute resolution, or other lawful purposes, as described in the Privacy Policy.
+
+9. CHILD SAFETY
+- PRO EARN prohibits child sexual abuse and exploitation (CSAE), CSAM, grooming, sexual solicitation of minors, sextortion of minors, and child trafficking/exploitation.
+- Our child-safety standards and reporting process are publicly available and form part of these rules.
+
+10. CHANGES
+We may update these Terms. Material changes will be communicated through the app or another appropriate channel.
+''';
+
+const String kCommunityGuidelinesText = '''
+PRO EARN — COMMUNITY GUIDELINES
+
+PRO EARN is a social platform. The following behavior is not allowed:
+
+- Child sexual abuse or exploitation, CSAM, grooming, sexual solicitation of minors, or sextortion.
+- Pornography, explicit sexual acts, or sexual content involving minors.
+- Targeted harassment, bullying, threats, stalking, or coordinated abuse.
+- Hate or dehumanizing attacks against protected groups.
+- Graphic violence intended to shock, glorify violence, or encourage violent wrongdoing.
+- Terrorist/extremist praise, recruitment, or instructions for violent wrongdoing.
+- Fraud, scams, impersonation, spam, fake engagement, bot activity, or manipulation of rankings/rewards.
+- Doxxing, publishing private or sensitive information without authorization, or credible threats to expose such information.
+- Malware, phishing, malicious links, or instructions intended to facilitate cyber abuse.
+- Copyright or trademark infringement.
+- Any content or behavior that violates applicable law.
+
+Moderation:
+- Uploads are checked on-device and by a server-side moderation layer before publication.
+- Users can report posts, comments, messages, and accounts.
+- Users can block other users.
+- Reports are reviewed and appropriate action may include removal, restrictions, suspension, or termination.
+- Severe child-safety reports receive priority handling.
+
+Appeals:
+If your content or account is restricted, contact support with the reason shown in the app. We may review the decision and restore access where appropriate.
+
+Safety contact: proearn.in@gmail.com
+''';
+
+const String kChildSafetyStandardsText = '''
+PRO EARN — CHILD SAFETY STANDARDS
+
+PRO EARN strictly prohibits child sexual abuse and exploitation (CSAE).
+
+Prohibited content and behavior include:
+- Child sexual abuse material (CSAM), including visual depictions involving minors in sexually explicit conduct.
+- Grooming a child for sexual exploitation.
+- Sexual solicitation of a minor.
+- Sextortion or blackmail involving a minor.
+- Sexual trafficking or exploitation of a child.
+- Attempts to arrange or facilitate sexual contact with a minor.
+- Sharing, requesting, storing, or distributing content that sexually exploits children.
+
+REPORTING
+Users can report suspected child-safety violations from within the app. Reports are reviewed and appropriate action is taken, including removal and account enforcement where warranted.
+
+CSAM RESPONSE
+When PRO EARN obtains actual knowledge of CSAM or other CSAE content, it will take appropriate action, including removal and reporting to the appropriate authority where required by applicable law.
+
+CHILD SAFETY POINT OF CONTACT
+Designated safety contact: proearn.in@gmail.com
+
+The contact is responsible for receiving child-safety concerns and communications from Google Play and coordinating enforcement and review procedures.
+
+This standard applies regardless of whether the app is marketed to children. Users must not use PRO EARN to facilitate exploitation or endangerment of children.
 ''';
 
 const String kPrivacyPolicyText = '''
-PRO EARN - PRIVACY POLICY
-Last Updated: August 2026
+PRO EARN — PRIVACY POLICY
+Last Updated: September 2026
 
-PRO EARN values your privacy ecosystem. This document explains transparently what data we process and map within our system data models.
+1. DATA WE PROCESS
+Depending on the features you use, PRO EARN may process:
+- Account information such as email, user ID, username, profile information, and verification state.
+- User-generated content such as posts, comments, messages, profile images, and report information.
+- Social activity such as follows, likes, shares, notifications, and in-app coin/gift activity.
+- Technical information needed for security, reliability, crash reporting, abuse prevention, and advertising.
 
-1. INFORMATION WE COLLECT
-- Account Identifiers: Email, encrypted passwords, and custom user-generated Usernames stored securely inside our Supabase (Postgres) database and Auth system.
-- Profile Parameters: Custom Bios, links, and profile image tracking URLs processed via secure cloud storage endpoints.
-- Engagement Telemetry: Trackers on Follower/Following indexes, like maps, share counts, comment text nodes, and analytical 'Gets' score structures.
+2. SERVICE PROVIDERS
+PRO EARN uses service providers including Supabase for authentication/database infrastructure, Cloudflare for media storage/delivery and server processing, OneSignal for push notifications, Sentry for crash/error monitoring, and Google Mobile Ads for advertising.
 
-2. CONTENT MODERATION AND INAPPROPRIATE MATERIAL PROCESSING
-- To strictly comply with Google Play Developer Policies regarding User Generated Content (UGC), all uploaded media is continuously processed through the Google Cloud Vision Annotation Engine.
-- This automated assessment specifically filters for visual markers indicating explicit nudity, physical exploitation, and adult content themes.
-- Metadata and classification flags generated during safety reviews are mapped explicitly onto your account parameters to protect the safe community standards of the application ecosystem.
+3. MEDIA MODERATION
+Uploaded media is first checked on the device. Media that passes the device check is sent through a server-side media gateway where an additional moderation check is performed before publication. Content can also be reviewed after a safety report or other moderation signal.
 
-3. GOOGLE ADMOB NETWORK TRACES
-- This app operates using Google Mobile Ads infrastructure. These frameworks process standard behavioral identifiers and device-state parameters to serve tailored banner/interstitial/rewarded ad content.
+4. MESSAGES AND REPORTS
+Messages are available to the conversation participants as part of the messaging feature. Reports may include snapshots or identifiers needed to investigate safety complaints. Safety and abuse records may be retained as reasonably necessary for enforcement, fraud prevention, legal compliance, and dispute resolution.
 
-4. USER RIGHTS & RETENTION ARCHITECTURES
-- If you request a full account purge, you can initiate data collection deletions via our email support endpoint: proearn.in@gmail.com.
-''';
+5. ADVERTISING
+Google Mobile Ads may process device and advertising-related information according to Google's applicable policies and your device/account advertising settings.
+
+6. SECURITY
+We use authentication, access controls, row-level security, server-side authorization, rate limits, and other safeguards. No internet service can guarantee absolute security.
+
+7. ACCOUNT DELETION
+You can request account and associated-data deletion through the in-app Security settings and the public deletion-request resource. Data that must be retained for legal, security, fraud-prevention, or other lawful reasons may be retained for the applicable period.
+
+8. CONTACT
+Privacy and safety questions: proearn.in@gmail.com
+''
