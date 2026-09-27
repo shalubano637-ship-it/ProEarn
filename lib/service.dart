@@ -11,7 +11,6 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'models.dart';
-import 'cloudflare_media_service.dart';
 import 'theme/theme.dart';
 
 Future<void> ensureUserDocumentExists() async {
@@ -166,13 +165,31 @@ Future<String?> uploadImageToMediaGateway(
   void Function(int sent, int total)? onProgress,
 }) async {
   try {
-    return await CloudflareMediaService.uploadImage(
-      imageFile,
-      folder: folder,
-      onProgress: onProgress,
+    final bytes = await imageFile.readAsBytes();
+    final base64Image = base64Encode(bytes);
+    onProgress?.call(0, bytes.length);
+
+    final response = await Supabase.instance.client.functions.invoke(
+      'imgbb-upload',
+      body: {
+        'imageBase64': base64Image,
+      },
     );
+
+    final data = response.data;
+    if (data is! Map) {
+      throw StateError('Invalid ImgBB response');
+    }
+
+    final url = data['url']?.toString();
+    if (url == null || url.isEmpty) {
+      throw StateError('ImgBB did not return an image URL');
+    }
+
+    onProgress?.call(bytes.length, bytes.length);
+    return url;
   } catch (e) {
-    debugPrint("Cloudflare media upload failed: $e");
+    debugPrint("ImgBB image upload failed: $e");
     return null;
   }
 }
