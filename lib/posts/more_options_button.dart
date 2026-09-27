@@ -1,46 +1,11 @@
-// =============================================================================
-// PRO EARN — Posts: MoreOptionsButton
-// -----------------------------------------------------------------------------
-// Extracted from the original social_feed.dart during the feature-based
-// file split (no UI or logic changes — only where this code physically
-// lives). social_feed.dart is now a barrel file that re-exports this file.
-// =============================================================================
-
-// =============================================================================
-// PRO EARN — AI-generated content social platform
-// -----------------------------------------------------------------------------
-// This file (social_feed.dart) is one of three files this app's UI/logic
-// was split into (equal three-way split of the original single-file
-// main.dart, no UI or logic changes — only where each class physically
-// lives):
-//   1. main.dart
-//   2. social_feed.dart            (this file)
-//   3. user_profile_features.dart
-//
-// social_feed.dart contains everything about browsing, creating, and
-// interacting with posts/reels:
-//   - Feed & Reels: ReelsPage, SearchPage, SingleReelScreen
-//   - Upload & Media: UploadPage, GlobalImageAdjuster
-//   - Post interactions: LikeButton, CommentButton, CommentScreen,
-//     ShareButton, MoreOptionsButton, GetPromptButton (creator earnings)
-//
-// Persistence: Supabase (Postgres) is the source of truth for all
-// user/post/social data.
-// =============================================================================
 
 
-// ---- Flutter framework ----
 import 'package:flutter/material.dart';
 
-// ---- Supabase ----
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-
-// ---- App files (split out of the original single-file main.dart) ----
 import '../models.dart';
 import '../theme/theme.dart';
-
-
 
 class MoreOptionsButton extends StatelessWidget {
   final String targetPostId;
@@ -56,7 +21,6 @@ class MoreOptionsButton extends StatelessWidget {
     final currentUser = Supabase.instance.client.auth.currentUser;
     if (currentUser == null) return;
 
-    // Safety Check: Khud ko report, block ya hide karne se rokein
     if (currentUser.id == targetOwnerId) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("You cannot moderate your own posts.")),
@@ -71,7 +35,6 @@ class MoreOptionsButton extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        // State variables setup inside modal popup area
         bool isReportOn = false;
         bool isBlockOn = false;
         bool isHidePostOn = false; // State variable for single post hiding
@@ -90,7 +53,6 @@ class MoreOptionsButton extends StatelessWidget {
             final bottomInset = MediaQuery.of(context).viewInsets.bottom;
             final systemPadding = MediaQuery.of(context).padding.bottom;
             
-            // Validation indicator: Teeno me se koi bhi EK feature active ho toh button chalna chahiye
             final bool isAnyActionSelected = isReportOn || isBlockOn || isHidePostOn;
 
             return Padding(
@@ -104,7 +66,6 @@ class MoreOptionsButton extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Pop-up main layout handle indicator
                   Center(
                     child: Container(
                       width: 40,
@@ -126,7 +87,6 @@ class MoreOptionsButton extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
 
-                  // 1. REPORT TOGGLE CONTAINER
                   SwitchListTile(
                     title: const Text("Report Content", style: TextStyle(fontWeight: FontWeight.w600)),
                     subtitle: const Text("Submit a review policy report for this post."),
@@ -136,14 +96,12 @@ class MoreOptionsButton extends StatelessWidget {
                       setModalState(() {
                         isReportOn = val;
                         if (isReportOn) {
-                          // Rule: Report karne par safety ke liye Block automatic system activate
                           isBlockOn = true;
                         }
                       });
                     },
                   ),
 
-                  // Dynamic expanding Dropdown for Report Reasons
                   if (isReportOn)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -171,7 +129,6 @@ class MoreOptionsButton extends StatelessWidget {
 
                   const Divider(height: 10),
 
-                  // 2. BLOCK TOGGLE CONTAINER (Poore user ko block karne ke liye)
                   SwitchListTile(
                     title: const Text("Block User", style: TextStyle(fontWeight: FontWeight.w600)),
                     subtitle: const Text("Remove all posts from this creator."),
@@ -192,7 +149,6 @@ class MoreOptionsButton extends StatelessWidget {
 
                   const Divider(height: 10),
 
-                  // 3. HIDE THIS POST ONLY TOGGLE (Independent Single Post Action)
                   SwitchListTile(
                     title: const Text("Hide This Post", style: TextStyle(fontWeight: FontWeight.w600)),
                     subtitle: const Text("Hide this post"),
@@ -207,20 +163,16 @@ class MoreOptionsButton extends StatelessWidget {
 
                   const SizedBox(height: 25),
 
-                  // CONFIRM ACTION EXECUTION BUTTON
                   SizedBox(
                     width: double.infinity,
                     height: 48,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        // FIX: Agar teeno me se kuch bhi active hai, toh Red/Active color dikhega, warna Grey
                         backgroundColor: isAnyActionSelected ? AppColors.error : AppColors.textTertiary,
                         foregroundColor: AppColors.textPrimary,
                         shape: RoundedRectangleBorder(borderRadius: AppRadius.mdRadius),
                       ),
-                      // FIX: Kisi ek switch ke on hote hi onPressed callback function mill jayega (un-null ho jayega)
                       onPressed: !isAnyActionSelected ? null : () async {
-                        // Validation logic for report reason
                         if (isReportOn && selectedReason == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text("Please select a reason!")),
@@ -232,7 +184,6 @@ class MoreOptionsButton extends StatelessWidget {
                         
                         final client = Supabase.instance.client;
 
-                        // Action 1: Report submission logic
                         if (isReportOn) {
                           await client.from(kReportsCollection).insert({
                             'reportedBy': currentUser.id,
@@ -243,7 +194,6 @@ class MoreOptionsButton extends StatelessWidget {
                           });
                         }
 
-                        // Action 2 & 3: Block user / Hide post (atomic RPC — see supabase_schema.sql)
                         if (isBlockOn || isHidePostOn) {
                           await client.rpc('block_user_and_hide_post', params: {
                             'p_blocker_id': currentUser.id,
