@@ -1,36 +1,3 @@
-// =============================================================================
-// PRO EARN — Chat page (one-to-one) — v2 redesign
-// -----------------------------------------------------------------------------
-// Finds-or-creates the conversation via get_or_create_conversation (server
-// enforces sorted participant order + no self-messaging), then subscribes
-// to a realtime stream of messages for that conversation. Sending goes
-// through send_message, which verifies the caller is actually a
-// participant before inserting — a client can never post a message into a
-// conversation it isn't part of, or spoof senderId.
-//
-// EPHEMERAL VIEW: only messages sent after MY OWN "clearedAt" cutoff are
-// shown — see supabase_schema_ephemeral_chat.sql. This is per-user, so the
-// other participant's view is unaffected by mine clearing when the app
-// backgrounds (see main.dart's app-lifecycle observer for where that
-// clearing actually gets triggered).
-//
-// v2 additions (see supabase/migrations/2026_chat_redesign.sql for the
-// schema/RPCs this depends on — run that migration first):
-//   - Day-month date separators between messages sent on different days.
-//   - Long-press a message: Reply / Copy / Forward / Remove (+ Report on
-//     the other person's messages) — the sheet also shows exactly when
-//     that message was sent.
-//   - Remove on my own message = delete_message_for_everyone (both sides
-//     see "Message removed"). Remove on their message = hide_message_for_me
-//     (only disappears from MY view — the sender's copy is untouched).
-//   - Camera / gallery send: pick → preview → on-device moderation check
-//     → ImgBB upload → send. Images render as a small thumbnail in the
-//     bubble; tap to view full size.
-//   - Gift icon next to the text bar opens the owned-gifts sheet (same
-//     grid as the Bag) with a "watch ad for random gift" shortcut.
-//   - Settings icon (AppBar) → mute this person's notifications / block /
-//     report, on a dedicated page.
-// =============================================================================
 
 import 'package:universal_io/universal_io.dart';
 import 'package:flutter/material.dart';
@@ -61,9 +28,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _picker = ImagePicker();
 
-  // Reply preview tap → scroll to and briefly highlight the original
-  // message. Keyed by message id so we can find its RenderObject
-  // regardless of where it currently sits in the (variable-height) list.
   final Map<String, GlobalKey> _messageKeys = {};
   final Map<String, int> _messageFlatIndex = {}; // messageId -> its index in `groups`, refreshed every build
   int _lastGroupsCount = 0;
@@ -74,11 +38,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     BuildContext? ctx = _messageKeys[messageId]?.currentContext;
 
     if (ctx == null && _scrollController.hasClients) {
-      // Not built yet — almost certainly off-screen, outside
-      // ListView.builder's lazy cacheExtent, so Scrollable.ensureVisible
-      // has nothing to find. Jump to a proportional ESTIMATE of where it
-      // should be first (index / total messages × max scroll extent) so
-      // it enters the build range, then look again after a frame.
       final index = _messageFlatIndex[messageId];
       final total = _lastGroupsCount;
       if (index != null && total > 1) {
@@ -106,18 +65,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   bool _isSending = false;
   String? _loadError;
   Map<String, dynamic>? _replyingTo;
-  // Created ONCE (in _initConversation, right after _conversationId is
-  // known) instead of inline in build(). A stream built inline gets
-  // recreated — a brand-new realtime subscription — on every rebuild
-  // (e.g. every _isSending setState while sending), which is exactly
-  // what caused messages to flash twice until a manual refresh. Same
-  // root cause the coin-balance indicator had, fixed the same way.
   Stream<List<Map<String, dynamic>>>? _messagesStream;
 
-  // Block status — checked both directions:
-  //   _iBlockedThem: read from MY OWN row's blockedUsers (always readable).
-  //   _theyBlockedMe: server-side RPC (is_blocked_by_user) — can't read
-  //     someone else's blockedUsers array directly, only ask a yes/no.
   bool _iBlockedThem = false;
   bool _theyBlockedMe = false;
   bool _isUnblocking = false;
@@ -184,8 +133,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       Supabase.instance.client.rpc('set_presence', params: {'p_screen': 'other'})
           .catchError((e) => debugPrint('set_presence failed: $e'));
     } else if (state == AppLifecycleState.resumed) {
-      // Still on this chat page after backgrounding — re-assert presence
-      // so message pushes stay suppressed for this exact conversation.
       Supabase.instance.client.rpc('set_presence', params: {
         'p_screen': 'chat',
         'p_chatting_with_uid': widget.otherUid,
@@ -219,8 +166,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
               .order('createdAt', ascending: true);
         });
       }
-      // Opening the chat = read. Clears the yellow unread dot on
-      // MessagesListPage for this conversation.
       Supabase.instance.client
           .rpc('mark_conversation_read', params: {'p_conversation_id': id})
           .catchError((e) => debugPrint('mark_conversation_read failed: $e'));
@@ -249,16 +194,12 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         'p_reply_to_message_id': replyId,
       });
 
-      // Non-blocking — a notification failure shouldn't affect the
-      // message send itself, which already succeeded above.
       sendNotification(
         targetOwnerId: widget.otherUid,
         type: 'message',
         message: imageUrl != null ? 'Someone sent you a photo' : 'Someone texted you',
       );
 
-      // I obviously "read" my own message — keeps MY unread dot from
-      // falsely lighting up on MessagesListPage after I send.
       Supabase.instance.client
           .rpc('mark_conversation_read', params: {'p_conversation_id': _conversationId})
           .catchError((e) => debugPrint('mark_conversation_read failed: $e'));
@@ -293,11 +234,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     }
   }
 
-  // Gallery multi-select — up to 20 photos at once. Each is compressed +
-  // moderated in chat_multi_image_preview_page.dart, then sent as
-  // separate send_message calls back-to-back (no new column/RPC param
-  // needed) — the tight timing is exactly what makes the receiving side
-  // group them into one album tile (see _groupConsecutiveImages below).
   Future<void> _pickAndSendMultipleImages() async {
     try {
       final picked = await _picker.pickMultiImage(imageQuality: 90, limit: 20);
@@ -356,8 +292,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     );
   }
 
-  /// Returns true only if the message was actually removed (false if the
-  /// person cancelled the confirmation, or the RPC call failed).
   Future<bool> _removeForEveryone(Map<String, dynamic> msg, {bool skipConfirm = false}) async {
     if (!skipConfirm) {
       final confirmed = await showDialog<bool>(
@@ -488,10 +422,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     );
   }
 
-  // Long-pressing the ALBUM TILE (not a specific photo inside it) —
-  // Reply/Forward/Remove apply to the WHOLE group here. For per-photo
-  // actions (remove just one image, reply/forward just one), see the
-  // menu inside _ImageGroupViewerPage instead (opened by tapping the tile).
   void _showAlbumOptions(List<Map<String, dynamic>> group, bool isMe) {
     showModalBottomSheet(
       context: context,
@@ -595,9 +525,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                 title: const Text("Reply"),
                 onTap: () { Navigator.pop(sheetContext); _startReply(msg); },
               ),
-              // A gift receipt isn't a regular message — nothing to copy,
-              // forward, remove, or report about it. Reply is the only
-              // action that makes sense (e.g. "thanks for the gift!").
               if (!isGift) ...[
                 if (hasText)
                   ListTile(
@@ -653,11 +580,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     );
   }
 
-  // Gallery-group tap → swipeable fullscreen viewer starting at whichever
-  // thumbnail was tapped. Passes the actual message objects (not just
-  // URLs) so the viewer's per-photo menu can Reply/Forward/Remove that
-  // ONE specific image — removing it here actually deletes just that
-  // message, which is why "isGift"/isMe etc. need the real message data.
   void _viewImageGroupFullscreen(List<Map<String, dynamic>> group, int startIndex) {
     final myUid = Supabase.instance.client.auth.currentUser?.id ?? '';
     Navigator.push(
@@ -735,12 +657,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                           if (!snapshot.hasData) {
                             return const Center(child: CircularProgressIndicator());
                           }
-                          // Ephemeral filter — messages sent before my own
-                          // clearedAt are hidden from my view only. The
-                          // underlying rows are untouched, so the other
-                          // participant (whose clearedAt is independent)
-                          // still sees everything normally. Also hides
-                          // anything I've individually "removed for me".
                           final allMessages = snapshot.data!;
                           final messages = allMessages.where((m) {
                             final createdAt = DateTime.parse(m['createdAt'].toString());
@@ -750,8 +666,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                             return true;
                           }).toList();
 
-                          // Lookup for reply-preview snippets — by id,
-                          // from whatever's already loaded for this chat.
                           final byId = {for (final m in allMessages) m['id'] as String: m};
                           _messageKeys.removeWhere((id, _) => !byId.containsKey(id)); // drop keys for messages no longer around (e.g. removed)
                           _messageFlatIndex.removeWhere((id, _) => !byId.containsKey(id));
@@ -760,15 +674,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                             return const Center(child: Text("Say hi 👋"));
                           }
 
-                          // Auto-scroll-to-bottom, but ONLY when a genuinely NEW
-                          // message actually arrived — not on every rebuild of this
-                          // page (e.g. the highlight setState from tapping a reply
-                          // preview). Without this check, that unconditional jumpTo
-                          // was firing on ANY setState anywhere in the page and
-                          // immediately snapping back to the bottom, undoing
-                          // _scrollToMessage's careful scroll-to-target right after
-                          // it ran — exactly why "scroll up hota tha par exactly wahi
-                          // jagah nahi rukta tha".
                           final String? latestId = messages.last['id'] as String?;
                           if (latestId != _lastSeenMessageId) {
                             _lastSeenMessageId = latestId;
@@ -798,10 +703,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                               if (isAlbum) {
                                 final bool isMe = group.first['senderId'] == myUid;
                                 final imageUrls = group.map((m) => m['imageUrl'] as String).toList();
-                                // Reply/Forward/Remove on a long-pressed album apply to
-                                // its LAST photo (arbitrary but consistent pick — there's
-                                // no single-message id for a whole album since it's just
-                                // several ordinary image messages grouped visually).
                                 final lastMsgInGroup = group.last;
                                 final String groupKeyId = lastMsgInGroup['id'] as String;
                                 _messageKeys.putIfAbsent(groupKeyId, () => GlobalKey());
@@ -832,11 +733,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                               final bool removedForEveryone = msg['deletedForEveryone'] == true;
                               final replyToId = msg['replyToMessageId'] as String?;
                               final repliedMsg = replyToId != null ? byId[replyToId] : null;
-                              // Gift messages (sent via chat_gift_sheet.dart) are tagged by
-                              // their "🎁 " text prefix — there's no separate message
-                              // "type" column, so this is the one signal we have. They get
-                              // a smaller thumbnail and no Forward/Remove menu (it's a gift
-                              // receipt, not a regular photo — nothing to forward/delete).
                               final bool isGift = ((msg['text'] ?? '') as String).startsWith('🎁');
                               final String msgId = msg['id'] as String;
                               final bool isHighlighted = msgId == _highlightedMessageId;
@@ -985,12 +881,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
 bool _isSameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
 
-// Groups consecutive plain-image messages (same sender, no text, not a
-// reply, sent within a few seconds of each other) into one "album" — a
-// gallery multi-send fires several send_message calls back-to-back, and
-// this is how the receiving side turns that burst into a single grid
-// tile instead of N separate bubbles. No schema/RPC change needed: pure
-// client-side grouping by timing + shape, same trick messaging apps use.
 List<List<Map<String, dynamic>>> _groupConsecutiveImages(List<Map<String, dynamic>> messages) {
   bool isPlainImage(Map<String, dynamic> m) =>
       m['imageUrl'] != null &&
@@ -1055,8 +945,6 @@ class _DateSeparator extends StatelessWidget {
   }
 }
 
-/// Small quoted-message preview shown inside a bubble when that message
-/// is a reply to an earlier one.
 class _ReplyPreviewChip extends StatelessWidget {
   final Map<String, dynamic> message;
   final bool isMe;
@@ -1086,8 +974,6 @@ class _ReplyPreviewChip extends StatelessWidget {
   }
 }
 
-/// The "replying to…" bar shown above the text field while composing a
-/// reply, with an X to cancel it.
 class _ReplyComposerBar extends StatelessWidget {
   final Map<String, dynamic> message;
   final VoidCallback onCancel;
@@ -1128,17 +1014,6 @@ class _ReplyComposerBar extends StatelessWidget {
   }
 }
 
-// =============================================================================
-// Replaces the message input bar whenever either side has blocked the
-// other. Two distinct copies, per which side you're on:
-//   - I blocked them: "You blocked this user, please unblock first" +
-//     an Unblock button (this is the ONLY place besides Chat Settings
-//     that can undo it).
-//   - They blocked me: "The other user has blocked you" — no button,
-//     since only the blocker can undo their own block.
-// Either way, no message can be sent while this banner is showing (the
-// input row itself isn't even built — see build() above).
-// =============================================================================
 class _BlockedBanner extends StatelessWidget {
   final bool theyBlockedMe;
   final String otherUserName;
@@ -1203,13 +1078,6 @@ class _BlockedBanner extends StatelessWidget {
   }
 }
 
-// =============================================================================
-// Grid preview for a gallery multi-send "album" (see
-// _groupConsecutiveImages above). Shows up to 4 thumbnails in a 2x2 grid;
-// a 5th-or-more count badge appears on the last cell ("+N") like most
-// chat apps. Tapping any thumbnail opens the swipeable fullscreen viewer
-// starting at that exact photo.
-// =============================================================================
 class _ImageGroupTile extends StatelessWidget {
   final List<String> imageUrls;
   final void Function(int startIndex) onOpen;
@@ -1297,10 +1165,6 @@ class _ImageGroupViewerPageState extends State<_ImageGroupViewerPage> {
     super.dispose();
   }
 
-  // Per-PHOTO menu (top-right of the currently viewed image) — Reply,
-  // Forward, Remove apply to just this one. Pops the viewer first so the
-  // action's own UI (reply compose bar, forward picker) opens on top of
-  // the actual ChatPage, not this fullscreen viewer.
   void _showPhotoMenu(Map<String, dynamic> msg) {
     final bool isMe = msg['senderId'] == widget.myUid;
     showModalBottomSheet(
@@ -1337,11 +1201,6 @@ class _ImageGroupViewerPageState extends State<_ImageGroupViewerPage> {
               ),
               onTap: () async {
                 Navigator.pop(sheetContext);
-                // isMe's version shows its own confirm dialog and only
-                // returns true once the RPC actually succeeds — only
-                // THEN do we drop it from the local view. Otherwise a
-                // cancelled confirm would make the photo vanish from
-                // the viewer even though nothing was actually removed.
                 final removed = isMe ? await widget.onRemoveForEveryone(msg) : await widget.onRemoveForMe(msg);
                 if (!removed || !mounted) return;
                 setState(() {
