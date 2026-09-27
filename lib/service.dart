@@ -4,12 +4,14 @@ import 'dart:convert';
 import 'package:universal_io/universal_io.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'models.dart';
+import 'cloudflare_media_service.dart';
 import 'theme/theme.dart';
 
 Future<void> ensureUserDocumentExists() async {
@@ -158,35 +160,86 @@ Future<void> sendNotification({
 
     
 
-Future<String?> uploadImageToImgBB(
+Future<String?> uploadImageToMediaGateway(
   File imageFile, {
   String folder = 'posts',
   void Function(int sent, int total)? onProgress,
 }) async {
   try {
-    final bytes = await imageFile.readAsBytes();
-    onProgress?.call(0, bytes.length);
-
-    final base64Image = base64Encode(bytes);
-
-    final response = await Supabase.instance.client.functions.invoke(
-      'imgbb-upload',
-      body: {'imageBase64': base64Image},
+    return await CloudflareMediaService.uploadImage(
+      imageFile,
+      folder: folder,
+      onProgress: onProgress,
     );
-
-    onProgress?.call(bytes.length, bytes.length);
-
-    final data = response.data;
-    if (response.status != 200 || data is! Map || data['url'] is! String) {
-      debugPrint("ImgBB upload failed: ${response.status} ${response.data}");
-      return null;
-    }
-
-    return data['url'] as String;
   } catch (e) {
-    debugPrint("Error uploading to ImgBB: $e");
+    debugPrint("Cloudflare media upload failed: $e");
     return null;
   }
+}
+
+Future<Map<String, dynamic>> createPostThroughCloudflare({
+  required File imageFile,
+  required String caption,
+  required String prompt,
+  required String link,
+  void Function(int sent, int total)? onProgress,
+}) async {
+  final bytes = await imageFile.readAsBytes();
+  final contentType = imageFile.path.toLowerCase().endsWith('.png')
+      ? 'image/png'
+      : imageFile.path.toLowerCase().endsWith('.webp')
+          ? 'image/webp'
+          : 'image/jpeg';
+
+  if (CloudflareMediaService.gatewayUrl.isEmpty) {
+    throw StateError('Cloudflare media gateway is not configured');
+  }
+
+  final intent = await _cloudflarePost('/v1/upload-intent', {
+    'contentType': contentType,
+    'folder': 'posts',
+  });
+  final uploadUrl = intent['uploadUrl']?.toString();
+  final objectKey = intent['objectKey']?.toString();
+  if (uploadUrl == null || objectKey == null) throw StateError('Invalid upload intent');
+
+  final request = http.Request('PUT', Uri.parse(uploadUrl));
+  request.headers['Content-Type'] = contentType;
+  request.bodyBytes = bytes;
+  onProgress?.call(0, bytes.length);
+  final response = await request.send();
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    throw StateError('R2 upload failed: ${response.statusCode}');
+  }
+  onProgress?.call(bytes.length, bytes.length);
+
+  return _cloudflarePost('/v1/finalize-post', {
+    'objectKey': objectKey,
+    'contentType': contentType,
+    'size': bytes.length,
+    'caption': caption,
+    'prompt': prompt,
+    'link': link,
+  });
+}
+
+Future<Map<String, dynamic>> _cloudflarePost(String path, Map<String, dynamic> body) async {
+  final token = Supabase.instance.client.auth.currentSession?.accessToken;
+  if (token == null) throw StateError('Not authenticated');
+  final response = await http.post(
+    Uri.parse('${CloudflareMediaService.gatewayUrl}$path'),
+    headers: {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode(body),
+  );
+  final decoded = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body);
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    final reason = decoded is Map ? decoded['reason'] ?? decoded['error'] : null;
+    throw StateError(reason?.toString() ?? 'Cloudflare request failed');
+  }
+  return Map<String, dynamic>.from(decoded as Map);
 }
 
 class CustomImageCacheManager {
