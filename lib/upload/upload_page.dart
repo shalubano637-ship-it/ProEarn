@@ -141,17 +141,27 @@ class _UploadPageState extends State<UploadPage> {
       });
 
       final postLink = "app://post/${DateTime.now().millisecondsSinceEpoch}";
-      await createPostThroughCloudflare(
-        imageFile: finalCompressedFile,
-        caption: caption.isEmpty ? "No Caption" : caption,
-        prompt: prompt,
-        link: postLink,
+      final imageUrl = await uploadImageToMediaGateway(
+        finalCompressedFile,
+        folder: 'posts',
         onProgress: (bytes, total) {
           if (mounted && total > 0) {
             setState(() => _uploadPercentage = (bytes / total) * 100);
           }
         },
       );
+
+      if (imageUrl == null || imageUrl.isEmpty) {
+        throw StateError("Image upload failed");
+      }
+
+      await Supabase.instance.client.from(kPostsCollection).insert({
+        'userName': Supabase.instance.client.auth.currentUser!.id,
+        'caption': caption.isEmpty ? "No Caption" : caption,
+        'prompt': prompt,
+        'link': postLink,
+        'imageUrl': imageUrl,
+      });
 
       if (await finalCompressedFile.exists()) {
         await finalCompressedFile.delete();
