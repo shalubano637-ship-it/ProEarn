@@ -1,19 +1,3 @@
-// =============================================================================
-// PRO EARN — Chat gift sheet
-// -----------------------------------------------------------------------------
-// Opened from the gift icon next to the chat text bar. Two things in one
-// sheet:
-//   1. Grid of gifts already owned (gift_inventory) — tap one, pick a
-//      quantity, Send — sends directly to the other participant via the
-//      new send_gift_to_user RPC (gift_button.dart's _SendGiftSheet is the
-//      same idea but targets a post owner via send_gift; this is the
-//      direct-to-user version for chat).
-//   2. "Watch ad for random gift" button (top-right) — same RewardedAd
-//      pattern as chests_page.dart / get_prompt_button.dart. On
-//      completion, claim_random_gift_from_ad grants a random low-tier
-//      gift straight to the Bag (not sent to the other person — it's a
-//      reward for the sender, matching the request).
-// =============================================================================
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -64,11 +48,6 @@ class _ChatGiftSheetState extends State<_ChatGiftSheet> {
         'p_quantity': _quantity,
       });
 
-      // Gift Shop jaisa hi preview chat mein dikhane ke liye: gift ki
-      // image ko normal message ke imageUrl slot mein bhejte hain, taaki
-      // chat bubble ka existing image-rendering path (jo already gallery
-      // photos ke liye kaam karta hai) ise automatically dikha de — koi
-      // naya message "type" ya UI banane ki zaroorat nahi.
       final giftName = gift['name'] ?? 'a gift';
       final giftImageUrl = gift['gifUrl'] as String?;
       try {
@@ -82,7 +61,6 @@ class _ChatGiftSheetState extends State<_ChatGiftSheet> {
         debugPrint("Gift chat-message insert failed (gift itself was still sent): $e");
       }
 
-      // Same as a normal text send — I "read" my own gift message too.
       Supabase.instance.client
           .rpc('mark_conversation_read', params: {'p_conversation_id': widget.conversationId})
           .catchError((e) => debugPrint('mark_conversation_read failed: $e'));
