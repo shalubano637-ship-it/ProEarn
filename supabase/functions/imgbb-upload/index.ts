@@ -1,12 +1,3 @@
-// =============================================================================
-// PRO EARN — imgbb-upload (Supabase Edge Function)
-// -----------------------------------------------------------------------------
-// Uploads an image to ImgBB on the app's behalf. The ImgBB API key lives
-// only in this function's environment — it is never bundled inside the
-// compiled app, so there's nothing to recover by decompiling the APK.
-// The app sends the image as base64; this function does the actual
-// multipart upload to ImgBB and returns the resulting public URL.
-// =============================================================================
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -34,8 +25,6 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
-    // Require a logged-in Pro Earn user — no anonymous uploads through
-    // (and no billing/quota abuse of) this function.
     const authHeader = req.headers.get("Authorization") ?? "";
     const authed = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
