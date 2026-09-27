@@ -3,6 +3,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+const mediaGatewayUrl = Deno.env.get("MEDIA_GATEWAY_URL")!;
+const mediaInternalToken = Deno.env.get("MEDIA_INTERNAL_TOKEN")!;
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -30,6 +32,18 @@ Deno.serve(async (req) => {
   const uid = userData.user.id;
 
   try {
+    if (!mediaGatewayUrl || !mediaInternalToken) {
+      return json({ error: "Media deletion service is not configured" }, 503);
+    }
+    const mediaResponse = await fetch(`${mediaGatewayUrl.replace(/\/$/, "")}/internal/delete-user-media`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-internal-token": mediaInternalToken },
+      body: JSON.stringify({ userId: uid }),
+    });
+    if (!mediaResponse.ok) {
+      console.error("media deletion failed", mediaResponse.status);
+      return json({ error: "Account media could not be deleted" }, 503);
+    }
     await admin.from("messages").delete().eq("senderId", uid);
 
     const { data: conversations } = await admin
