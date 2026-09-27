@@ -72,12 +72,10 @@ function bytesToBase64(bytes: Uint8Array) {
   return btoa(binary);
 }
 
-async function moderate(env: Env, objectKey: string, userId: string) {
-  const object = await env.R2_BUCKET.get(objectKey);
-  if (!object) return { safe: false, reason: "Uploaded object not found" };
+async function moderateBytes(env: Env, bytes: Uint8Array, contentType: string, userId: string) {
+  if (!ALLOWED_TYPES.has(contentType)) return { safe: false, reason: "Unsupported image type" };
+  if (bytes.length === 0 || bytes.length > MAX_IMAGE_BYTES) return { safe: false, reason: "Image too large" };
 
-  const contentType = object.httpMetadata?.contentType ?? "image/jpeg";
-  const bytes = new Uint8Array(await object.arrayBuffer());
   const dataUrl = `data:${contentType};base64,${bytesToBase64(bytes)}`;
 
   try {
@@ -110,6 +108,14 @@ async function moderate(env: Env, objectKey: string, userId: string) {
     console.error("server moderation failed", error);
     return { safe: false, reason: "Server moderation unavailable" };
   }
+}
+
+async function moderate(env: Env, objectKey: string, userId: string) {
+  const object = await env.R2_BUCKET.get(objectKey);
+  if (!object) return { safe: false, reason: "Uploaded object not found" };
+  const contentType = object.httpMetadata?.contentType ?? "image/jpeg";
+  const bytes = new Uint8Array(await object.arrayBuffer());
+  return moderateBytes(env, bytes, contentType, userId);
 }
 
 async function createPost(env: Env, userId: string, body: Record<string, unknown>, imageUrl: string, objectKey: string) {
@@ -145,6 +151,27 @@ export default {
     if (!user) return json({ error: "Unauthorized" }, 401);
 
     try {
+      if (url.pathname === "/v1/moderate-image" && request.method === "POST") {
+        const body = await request.json<{ imageBase64?: string; contentType?: string }>();
+        const imageBase64 = String(body.imageBase64 ?? "").replace(/^data:[^;]+;base64,/, "");
+        const contentType = String(body.contentType ?? "image/jpeg");
+        if (!imageBase64) return json({ error: "imageBase64 required" }, 400);
+        if (imageBase64.length > 12000000) return json({ error: "Image too large" }, 400);
+
+        let binary: string;
+        try {
+          binary = atob(imageBase64);
+        } catch {
+          return json({ error: "Invalid base64 image" }, 400);
+        }
+        const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+        const moderation = await moderateBytes(env, bytes, contentType, user.id);
+        if (!moderation.safe) {
+          return json({ safe: false, reason: moderation.reason ?? "Content rejected" }, 422);
+        }
+        return json({ safe: true });
+      }
+
       if (url.pathname === "/internal/delete-user-media" && request.method === "POST") {
         const token = request.headers.get("x-internal-token") ?? "";
         if (!token || token !== env.INTERNAL_DELETE_TOKEN) return json({ error: "Forbidden" }, 403);
