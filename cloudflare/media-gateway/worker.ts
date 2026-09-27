@@ -9,6 +9,7 @@ interface Env {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
+  INTERNAL_DELETE_TOKEN: string;
   AI: Ai;
 }
 
@@ -144,6 +145,28 @@ export default {
     if (!user) return json({ error: "Unauthorized" }, 401);
 
     try {
+      if (url.pathname === "/internal/delete-user-media" && request.method === "POST") {
+        const token = request.headers.get("x-internal-token") ?? "";
+        if (!token || token !== env.INTERNAL_DELETE_TOKEN) return json({ error: "Forbidden" }, 403);
+        const body = await request.json<{ userId?: string }>();
+        const userId = String(body.userId ?? "");
+        if (!/^[0-9a-f-]{36}$/i.test(userId)) return json({ error: "Invalid userId" }, 400);
+
+        let deleted = 0;
+        for (const prefix of ["posts/" + userId + "/", "profile/" + userId + "/", "chat/" + userId + "/"]) {
+          let cursor: string | undefined;
+          do {
+            const listed = await env.R2_BUCKET.list({ prefix, cursor, limit: 1000 });
+            const keys = listed.objects.map((object) => object.key);
+            for (let i = 0; i < keys.length; i += 1000) {
+              const chunk = keys.slice(i, i + 1000);
+              if (chunk.length) { await env.R2_BUCKET.delete(chunk); deleted += chunk.length; }
+            }
+            cursor = listed.truncated ? listed.cursor : undefined;
+          } while (cursor);
+        }
+        return json({ success: true, deleted });
+      }
       if (url.pathname === "/v1/upload-intent" && request.method === "POST") {
         const body = await request.json<{ contentType?: string; folder?: string }>();
         const contentType = String(body.contentType ?? "");
