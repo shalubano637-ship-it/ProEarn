@@ -35,6 +35,10 @@ class _SignupRewardsPopupState extends State<SignupRewardsPopup> {
     try {
       final first = await Supabase.instance.client.rpc('claim_first_login_reward');
       final firstMap = Map<String, dynamic>.from(first as Map);
+      if (firstMap['eligible'] == false) {
+        if (mounted) Navigator.of(context).pop();
+        return;
+      }
       final status = await Supabase.instance.client.rpc('get_signup_reward_status');
       if (!mounted) return;
       setState(() {
