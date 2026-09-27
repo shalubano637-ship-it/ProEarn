@@ -1,14 +1,3 @@
-// =============================================================================
-// PRO EARN — Gift sheet for the COMMENT input bar
-// -----------------------------------------------------------------------------
-// Nearly identical to gifts/gift_button.dart's _SendGiftSheet (same
-// gift_inventory grid, same send_gift RPC — this posts to the SAME post,
-// so the recipient is the same post owner either way). The one addition:
-// after send_gift succeeds, also insert a comment showing "🎁 Sent
-// <Gift>" with the gift's image — same trick chat_gift_sheet.dart uses
-// (imageUrl slot reused for the gift picture), so the comment thread's
-// existing image-rendering path picks it up automatically.
-// =============================================================================
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
