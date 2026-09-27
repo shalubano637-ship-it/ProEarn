@@ -1,9 +1,3 @@
-// =============================================================================
-// PRO EARN — Bag page
-// -----------------------------------------------------------------------------
-// Two sections: Owned (purchased + chest-won gifts, ready to send) and
-// Received (gifts other people have sent to your posts, with who/when).
-// =============================================================================
 
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -14,9 +8,6 @@ import 'utils.dart';
 import 'chests/chests_page.dart';
 
 class BagPage extends StatefulWidget {
-  /// null = "my own bag" (default). Set to view someone ELSE's bag — used
-  /// from their profile page's Bag icon, which also passes
-  /// initialTabIndex: 1 to land straight on "Received".
   final String? viewUid;
   final int initialTabIndex;
 
@@ -55,7 +46,6 @@ class _BagPageState extends State<BagPage> with SingleTickerProviderStateMixin {
                 builder: (context, snapshot) => Text("${snapshot.data?['userName'] ?? 'User'}'s Bag"),
               ),
         actions: [
-          // Buying gifts only makes sense from your OWN bag.
           if (_isOwnBag)
             TextButton.icon(
               onPressed: () {
@@ -65,8 +55,6 @@ class _BagPageState extends State<BagPage> with SingleTickerProviderStateMixin {
               label: const Text("Buy Gifts", style: TextStyle(color: AppColors.accent)),
             ),
         ],
-        // Someone else's bag shows Received only (no tabs — what they
-        // have stocked to send stays private). Your own bag keeps both.
         bottom: _isOwnBag
             ? TabBar(
                 controller: _tabController,
@@ -99,8 +87,6 @@ class _OwnedGiftsTab extends StatelessWidget {
     if (uid.isEmpty) return const Center(child: Text("Please log in."));
 
     return FutureBuilder<List<Map<String, dynamic>>>(
-      // gt.now() filters expired chest-won rows out — count > 0 filters
-      // fully-spent stock out.
       future: Supabase.instance.client
           .from('gift_inventory')
           .select('*, gifts(*)')
@@ -113,17 +99,12 @@ class _OwnedGiftsTab extends StatelessWidget {
         }
         final allRows = snapshot.data ?? [];
         final now = DateTime.now();
-        // Client-side expiry filter too, in case the daily sweep hasn't
-        // run yet for a just-expired row — belt and suspenders, the
-        // server-side send_gift function is the real enforcement anyway.
         final rows = allRows.where((r) {
           final expiresAt = r['expiresAt'];
           if (expiresAt == null) return true;
           return DateTime.parse(expiresAt.toString()).isAfter(now);
         }).toList();
 
-        // Group by gift so the same gift purchased + chest-won shows as
-        // one combined tile with a total count, rather than duplicate tiles.
         final Map<String, Map<String, dynamic>> grouped = {};
         for (final row in rows) {
           final gift = row['gifts'] as Map<String, dynamic>?;
@@ -205,8 +186,6 @@ class _ExpiryCountdownState extends State<_ExpiryCountdown> {
   @override
   void initState() {
     super.initState();
-    // Minute-level granularity is enough for an hours-based display, and
-    // much cheaper than per-second ticking across a whole grid of items.
     _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -263,8 +242,6 @@ class _ReceivedGiftsTab extends StatelessWidget {
           );
         }
 
-        // Batch-fetch every sender's profile in one round trip instead of
-        // one query per row (same pattern as leaderboard_page.dart).
         final fromUids = rows.map((r) => r['fromUid'] as String).toSet().toList();
 
         return FutureBuilder<List<Map<String, dynamic>>>(
