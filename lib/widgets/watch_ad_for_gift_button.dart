@@ -6,7 +6,6 @@ import '../theme/theme.dart';
 import '../ad_preloader.dart';
 
 const int kDailyAdGiftCap = 3;
-const List<int> kAdGiftChestUnlockMinutes = [1, 3, 5];
 
 class WatchAdForGiftButton extends StatefulWidget {
   const WatchAdForGiftButton({super.key});
