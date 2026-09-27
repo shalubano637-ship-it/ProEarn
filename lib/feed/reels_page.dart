@@ -146,7 +146,9 @@ class _ReelsPageState extends State<ReelsPage> {
   }
 
   void _prefetchImages(List<Map<String, dynamic>> docs) {
-    for (var data in docs) {
+    // Only warm the next few cards. Prefetching the entire feed downloads
+    // many full-size images that the user may never view.
+    for (final data in docs.take(3)) {
       final String imageUrl = data['imageUrl'] ?? '';
       
       if (imageUrl.isNotEmpty && imageUrl.startsWith('http') && !_prefetchedUrls.contains(imageUrl)) {
