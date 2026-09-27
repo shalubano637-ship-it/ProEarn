@@ -27,6 +27,17 @@ class CloudflareMediaService {
     return Map<String, dynamic>.from(decoded as Map);
   }
 
+  static Future<void> moderateImage(File file) async {
+    final bytes = await file.readAsBytes();
+    final result = await _post('/v1/moderate-image', {
+      'contentType': _contentType(file.path),
+      'imageBase64': base64Encode(bytes),
+    });
+    if (result['safe'] != true) {
+      throw StateError(result['reason']?.toString() ?? 'Server moderation rejected the image');
+    }
+  }
+
   static Future<String> uploadImage(
     File file, {
     String folder = 'posts',
