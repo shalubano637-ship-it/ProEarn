@@ -1,50 +1,16 @@
-// =============================================================================
-// PRO EARN — Settings: HelpPage
-// -----------------------------------------------------------------------------
-// Extracted from the original user_profile_features.dart during the
-// feature-based file split (no UI or logic changes — only where this code
-// physically lives). user_profile_features.dart is now a barrel file that
-// re-exports this file.
-// =============================================================================
 
-// =============================================================================
-// PRO EARN — AI-generated content social platform
-// -----------------------------------------------------------------------------
-// This file (user_profile_features.dart) is one of three files this app's
-// UI/logic was split into (equal three-way split of the original
-// single-file main.dart, no UI or logic changes — only where each class
-// physically lives):
-//   1. main.dart
-//   2. social_feed.dart
-//   3. user_profile_features.dart  (this file)
-//
-// user_profile_features.dart contains everything about the user's own
-// account, profile, and account-management screens:
-//   - Profile & social graph: ProfilePage, FollowListPage,
-//     BlockedUsersListScreen, EditProfilePage, ImageCropPage
-//   - Notifications: NotificationPage, PushNotificationPage
-//   - Settings & Security: SettingsPage, SecurityPage, HelpPage
-//   - Analytics: AnalyticsPage
-//
-// Persistence: Supabase (Postgres) is the source of truth for all
-// user/post/social data.
-// =============================================================================
 
-// ---- Dart core ----
 import 'dart:async';
 
-// ---- Flutter framework ----
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-// ---- App files (split out of the original single-file main.dart) ----
 import '../legal_text.dart';
 import '../theme/theme.dart';
 
 class HelpPage extends StatelessWidget {
   const HelpPage({super.key});
 
-  // Mail app open karne ka function
   Future<void> _contactSupport() async {
     final Uri emailLaunchUri = Uri(
       scheme: 'mailto',
@@ -95,16 +61,12 @@ class HelpPage extends StatelessWidget {
         ),
         body: TabBarView(
           children: [
-            // ================= TAB 1: SUPPORT VIEW =================
             _buildSupportTab(),
 
-            // ================= TAB 2: ABOUT US =================
             _buildLegalTab(_getAboutUsText()),
 
-            // ================= TAB 3: TERMS & CONDITIONS =================
             _buildLegalTab(_getTermsAndConditionsText()),
 
-            // ================= TAB 4: PRIVACY POLICY =================
             _buildLegalTab(_getPrivacyPolicyText()),
           ],
         ),
@@ -112,7 +74,6 @@ class HelpPage extends StatelessWidget {
     );
   }
 
-  // Support Tab Widget
   Widget _buildSupportTab() {
     return Center(
       child: Padding(
@@ -164,7 +125,6 @@ class HelpPage extends StatelessWidget {
     );
   }
 
-  // Legal Text Scrollable Container Widget
   Widget _buildLegalTab(String text) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -182,7 +142,6 @@ class HelpPage extends StatelessWidget {
     );
   }
 
-  // ================= ABOUT US CONTENT =================
   String _getAboutUsText() {
     return '''
 ABOUT PRO EARN
@@ -200,15 +159,7 @@ Powered by secure infrastructure pipelines and automated cloud classification al
 ''';
   }
 
-  // ================= TERMS AND CONDITIONS CONTENT =================
-  // Sourced from legal_text.dart — was previously duplicated inline here
-  // and had drifted out of sync with the auth_screen.dart copy.
   String _getTermsAndConditionsText() => kTermsAndConditionsText;
 
-  // ================= PRIVACY POLICY CONTENT =================
-  // Sourced from legal_text.dart — was previously duplicated inline here
-  // and had drifted out of sync with the auth_screen.dart copy (this copy
-  // still said "Google Firebase Authentication and Firestore DB" from
-  // before the Supabase migration).
   String _getPrivacyPolicyText() => kPrivacyPolicyText;
 }
