@@ -138,30 +138,6 @@ class _RoomChatPageState extends State<RoomChatPage> {
     super.dispose();
   }
 
-  Future<void> _kickMember(Map<String, dynamic> member) async {
-    final uid = member['uid']?.toString();
-    final name = member['user_name']?.toString() ?? 'User';
-    if (uid == null) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (d) => AlertDialog(
-        title: const Text('Kick member?'),
-        content: Text('Remove $name from this Room?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Kick')),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    try {
-      await Supabase.instance.client.rpc('kick_room_member', params: {'p_room_id': widget.roomId, 'p_uid': uid});
-      await _loadMembers();
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not kick member: $e'), backgroundColor: AppColors.error));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -323,6 +299,30 @@ class _RoomInfoPageState extends State<RoomInfoPage> {
       }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _kickMember(Map<String, dynamic> member) async {
+    final uid = member['uid']?.toString();
+    final name = member['user_name']?.toString() ?? 'User';
+    if (uid == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: const Text('Kick member?'),
+        content: Text('Remove $name from this Room?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Kick')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await Supabase.instance.client.rpc('kick_room_member', params: {'p_room_id': widget.roomId, 'p_uid': uid});
+      await _loadMembers();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not kick member: $e'), backgroundColor: AppColors.error));
     }
   }
 
@@ -491,10 +491,7 @@ class _RoomInfoPageState extends State<RoomInfoPage> {
                     child: (m['profile_url']?.toString().isNotEmpty ?? false) ? null : const Icon(Icons.person),
                   ),
                 ),
-                title: GestureDetector(
-                  onLongPress: widget.isOwner && !isMe ? () => _kickMember(m) : null,
-                  child: Text(m['user_name']?.toString() ?? 'User'),
-                ),
+                title: Text(m['user_name']?.toString() ?? 'User'),
                 onLongPress: widget.isOwner && !isMe ? () => _kickMember(m) : null,
                 onTap: () => Navigator.push(
                   context,
