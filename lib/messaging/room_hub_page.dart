@@ -132,7 +132,7 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
             children: [
               TextField(
                 controller: nameController,
-                maxLength: 40,
+                maxLength: 10,
                 decoration: const InputDecoration(labelText: 'Room name', hintText: "Jerry's Room"),
               ),
               SwitchListTile(
