@@ -227,13 +227,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 );
               },
             ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SearchPage()),
-                );
-              },
-            ),
             currentUser == null
                 ? IconButton(
                     icon: const Icon(Icons.notifications_none),
