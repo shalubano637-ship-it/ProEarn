@@ -128,14 +128,17 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
   }
 
   Future<void> _enterRoom(Map<String, dynamic> room) async {
+    final roomId = room['room_id']?.toString();
+    if (roomId == null || roomId.isEmpty) return;
+
     final currentUid = Supabase.instance.client.auth.currentUser?.id;
     final ownerUid = room['owner_uid']?.toString();
     final isOwner = currentUid != null && ownerUid != null && currentUid == ownerUid;
-    final hasPassword = room['has_password'] == true;
-    String password = '';
 
-    // The owner never needs to enter their own private-room password.
-    // This also prevents the password dialog from appearing in the UI.
+    String password = '';
+    final hasPassword = room['has_password'] == true;
+
+    // Room owner can always enter their own private room without a password.
     if (hasPassword && !isOwner) {
       final entered = await showDialog<String>(
         context: context,
@@ -143,10 +146,21 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
           final controller = TextEditingController();
           return AlertDialog(
             title: const Text('Private Room'),
-            content: TextField(controller: controller, obscureText: true, autofocus: true, decoration: const InputDecoration(labelText: 'Password')),
+            content: TextField(
+              controller: controller,
+              obscureText: true,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Password'),
+            ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-              FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text), child: const Text('Enter')),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, controller.text),
+                child: const Text('Enter'),
+              ),
             ],
           );
         },
@@ -156,21 +170,44 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
     }
 
     try {
-      final result = await Supabase.instance.client.rpc('enter_room', params: {'p_room_id': room['room_id'], 'p_password': password.isEmpty ? null : password});
+      final result = await Supabase.instance.client.rpc(
+        'enter_room',
+        params: {
+          'p_room_id': roomId,
+          'p_password': password.isEmpty ? null : password,
+        },
+      );
       final row = Map<String, dynamic>.from((result as List).first as Map);
       if (!mounted) return;
-      await Navigator.push(context, MaterialPageRoute(builder: (_) => RoomChatPage(
-        roomId: row['room_id'] as String,
-        roomNumber: (row['room_number'] as num).toInt(),
-        roomName: row['room_name'] as String,
-        ownerUid: row['owner_uid'] as String,
-        profileUrl: row['profile_url']?.toString() ?? '',
-        hasPassword: row['has_password'] == true,
-        memberCount: (row['member_count'] as num?)?.toInt() ?? 0,
-      )));
+
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RoomChatPage(
+            roomId: row['room_id'] as String,
+            roomNumber: (row['room_number'] as num).toInt(),
+            roomName: row['room_name'] as String,
+            ownerUid: row['owner_uid'] as String,
+            profileUrl: row['profile_url']?.toString() ?? '',
+            hasPassword: row['has_password'] == true,
+            memberCount: (row['member_count'] as num?)?.toInt() ?? 0,
+          ),
+        ),
+      );
       await _refresh();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().contains('WRONG_PASSWORD') ? 'Wrong password.' : 'Could not enter Room.'), backgroundColor: AppColors.error));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e.toString().contains('WRONG_PASSWORD')
+                  ? 'Wrong password.'
+                  : 'Could not enter Room.',
+            ),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     }
   }
 
@@ -200,16 +237,64 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
     },
   );
 
-  Widget _roomBody() => Column(children: [
-    Padding(padding: const EdgeInsets.fromLTRB(12, 8, 12, 10), child: Container(
-      padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: AppColors.surface, borderRadius: AppRadius.pillRadius, border: Border.all(color: AppColors.border)),
-      child: Row(children: List.generate(3, (index) {
-        final selected = _tabs.index == index; const labels = ['My Room', 'Public Room', 'Private Room'];
-        return Expanded(child: GestureDetector(onTap: () => _tabs.animateTo(index), child: AnimatedContainer(duration: const Duration(milliseconds: 180), padding: const EdgeInsets.symmetric(vertical: 10), decoration: BoxDecoration(color: selected ? AppColors.accent : AppColors.transparent, borderRadius: AppRadius.pillRadius), child: Text(labels[index], textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: selected ? AppColors.textOnAccent : AppColors.textSecondary))));
-      })),
-    )),
-    Expanded(child: TabBarView(controller: _tabs, children: [_roomList('my'), _roomList('public'), _roomList('private')])),
-  ]);
+  Widget _roomBody() {
+    const labels = ['My Room', 'Public Room', 'Private Room'];
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: AppRadius.pillRadius,
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: List.generate(3, (index) {
+                final selected = _tabs.index == index;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => _tabs.animateTo(index),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: selected ? AppColors.accent : AppColors.transparent,
+                        borderRadius: AppRadius.pillRadius,
+                      ),
+                      child: Text(
+                        labels[index],
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          color: selected
+                              ? AppColors.textOnAccent
+                              : AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabs,
+            children: [
+              _roomList('my'),
+              _roomList('public'),
+              _roomList('private'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
