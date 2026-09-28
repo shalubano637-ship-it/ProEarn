@@ -5,6 +5,10 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+dependencies {
+    implementation("androidx.core:core-ktx:1.15.0")
+}
+
 android {
     namespace = "com.example.proearn"
     compileSdk = 36
