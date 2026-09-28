@@ -104,7 +104,7 @@ Future<List<_RankedUser>> _fetchRoomLeaderboard(_Period period) async {
 
   List<Map<String, dynamic>> previousRows = const [];
   if (period != _Period.allTime) {
-    final previousPeriod = period == _Period.today ? 'yesterday' : 'all_time';
+    final previousPeriod = period == _Period.today ? 'yesterday' : 'day_before_yesterday';
     previousRows = List<Map<String, dynamic>>.from(
       await Supabase.instance.client.rpc(
         'get_room_leaderboard',
