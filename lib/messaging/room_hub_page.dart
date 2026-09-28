@@ -18,7 +18,7 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 3, vsync: this);
+    _tabs = TabController(length: 3, vsync: this, initialIndex: 1);
     _tabs.addListener(() {
       if (mounted) setState(() {});
     });
