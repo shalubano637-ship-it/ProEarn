@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../models.dart';
 import '../ad_unit_ids.dart';
 import '../theme/theme.dart';
