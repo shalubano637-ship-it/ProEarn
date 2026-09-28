@@ -423,11 +423,14 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
     });
   }
 
-  void _swipeMetric(bool toRight) {
-    final next = _metric.index + (toRight ? 1 : -1);
+  void _swipeMetric(bool swipeRight) {
+    // Finger right -> previous section; finger left -> next section.
+    final next = _metric.index + (swipeRight ? -1 : 1);
     if (next < 0 || next >= _Metric.values.length) return;
     setState(() {
       _metric = _Metric.values[next];
+      // Every leaderboard section always opens on Today.
+      _period = _Period.today;
       _bodyKey = UniqueKey();
       _footerKey = UniqueKey();
     });
