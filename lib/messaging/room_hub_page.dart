@@ -44,7 +44,7 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
 
   Future<List<Map<String, dynamic>>> _rooms(String kind) async {
     if (_futures.containsKey(kind)) return _futures[kind]!;
-    final future = Supabase.instance.client.rpc('list_rooms_v2', params: {'p_kind': kind}).then((result) => (result as List).map((e) => Map<String, dynamic>.from(e as Map)).toList());
+    final future = Supabase.instance.client.rpc('list_rooms_v2', params: {'p_kind': kind}).then((result) => (result as List).map((e) => _normalizeRoom(Map<String, dynamic>.from(e as Map))).toList());
     _futures[kind] = future;
     final result = await future;
     return result;
