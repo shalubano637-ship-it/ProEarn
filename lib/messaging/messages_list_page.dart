@@ -376,33 +376,6 @@ class _ConversationsListState extends State<_ConversationsList> {
   }
 }
 
-class _RoomSection extends StatelessWidget {
-  const _RoomSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-        leading: CircleAvatar(
-          backgroundColor: AppColors.accent.withOpacity(.12),
-          child: const Icon(Icons.forum_outlined, color: AppColors.accent),
-        ),
-        title: const Text('Rooms', style: TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: const Text('My Room • Public Room • Private Room'),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const RoomHubPage()),
-          );
-        },
-      ),
-    );
-  }
-}
-
 class _FollowedUsersList extends StatelessWidget {
   final String currentUid;
   final String query;
