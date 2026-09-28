@@ -9,6 +9,7 @@ import 'help_page.dart';
 import 'privacy_page.dart';
 import '../models.dart';
 import '../admin/admin_reports_page.dart';
+import '../app_update_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -41,6 +42,7 @@ class SettingsPage extends StatelessWidget {
           buildTile(context: context, icon: Icons.security, title: "Security", page: const SecurityPage()),
           buildTile(context: context, icon: Icons.lock_outline, title: "Privacy", page: const PrivacyPage()),
           buildTile(context: context, icon: Icons.help_outline, title: "Help", page: const HelpPage()),
+          buildTile(context: context, icon: Icons.system_update_alt, title: "Update", page: const AppUpdatePage()),
           if (isAdmin)
             buildTile(context: context, icon: Icons.shield_outlined, title: "Admin Panel", page: const AdminReportsPage()),
         ],
