@@ -59,3 +59,26 @@ as $function$
 $function$;
 revoke all on function public.list_rooms(text) from public, anon, authenticated;
 grant execute on function public.list_rooms(text) to authenticated;
+
+
+-- Room names are limited to 10 characters.
+create or replace function public.create_room(p_name text, p_password text default null)
+returns table(room_id uuid, room_number bigint, room_name text, is_private boolean)
+language plpgsql security definer set search_path = public, extensions
+as $function$
+declare
+  v_uid uuid := auth.uid(); v_id uuid; v_number bigint;
+  v_name text := trim(coalesce(p_name, ''));
+  v_password text := nullif(trim(coalesce(p_password, '')), '');
+begin
+  if v_uid is null then raise exception 'Not authenticated'; end if;
+  if v_name = '' or char_length(v_name) > 10 then raise exception 'Room name must be 1 to 10 characters'; end if;
+  if exists(select 1 from public.rooms where owner_uid = v_uid) then raise exception 'ROOM_ALREADY_EXISTS'; end if;
+  insert into public.rooms(owner_uid, name, password_hash)
+  values (v_uid, v_name, case when v_password is null then null else extensions.crypt(v_password, extensions.gen_salt('bf',10)) end)
+  returning id, room_number, name into v_id, v_number, v_name;
+  return query select v_id, v_number, v_name, (v_password is not null);
+end
+$function$;
+revoke all on function public.create_room(text,text) from public, anon, authenticated;
+grant execute on function public.create_room(text,text) to authenticated;
