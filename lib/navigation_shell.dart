@@ -45,7 +45,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     LeaderboardPage(),
     MessagesListPage(),
     UploadPage(),
-    RoomHubPage(),
+    RoomHubPage(embedded: true),
     BagPage(),
     SettingsPage(),
   ];
