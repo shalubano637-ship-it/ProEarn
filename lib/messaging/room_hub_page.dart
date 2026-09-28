@@ -19,6 +19,9 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
   void initState() {
     super.initState();
     _tabs = TabController(length: 3, vsync: this);
+    _tabs.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -409,7 +412,7 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
             IconButton(onPressed: _searchRoom, icon: const Icon(Icons.search), tooltip: 'Search Room by ID'),
             IconButton(onPressed: _createRoom, icon: const Icon(Icons.add_circle_outline), tooltip: 'Create Room'),
           ]),
-        );
+        ),
         Expanded(child: _roomBody()),
       ]);
     }
