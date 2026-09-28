@@ -61,7 +61,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   }
 
   String? _conversationId;
-  DateTime? _myClearedAt; // messages before this are hidden from MY view only
   bool _isSending = false;
   String? _loadError;
   Map<String, dynamic>? _replyingTo;
@@ -153,12 +152,9 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
           .single();
 
       final bool iAmA = conv['participantA'] == myUid;
-      final clearedAtRaw = iAmA ? conv['clearedAtA'] : conv['clearedAtB'];
-
       if (mounted) {
         setState(() {
           _conversationId = id as String;
-          _myClearedAt = clearedAtRaw != null ? DateTime.parse(clearedAtRaw.toString()) : null;
           _messagesStream = Supabase.instance.client
               .from('messages')
               .stream(primaryKey: ['id'])
@@ -660,8 +656,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                           }
                           final allMessages = snapshot.data!;
                           final messages = allMessages.where((m) {
-                            final createdAt = DateTime.parse(m['createdAt'].toString());
-                            if (_myClearedAt != null && !createdAt.isAfter(_myClearedAt!)) return false;
                             final deletedFor = (m['deletedFor'] as List?)?.cast<String>() ?? const [];
                             if (deletedFor.contains(myUid)) return false;
                             return true;
