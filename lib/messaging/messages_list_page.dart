@@ -9,7 +9,7 @@ import '../ad_unit_ids.dart';
 import '../theme/theme.dart';
 import '../service.dart';
 import 'chat_page.dart';
-import 'room_chat_page.dart';
+import 'room_hub_page.dart';
 import 'message_requests_page.dart';
 import '../user_profile_features.dart';
 import '../widgets/error_retry_view.dart';
@@ -392,34 +392,21 @@ class _RoomSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-            child: Text(
-              'Rooms',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-            ),
-          ),
-          ListTile(
-            dense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-            leading: CircleAvatar(
-              backgroundColor: AppColors.accent.withOpacity(.12),
-              child: const Icon(Icons.forum_outlined, color: AppColors.accent),
-            ),
-            title: const Text('Room'),
-            subtitle: const Text('Enter a fresh chat session'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const RoomChatPage()),
-              );
-            },
-          ),
-        ],
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+        leading: CircleAvatar(
+          backgroundColor: AppColors.accent.withOpacity(.12),
+          child: const Icon(Icons.forum_outlined, color: AppColors.accent),
+        ),
+        title: const Text('Rooms', style: TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: const Text('My Room • Public Room • Private Room'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const RoomHubPage()),
+          );
+        },
       ),
     );
   }
