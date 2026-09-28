@@ -167,40 +167,15 @@ class _MessagesListPageState extends State<MessagesListPage> {
             ),
           ),
           Expanded(
-            child: widget.isForwardMode
-                ? FutureBuilder<List<Map<String, dynamic>>>(
-                    future: _conversationsFuture,
-                    builder: (context, convSnapshot) {
-                      if (convSnapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-                      if (convSnapshot.hasError) return ErrorRetryView(error: convSnapshot.error, onRetry: () => setState(() {}));
-                      return _buildNormalConversationList(convSnapshot.data ?? [], currentUid);
-                    },
-                  )
-                : DefaultTabController(
-                    length: 2,
-                    child: Column(
-                      children: [
-                        const TabBar(tabs: [Tab(text: 'Rooms'), Tab(text: 'Messages')]),
-                        Expanded(
-                          child: TabBarView(
-                            children: [
-                              const RoomHubPage(embedded: true),
-                              FutureBuilder<List<Map<String, dynamic>>>(
-                                future: _conversationsFuture,
-                                builder: (context, convSnapshot) {
-                                  if (convSnapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-                                  if (convSnapshot.hasError) return ErrorRetryView(error: convSnapshot.error, onRetry: () => setState(() {}));
-                                  return _buildNormalConversationList(convSnapshot.data ?? [], currentUid);
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-          ),
-        ],
+            child: FutureBuilder<List<Map<String, dynamic>>>(
+              future: _conversationsFuture,
+              builder: (context, convSnapshot) {
+                if (convSnapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                if (convSnapshot.hasError) return ErrorRetryView(error: convSnapshot.error, onRetry: () => setState(() {}));
+                return _buildNormalConversationList(convSnapshot.data ?? [], currentUid);
+              },
+            ),
+          ),        ],
       ),
     );
   }
