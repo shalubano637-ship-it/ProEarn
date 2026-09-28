@@ -20,7 +20,6 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
     _futures[kind] = future;
     final result = await future;
     return result;
-    return result;
   }
 
   Future<void> _refresh() async {
