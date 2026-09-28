@@ -62,6 +62,32 @@ class _MessagesListPageState extends State<MessagesListPage> {
     if (mounted) setState(() { _conversationsFuture = _fetchConversations(); });
   }
 
+  Widget _buildNormalConversationList(List<Map<String, dynamic>> allConversations, String currentUid) {
+    final conversations = allConversations.where((conv) {
+      final bool iAmA = conv['participantA'] == currentUid;
+      final bool hiddenForMe = iAmA ? (conv['hiddenByA'] ?? false) : (conv['hiddenByB'] ?? false);
+      return !hiddenForMe;
+    }).toList();
+    if (conversations.isNotEmpty) {
+      return _ConversationsList(
+        currentUid: currentUid,
+        conversations: conversations,
+        query: _query,
+        forwardText: widget.forwardText,
+        forwardImageUrl: widget.forwardImageUrl,
+        forwardImageUrls: widget.forwardImageUrls,
+        onChatReturn: _refreshConversations,
+      );
+    }
+    return _FollowedUsersList(
+      currentUid: currentUid,
+      query: _query,
+      forwardText: widget.forwardText,
+      forwardImageUrl: widget.forwardImageUrl,
+      forwardImageUrls: widget.forwardImageUrls,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -140,48 +166,39 @@ class _MessagesListPageState extends State<MessagesListPage> {
               ),
             ),
           ),
-          if (!widget.isForwardMode)
-            const _RoomSection(),
           Expanded(
-            child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: _conversationsFuture,
-              builder: (context, convSnapshot) {
-                if (convSnapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (convSnapshot.hasError) {
-                  return ErrorRetryView(
-                    error: convSnapshot.error,
-                    onRetry: () => setState(() {}),
-                  );
-                }
-                final allConversations = convSnapshot.data ?? [];
-                final conversations = allConversations.where((conv) {
-                  final bool iAmA = conv['participantA'] == currentUid;
-                  final bool hiddenForMe = iAmA ? (conv['hiddenByA'] ?? false) : (conv['hiddenByB'] ?? false);
-                  return !hiddenForMe;
-                }).toList();
-
-                if (conversations.isNotEmpty) {
-                  return _ConversationsList(
-                    currentUid: currentUid,
-                    conversations: conversations,
-                    query: _query,
-                    forwardText: widget.forwardText,
-                    forwardImageUrl: widget.forwardImageUrl,
-                    forwardImageUrls: widget.forwardImageUrls,
-                    onChatReturn: _refreshConversations,
-                  );
-                }
-                return _FollowedUsersList(
-                  currentUid: currentUid,
-                  query: _query,
-                  forwardText: widget.forwardText,
-                  forwardImageUrl: widget.forwardImageUrl,
-                  forwardImageUrls: widget.forwardImageUrls,
-                );
-              },
-            ),
+            child: widget.isForwardMode
+                ? FutureBuilder<List<Map<String, dynamic>>>(
+                    future: _conversationsFuture,
+                    builder: (context, convSnapshot) {
+                      if (convSnapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                      if (convSnapshot.hasError) return ErrorRetryView(error: convSnapshot.error, onRetry: () => setState(() {}));
+                      return _buildNormalConversationList(convSnapshot.data ?? [], currentUid);
+                    },
+                  )
+                : DefaultTabController(
+                    length: 2,
+                    child: Column(
+                      children: [
+                        const TabBar(tabs: [Tab(text: 'Rooms'), Tab(text: 'Messages')]),
+                        Expanded(
+                          child: TabBarView(
+                            children: [
+                              const RoomHubPage(embedded: true),
+                              FutureBuilder<List<Map<String, dynamic>>>(
+                                future: _conversationsFuture,
+                                builder: (context, convSnapshot) {
+                                  if (convSnapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                                  if (convSnapshot.hasError) return ErrorRetryView(error: convSnapshot.error, onRetry: () => setState(() {}));
+                                  return _buildNormalConversationList(convSnapshot.data ?? [], currentUid);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
           ),
         ],
       ),
