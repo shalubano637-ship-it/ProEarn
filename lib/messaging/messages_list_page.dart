@@ -189,6 +189,45 @@ void _openProfile(BuildContext context, String uid) {
   );
 }
 
+Future<void> _deleteChatFromList(BuildContext context, String otherUid, String userName, VoidCallback? onReturn) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Delete chat?'),
+      content: Text('Delete the chat with $userName from your Messages list?'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child: const Text('Delete', style: TextStyle(color: AppColors.error)),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return;
+
+  try {
+    final conversationId = await Supabase.instance.client.rpc(
+      'get_or_create_conversation',
+      params: {'p_other_uid': otherUid},
+    );
+    await Supabase.instance.client.rpc(
+      'hide_conversation_for_me',
+      params: {'p_conversation_id': conversationId},
+    );
+    onReturn?.call();
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Chat deleted.')));
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't delete chat."), backgroundColor: AppColors.error),
+      );
+    }
+  }
+}
+
 void _openChat(BuildContext context, String otherUid, String otherUserName, {VoidCallback? onReturn}) {
   Navigator.push(
     context,
@@ -343,6 +382,9 @@ class _ConversationsListState extends State<_ConversationsList> {
                           forwardImageUrls: widget.forwardImageUrls,
                         )
                     : () => _openChat(context, otherUid, userName, onReturn: widget.onChatReturn),
+                onLongPress: widget.isForwardMode
+                    ? null
+                    : () => _deleteChatFromList(context, otherUid, userName, widget.onChatReturn),
                 leading: GestureDetector(
                   onTap: widget.isForwardMode ? null : () => _openProfile(context, otherUid),
                   child: ClipOval(
