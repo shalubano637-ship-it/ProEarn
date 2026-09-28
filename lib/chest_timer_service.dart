@@ -8,11 +8,13 @@ class ChestProgress {
   final int currentChestIndex;
   final int remainingSeconds;
   final bool isUnlocked;
+  final DateTime? unlockAt;
 
   const ChestProgress({
     required this.currentChestIndex,
     required this.remainingSeconds,
     required this.isUnlocked,
+    required this.unlockAt,
   });
 }
 
@@ -24,6 +26,7 @@ abstract class ChestRepository {
   Future<void> syncRemaining(int remainingSeconds);
 
   Future<void> sendChestReadyNotification(String uid);
+  Future<bool> hasChestReadyNotificationSince(String uid, DateTime unlockAt);
 }
 
 class _SupabaseChestRepository implements ChestRepository {
@@ -64,6 +67,19 @@ class _SupabaseChestRepository implements ChestRepository {
       message: 'Your chest is ready to open! 🎁',
     );
   }
+
+  @override
+  Future<bool> hasChestReadyNotificationSince(String uid, DateTime unlockAt) async {
+    final row = await _client
+        .from('notifications')
+        .select('id')
+        .eq('targetOwnerId', uid)
+        .eq('type', 'chest_ready')
+        .gte('timestamp', unlockAt.toUtc().toIso8601String())
+        .limit(1)
+        .maybeSingle();
+    return row != null;
+  }
 }
 
 class ChestTimerService extends ChangeNotifier {
@@ -82,8 +98,9 @@ class ChestTimerService extends ChangeNotifier {
   bool isUnlocked = false;
   bool isLoaded = false;
   String? loadError;
+  DateTime? _unlockAt;
 
-  bool _notifiedThisUnlock = false; // avoid duplicate chest_ready pushes if unlock fires more than once before being claimed
+  bool _notifiedThisUnlock = false; // avoid duplicate chest_ready notifications for the same unlock
 
   @visibleForTesting
   bool get notifiedThisUnlockForTest => _notifiedThisUnlock;
@@ -107,14 +124,17 @@ class ChestTimerService extends ChangeNotifier {
         currentChestIndex = existing.currentChestIndex;
         remainingSeconds = existing.remainingSeconds;
         isUnlocked = existing.isUnlocked;
+        _unlockAt = existing.unlockAt;
       }
 
       isLoaded = true;
       loadError = null;
-      _notifiedThisUnlock = isUnlocked; // don't re-notify for an unlock that already happened before this load
+      _notifiedThisUnlock = false;
       notifyListeners();
 
-      if (!isUnlocked) {
+      if (isUnlocked) {
+        await _sendReadyNotificationOnce(checkDatabase: true);
+      } else {
         _startTicking();
       }
     } catch (e) {
@@ -148,12 +168,29 @@ class ChestTimerService extends ChangeNotifier {
     }
   }
 
-  Future<void> _sendReadyNotificationOnce() async {
+  Future<void> _sendReadyNotificationOnce({bool checkDatabase = false}) async {
     if (_notifiedThisUnlock) return;
-    _notifiedThisUnlock = true;
     final uid = _repo.currentUserId;
     if (uid == null) return;
-    await _repo.sendChestReadyNotification(uid);
+
+    if (checkDatabase && _unlockAt != null) {
+      try {
+        final alreadySent = await _repo.hasChestReadyNotificationSince(uid, _unlockAt!);
+        if (alreadySent) {
+          _notifiedThisUnlock = true;
+          return;
+        }
+      } catch (e) {
+        debugPrint('chest ready notification lookup failed: $e');
+      }
+    }
+
+    try {
+      await _repo.sendChestReadyNotification(uid);
+      _notifiedThisUnlock = true;
+    } catch (e) {
+      debugPrint('chest ready notification send failed: $e');
+    }
   }
 
   void pauseAndPersist() {
