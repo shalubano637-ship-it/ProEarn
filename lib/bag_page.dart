@@ -27,6 +27,9 @@ class _BagPageState extends State<BagPage> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this, initialIndex: widget.initialTabIndex);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
