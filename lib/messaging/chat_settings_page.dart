@@ -219,15 +219,6 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
               activeColor: AppColors.warning,
             ),
             const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.delete_outline, color: AppColors.error),
-              title: const Text(
-                'Delete chat',
-                style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600),
-              ),
-              subtitle: const Text('Remove this chat from your Messages list'),
-              onTap: _isBusy ? null : _deleteChat,
-            ),
             const Divider(height: 1),
             Padding(
               padding: const EdgeInsets.all(16),
