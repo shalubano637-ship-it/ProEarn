@@ -192,6 +192,7 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
                           if (type == 'like') rawMessage = 'liked your post.';
                           if (type == 'comment') rawMessage = 'commented on your post.';
                           if (type == 'follow') rawMessage = 'started following you.';
+                          if (type == 'chest_ready') rawMessage = 'Your chest is ready to open! 🎁';
                         }
 
                         IconData leadingIcon = Icons.notifications;
