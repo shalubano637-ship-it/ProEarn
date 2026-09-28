@@ -1,11 +1,15 @@
 import 'dart:async';
-import 'dart:io';
+import 'package:universal_io/universal_io.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models.dart';
 import '../theme/theme.dart';
 import '../cloudflare_media_service.dart';
 import '../user_profile_features.dart';
+import 'chat_image_preview_page.dart';
+import 'chat_multi_image_preview_page.dart';
 
 class RoomChatPage extends StatefulWidget {
   final String roomId;
@@ -33,6 +37,7 @@ class RoomChatPage extends StatefulWidget {
 
 class _RoomChatPageState extends State<RoomChatPage> {
   final _controller = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
   Timer? _timer;
   List<Map<String, dynamic>> _messages = [];
   bool _loading = true;
@@ -40,6 +45,7 @@ class _RoomChatPageState extends State<RoomChatPage> {
   late String _roomName;
   late bool _hasPassword;
   late int _memberCount;
+  Map<String, dynamic>? _replyingTo;
 
   String get _myUid => Supabase.instance.client.auth.currentUser?.id ?? '';
   bool get _isOwner => _myUid == widget.ownerUid;
@@ -72,18 +78,22 @@ class _RoomChatPageState extends State<RoomChatPage> {
     }
   }
 
-  Future<void> _send() async {
+  Future<void> _send({String? imageUrl}) async {
     final text = _controller.text.trim();
-    if (text.isEmpty || _sending) return;
+    if ((text.isEmpty && imageUrl == null) || _sending) return;
     setState(() => _sending = true);
+    final replyId = _replyingTo?['id']?.toString();
     try {
       await Supabase.instance.client.rpc('send_room_message', params: {
         'p_room_id': widget.roomId,
-        'p_text': text,
+        'p_text': text.isEmpty ? null : text,
+        'p_image_url': imageUrl,
+        'p_reply_to_message_id': replyId,
       });
       _controller.clear();
+      if (mounted) setState(() => _replyingTo = null);
       await _loadMessages(silent: true);
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Message could not be sent.'), backgroundColor: AppColors.error),
@@ -94,40 +104,172 @@ class _RoomChatPageState extends State<RoomChatPage> {
     }
   }
 
+  Future<void> _pickAndSendImage(ImageSource source) async {
+    try {
+      final picked = await _picker.pickImage(source: source, imageQuality: 90);
+      if (picked == null || !mounted) return;
+      final url = await showChatImagePreview(context, File(picked.path));
+      if (url != null) await _send(imageUrl: url);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't open camera/gallery."), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickAndSendMultipleImages() async {
+    try {
+      final picked = await _picker.pickMultiImage(imageQuality: 90, limit: 20);
+      if (picked.isEmpty || !mounted) return;
+      final files = picked.map((x) => File(x.path)).toList();
+      final urls = await showChatMultiImagePreview(context, files);
+      if (urls == null || urls.isEmpty || !mounted) return;
+      for (final url in urls) {
+        await _send(imageUrl: url);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't open gallery."), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  void _copyMessage(Map<String, dynamic> msg) {
+    final text = msg['text']?.toString() ?? '';
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No text to copy.')));
+      return;
+    }
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied.')));
+  }
+
+  Future<void> _deleteMessage(Map<String, dynamic> msg) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: const Text('Delete message?'),
+        content: const Text('This removes your message from this Room session.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Delete', style: TextStyle(color: AppColors.error))),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await Supabase.instance.client.rpc('delete_room_message', params: {'p_message_id': msg['id']});
+      await _loadMessages(silent: true);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't delete message."), backgroundColor: AppColors.error));
+    }
+  }
+
+  void _reportMessage(Map<String, dynamic> msg) async {
+    const reasons = ['Spam or Misleading','Hate Speech or Violence','Harassment or Bullying','Nudity or Sexual Content','Child Safety / CSAE','Intellectual Property Violation'];
+    String? selected;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (d) => StatefulBuilder(builder: (context, setState) => AlertDialog(
+        title: const Text('Report message'),
+        content: DropdownButtonFormField<String>(
+          value: selected,
+          hint: const Text('Select a reason'),
+          items: reasons.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+          onChanged: (v) => setState(() => selected = v),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+          FilledButton(onPressed: selected == null ? null : () => Navigator.pop(d, true), child: const Text('Report')),
+        ],
+      )),
+    );
+    if (ok != true || selected == null) return;
+    try {
+      await Supabase.instance.client.from(kReportsCollection).insert({
+        'reportedBy': _myUid,
+        'reportedUserId': msg['sender_id'],
+        'reason': selected,
+        'messageSnapshot': msg['text'],
+        'source': 'room_message',
+        'targetMessageId': msg['id'],
+      });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report submitted — thank you.')));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't submit report."), backgroundColor: AppColors.error));
+    }
+  }
+
+  void _showMessageOptions(Map<String, dynamic> msg, bool mine) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (sheetContext) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(
+            leading: const Icon(Icons.reply),
+            title: const Text('Reply'),
+            onTap: () { Navigator.pop(sheetContext); setState(() => _replyingTo = msg); },
+          ),
+          if ((msg['text']?.toString() ?? '').isNotEmpty)
+            ListTile(
+              leading: const Icon(Icons.copy),
+              title: const Text('Copy'),
+              onTap: () { Navigator.pop(sheetContext); _copyMessage(msg); },
+            ),
+          if (mine)
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: AppColors.error),
+              title: const Text('Delete', style: TextStyle(color: AppColors.error)),
+              onTap: () { Navigator.pop(sheetContext); _deleteMessage(msg); },
+            )
+          else
+            ListTile(
+              leading: const Icon(Icons.flag_outlined, color: AppColors.error),
+              title: const Text('Report', style: TextStyle(color: AppColors.error)),
+              onTap: () { Navigator.pop(sheetContext); _reportMessage(msg); },
+            ),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+  }
+
+  void _openImage(String url) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(backgroundColor: Colors.black, foregroundColor: Colors.white),
+      body: Center(child: InteractiveViewer(child: Image.network(url))),
+    )));
+  }
+
   Future<void> _exit() async {
     _timer?.cancel();
-    try {
-      await Supabase.instance.client.rpc('exit_room', params: {'p_room_id': widget.roomId});
-    } catch (_) {}
+    try { await Supabase.instance.client.rpc('exit_room', params: {'p_room_id': widget.roomId}); } catch (_) {}
   }
 
   Future<void> _openRoomInfo() async {
     final changed = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-        builder: (_) => RoomInfoPage(
-          roomId: widget.roomId,
-          roomNumber: widget.roomNumber,
-          roomName: _roomName,
-          profileUrl: widget.profileUrl,
-          ownerUid: widget.ownerUid,
-          hasPassword: _hasPassword,
-          memberCount: _memberCount,
-          isOwner: _isOwner,
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => RoomInfoPage(
+        roomId: widget.roomId, roomNumber: widget.roomNumber, roomName: _roomName,
+        profileUrl: widget.profileUrl, ownerUid: widget.ownerUid, hasPassword: _hasPassword,
+        memberCount: _memberCount, isOwner: _isOwner,
+      )),
     );
     if (changed == true && mounted) {
       final result = await Supabase.instance.client.rpc('list_rooms', params: {'p_kind': 'my'});
       final rows = (result as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
       final mine = rows.where((r) => r['room_id'] == widget.roomId).toList();
-      if (mine.isNotEmpty) {
-        setState(() {
-          _roomName = mine.first['room_name'].toString();
-          _hasPassword = mine.first['has_password'] == true;
-          _memberCount = (mine.first['member_count'] as num?)?.toInt() ?? _memberCount;
-        });
-      }
+      if (mine.isNotEmpty) setState(() {
+        _roomName = mine.first['room_name'].toString();
+        _hasPassword = mine.first['has_password'] == true;
+        _memberCount = (mine.first['member_count'] as num?)?.toInt() ?? _memberCount;
+      });
     }
   }
 
@@ -141,104 +283,110 @@ class _RoomChatPageState extends State<RoomChatPage> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async {
-        await _exit();
-        return true;
-      },
+      onWillPop: () async { await _exit(); return true; },
       child: Scaffold(
         appBar: AppBar(
           titleSpacing: 0,
           title: InkWell(
             onTap: _openRoomInfo,
-            child: Row(
-              children: [
-                CircleAvatar(radius: 17, backgroundColor: AppColors.border, backgroundImage: widget.profileUrl.isNotEmpty ? NetworkImage(widget.profileUrl) : null, child: widget.profileUrl.isEmpty ? const Icon(Icons.forum_outlined, size: 18) : null),
-                const SizedBox(width: 8),
-                Flexible(child: Text(_roomName, overflow: TextOverflow.ellipsis)),
-                const SizedBox(width: 7),
-                Text('#' + widget.roomNumber.toString(), style: const TextStyle(fontSize: 12, color: AppColors.textTertiary)),
-                const SizedBox(width: 7),
-                const Icon(Icons.people_outline, size: 17),
-                const SizedBox(width: 3),
-                Text(_memberCount.toString(), style: const TextStyle(fontSize: 12)),
-              ],
-            ),
+            child: Row(children: [
+              CircleAvatar(radius: 17, backgroundColor: AppColors.border, backgroundImage: widget.profileUrl.isNotEmpty ? NetworkImage(widget.profileUrl) : null, child: widget.profileUrl.isEmpty ? const Icon(Icons.forum_outlined, size: 18) : null),
+              const SizedBox(width: 8),
+              Flexible(child: Text(_roomName, overflow: TextOverflow.ellipsis)),
+              const SizedBox(width: 7),
+              Text('#${widget.roomNumber}', style: const TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+              const SizedBox(width: 7),
+              const Icon(Icons.people_outline, size: 17),
+              const SizedBox(width: 3),
+              Text(_memberCount.toString(), style: const TextStyle(fontSize: 12)),
+            ]),
           ),
         ),
-        body: Column(
-          children: [
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _messages.isEmpty
-                      ? const Center(child: Text('No messages in this Room session yet.'))
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(12),
-                          itemCount: _messages.length,
-                          itemBuilder: (context, index) {
-                            final m = _messages[index];
-                            final mine = m['sender_id']?.toString() == _myUid;
-                            final name = m['sender_name']?.toString() ?? 'User';
-                            return Align(
-                              alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-                              child: Container(
-                                constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * .78),
-                                margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                                decoration: BoxDecoration(
-                                  color: mine ? AppColors.accent : AppColors.surface,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: mine ? AppColors.accent : AppColors.border),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (!mine)
-                                      Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.accent)),
-                                    if (!mine) const SizedBox(height: 3),
-                                    Text(
-                                      m['text']?.toString() ?? '',
-                                      style: TextStyle(color: mine ? AppColors.textOnAccent : AppColors.textPrimary),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
+        body: Column(children: [
+          Expanded(
+            child: _loading ? const Center(child: CircularProgressIndicator()) : _messages.isEmpty
+              ? const Center(child: Text('No messages in this Room session yet.'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: _messages.length,
+                  itemBuilder: (context, index) {
+                    final m = _messages[index];
+                    final mine = m['sender_id']?.toString() == _myUid;
+                    final name = m['sender_name']?.toString() ?? 'User';
+                    final imageUrl = m['image_url']?.toString() ?? '';
+                    final text = m['text']?.toString() ?? '';
+                    final replyText = m['reply_text']?.toString() ?? '';
+                    return Align(
+                      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+                      child: GestureDetector(
+                        onLongPress: () => _showMessageOptions(m, mine),
+                        child: Container(
+                          constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * .78),
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: EdgeInsets.all(imageUrl.isNotEmpty && text.isEmpty ? 5 : 10),
+                          decoration: BoxDecoration(
+                            color: mine ? AppColors.accent : AppColors.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: mine ? AppColors.accent : AppColors.border),
+                          ),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            if (!mine) Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.accent)),
+                            if (replyText.isNotEmpty) Container(
+                              width: double.infinity, padding: const EdgeInsets.all(7), margin: const EdgeInsets.only(bottom: 6),
+                              decoration: BoxDecoration(color: Colors.black.withOpacity(.12), borderRadius: BorderRadius.circular(9)),
+                              child: Text(replyText, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: mine ? AppColors.textOnAccent : AppColors.textSecondary)),
+                            ),
+                            if (imageUrl.isNotEmpty) GestureDetector(
+                              onTap: () => _openImage(imageUrl),
+                              child: ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.network(imageUrl, width: 220, height: 220, fit: BoxFit.cover)),
+                            ),
+                            if (imageUrl.isNotEmpty && text.isNotEmpty) const SizedBox(height: 6),
+                            if (text.isNotEmpty) Text(text, style: TextStyle(color: mine ? AppColors.textOnAccent : AppColors.textPrimary)),
+                          ]),
                         ),
-            ),
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _controller,
-                        maxLines: 4,
-                        minLines: 1,
-                        decoration: InputDecoration(
-                          hintText: 'Message Room...',
-                          filled: true,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                        ),
-                        onSubmitted: (_) => _send(),
                       ),
-                    ),
-                    const SizedBox(width: 5),
-                    IconButton(
-                      onPressed: _sending ? null : _send,
-                      icon: _sending
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.send),
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              ),
+          ),
+          if (_replyingTo != null)
+            Container(
+              padding: const EdgeInsets.fromLTRB(12, 7, 8, 7),
+              color: AppColors.surface,
+              child: Row(children: [
+                const Icon(Icons.reply, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(_replyingTo!['text']?.toString().isNotEmpty == true ? _replyingTo!['text'].toString() : 'Photo', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                IconButton(onPressed: () => setState(() => _replyingTo = null), icon: const Icon(Icons.close)),
+              ]),
             ),
-          ],
-        ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(6, 5, 6, 7),
+              child: Row(children: [
+                IconButton(
+                  tooltip: 'Camera',
+                  onPressed: _sending ? null : () => _pickAndSendImage(ImageSource.camera),
+                  icon: const Icon(Icons.camera_alt_outlined),
+                ),
+                Expanded(child: TextField(
+                  controller: _controller, maxLines: 4, minLines: 1,
+                  decoration: InputDecoration(hintText: 'Message Room...', filled: true, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none)),
+                  onSubmitted: (_) => _send(),
+                )),
+                IconButton(
+                  tooltip: 'Gallery',
+                  onPressed: _sending ? null : _pickAndSendMultipleImages,
+                  icon: const Icon(Icons.image_outlined),
+                ),
+                IconButton(
+                  onPressed: _sending ? null : () => _send(),
+                  icon: _sending ? const SizedBox(width: 20,height:20,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.send),
+                ),
+              ]),
+            ),
+          ),
+        ]),
       ),
     );
   }
