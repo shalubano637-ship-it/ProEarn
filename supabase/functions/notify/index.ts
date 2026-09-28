@@ -7,7 +7,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ONESIGNAL_APP_ID = Deno.env.get("ONESIGNAL_APP_ID")!;
 const ONESIGNAL_REST_API_KEY = Deno.env.get("ONESIGNAL_REST_API_KEY")!;
 
-const ALLOWED_TYPES = new Set(["like", "comment", "follow", "get", "message"]);
+const ALLOWED_TYPES = new Set(["like", "comment", "follow", "get", "message", "chest_ready"]);
 const MAX_MESSAGE_LENGTH = 300;
 
 const CORS_HEADERS = {
@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
 
     if (!targetOwnerId) return json({ error: "targetOwnerId required" }, 400);
     if (!ALLOWED_TYPES.has(type)) return json({ error: "Invalid type" }, 400);
-    if (targetOwnerId === senderId) return json({ success: true }); // no self-notify
+    if (targetOwnerId === senderId && type !== "chest_ready") return json({ success: true }); // chest_ready is intentionally self-notified
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -55,7 +55,8 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!targetData) return json({ success: true });
 
-    if (!targetData.pushNotificationsEnabled) return json({ success: true });
+    const pushEnabled = targetData.pushNotificationsEnabled === true;
+    if (!pushEnabled && type !== "chest_ready") return json({ success: true });
     if (type === "like" && targetData.notifyLikes === false) return json({ success: true });
     if (type === "comment" && targetData.notifyComments === false) return json({ success: true });
     if (type === "follow" && targetData.notifyFollow === false) return json({ success: true });
@@ -90,6 +91,8 @@ Deno.serve(async (req) => {
     else if (type === "follow") pushBody = "Someone started following you";
     else if (type === "comment") pushBody = "Someone commented on your post";
     else if (type === "message") pushBody = `${activeName} sent you a message`;
+
+    if (!pushEnabled) return json({ success: true });
 
     const pushResponse = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
