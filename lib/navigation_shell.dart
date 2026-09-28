@@ -18,6 +18,7 @@ import 'chest_timer_service.dart';
 import 'leaderboard_page.dart';
 import 'bag_page.dart';
 import 'rewards/signup_rewards_popup.dart';
+import 'messaging/room_hub_page.dart';
 
     
  
@@ -44,7 +45,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     LeaderboardPage(),
     MessagesListPage(),
     UploadPage(),
-    ChestsPage(),
+    RoomHubPage(),
     BagPage(),
     SettingsPage(),
   ];
@@ -207,7 +208,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.search),
+              icon: const Icon(Icons.search),            IconButton(
+              icon: const Icon(Icons.card_giftcard_outlined),
+              tooltip: "Rewards",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ChestsPage()),
+                );
+              },
+            ),
+
               tooltip: "Search",
               onPressed: () {
                 Navigator.push(
@@ -297,26 +308,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             const BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: "Messages"),
             const BottomNavigationBarItem(icon: Icon(Icons.add_box_outlined), label: "Upload"),
             BottomNavigationBarItem(
-              icon: AnimatedBuilder(
-                animation: Listenable.merge([chestTimerService, coinChestTimerService]),
-                builder: (context, _) => Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    const Icon(Icons.shopping_cart_outlined),
-                    if (chestTimerService.isUnlocked || coinChestTimerService.isUnlocked)
-                      Positioned(
-                        right: -4,
-                        top: -2,
-                        child: Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
-                          constraints: const BoxConstraints(minWidth: 8, minHeight: 8),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              label: "Rewards",
+              icon: const Icon(Icons.forum_outlined),
+              label: "Rooms",
             ),
             const BottomNavigationBarItem(icon: Icon(Icons.shopping_bag_outlined), label: "Bag"),
             const BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
