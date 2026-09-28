@@ -10,7 +10,6 @@ import '../service.dart';
 import 'chat_settings_page.dart';
 import 'chat_image_preview_page.dart';
 import 'chat_multi_image_preview_page.dart';
-import 'chat_gift_sheet.dart';
 import 'messages_list_page.dart';
 
 class ChatPage extends StatefulWidget {
@@ -844,18 +843,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                       icon: const Icon(Icons.image_outlined),
                       tooltip: "Gallery",
                       onPressed: _pickAndSendMultipleImages,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.card_giftcard_outlined),
-                      tooltip: "Send a gift",
-                      onPressed: _conversationId == null
-                          ? null
-                          : () => showChatGiftSheet(
-                                context,
-                                otherUid: widget.otherUid,
-                                otherUserName: widget.otherUserName,
-                                conversationId: _conversationId!,
-                              ),
                     ),
                     IconButton(
                       icon: _isSending
