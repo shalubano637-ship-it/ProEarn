@@ -346,12 +346,14 @@ class _ConversationsListState extends State<_ConversationsList> {
                     : () => _openChat(context, otherUid, userName, onReturn: widget.onChatReturn),
                 leading: GestureDetector(
                   onTap: widget.isForwardMode ? null : () => _openProfile(context, otherUid),
-                  child: CircleAvatar(
-                    backgroundColor: AppColors.border,
-                    backgroundImage: profileUrl.isNotEmpty
-                        ? CachedNetworkImageProvider(profileUrl, cacheManager: CustomImageCacheManager.instance)
-                        : null,
-                    child: profileUrl.isEmpty ? const Icon(Icons.person) : null,
+                  child: ClipOval(
+                    child: GlobalCachedImage(
+                      imageUrl: profileUrl,
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                      errorWidget: const Icon(Icons.person),
+                    ),
                   ),
                 ),
                 title: Row(
@@ -444,12 +446,14 @@ class _FollowedUsersList extends StatelessWidget {
                       : () => _openChat(context, otherUid, userName),
                   leading: GestureDetector(
                     onTap: isForwardMode ? null : () => _openProfile(context, otherUid),
-                    child: CircleAvatar(
-                      backgroundColor: AppColors.border,
-                      backgroundImage: profileUrl.isNotEmpty
-                          ? CachedNetworkImageProvider(profileUrl, cacheManager: CustomImageCacheManager.instance)
-                          : null,
-                      child: profileUrl.isEmpty ? const Icon(Icons.person) : null,
+                    child: ClipOval(
+                      child: GlobalCachedImage(
+                        imageUrl: profileUrl,
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                        errorWidget: const Icon(Icons.person),
+                      ),
                     ),
                   ),
                   title: Text(userName),
