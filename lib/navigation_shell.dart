@@ -57,6 +57,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void initState() {
     super.initState();
     _loadLastViewedTime(); // App start hote hi Hive se time read karein
+    // Keep the chest timer alive across the whole app, not only on ChestsPage.
+    chestTimerService.initialize();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       await SignupRewardsPopup.showIfEligible(context);
