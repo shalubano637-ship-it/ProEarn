@@ -129,41 +129,6 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
     }
   }
 
-  Future<void> _deleteChat() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete chat?'),
-        content: const Text('This removes the chat from your Messages list. The other person keeps their copy.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    try {
-      final conversationId = await Supabase.instance.client.rpc(
-        'get_or_create_conversation',
-        params: {'p_other_uid': widget.otherUid},
-      );
-      await Supabase.instance.client.rpc(
-        'hide_conversation_for_me',
-        params: {'p_conversation_id': conversationId},
-      );
-      if (mounted) Navigator.pop(context, 'deleted');
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Couldn't delete chat."), backgroundColor: AppColors.error),
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
