@@ -19,6 +19,8 @@ import 'leaderboard_page.dart';
 import 'bag_page.dart';
 import 'rewards/signup_rewards_popup.dart';
 import 'messaging/room_hub_page.dart';
+import 'app_update_service.dart';
+import 'app_update_page.dart';
 
     
  
@@ -39,6 +41,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   StreamSubscription<List<Map<String, dynamic>>>? _banWatchSub;
   
   DateTime? _lastPressedTime;
+  bool _updatePopupShown = false;
 
   final List<Widget> _pages = const [
     ReelsPage(),
@@ -57,8 +60,77 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       await SignupRewardsPopup.showIfEligible(context);
+      await _checkForAppUpdate();
     });
     _watchForLiveBan(); // Admin panel se mid-session ban ho jaaye to turant sign out
+  }
+
+  Future<void> _checkForAppUpdate() async {
+    if (_updatePopupShown) return;
+    final info = await AppUpdateService.checkForUpdate();
+    if (!mounted || info == null) return;
+    _updatePopupShown = true;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !info.forceUpdate,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(info.title),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Version ${info.versionName} is available.'),
+              if (info.message.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(info.message),
+              ],
+              if (info.newFeatures.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                const Text('New Features', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                ...info.newFeatures.take(4).map((e) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text('• $e'),
+                )),
+              ],
+              if (info.fixes.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                const Text('Fixes', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                ...info.fixes.take(4).map((e) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text('• $e'),
+                )),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => AppUpdatePage(updateInfo: info)),
+              );
+            },
+            child: const Text('More Info'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => AppUpdatePage(updateInfo: info)),
+              );
+            },
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _watchForLiveBan() {
