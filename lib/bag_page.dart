@@ -35,6 +35,56 @@ class _BagPageState extends State<BagPage> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
+  void _selectTab(int index) {
+    if (_tabController.index != index) {
+      _tabController.animateTo(index);
+    }
+    if (mounted) setState(() {});
+  }
+
+  Widget _bagSectionToggle() {
+    final selected = _tabController.index;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: AppRadius.pillRadius,
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Expanded(child: _bagToggleButton('Owned', 0, selected)),
+            Expanded(child: _bagToggleButton('Received', 1, selected)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _bagToggleButton(String label, int index, int selected) {
+    final isSelected = selected == index;
+    return GestureDetector(
+      onTap: () => _selectTab(index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.accent : AppColors.transparent,
+          borderRadius: AppRadius.pillRadius,
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: AppTextStyles.labelMedium.copyWith(
+            color: isSelected ? AppColors.textOnAccent : AppColors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -55,15 +105,10 @@ class _BagPageState extends State<BagPage> with SingleTickerProviderStateMixin {
               label: const Text("Buy Gifts", style: TextStyle(color: AppColors.accent)),
             ),
         ],
-        bottom: _isOwnBag
-            ? TabBar(
-                controller: _tabController,
-                tabs: const [
-                  Tab(text: "Owned"),
-                  Tab(text: "Received"),
-                ],
-              )
-            : null,
+        bottom: _isOwnBag ? PreferredSize(
+            preferredSize: const Size.fromHeight(58),
+            child: _bagSectionToggle(),
+          ) : null,
       ),
       body: _isOwnBag
           ? TabBarView(
