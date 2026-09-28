@@ -14,7 +14,7 @@ class ChestProgress {
     required this.currentChestIndex,
     required this.remainingSeconds,
     required this.isUnlocked,
-    required this.unlockAt,
+    this.unlockAt,
   });
 }
 
@@ -129,12 +129,12 @@ class ChestTimerService extends ChangeNotifier {
 
       isLoaded = true;
       loadError = null;
-      _notifiedThisUnlock = false;
+      _notifiedThisUnlock = isUnlocked && _unlockAt == null;
       notifyListeners();
 
-      if (isUnlocked) {
+      if (isUnlocked && _unlockAt != null) {
         await _sendReadyNotificationOnce(checkDatabase: true);
-      } else {
+      } else if (!isUnlocked) {
         _startTicking();
       }
     } catch (e) {
