@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -129,8 +131,13 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
     }
   }
 
+  String _generateRoomName() {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    final random = Random();
+    return List.generate(6, (_) => letters[random.nextInt(letters.length)]).join();
+  }
+
   Future<void> _createRoom() async {
-    final nameController = TextEditingController();
     final passwordController = TextEditingController();
     bool privateRoom = false;
     bool busy = false;
@@ -143,11 +150,11 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: nameController,
-                maxLength: 10,
-                decoration: const InputDecoration(labelText: 'Room name', hintText: "Jerry's Room"),
+              const Text(
+                'A 6-letter Room name will be generated automatically.',
+                textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 12),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Password / Private'),
@@ -169,12 +176,11 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
             ),
             FilledButton(
               onPressed: busy ? null : () async {
-                if (nameController.text.trim().isEmpty ||
-                    (privateRoom && passwordController.text.isEmpty)) return;
+                if (privateRoom && passwordController.text.isEmpty) return;
                 setDialogState(() => busy = true);
                 try {
                   final result = await Supabase.instance.client.rpc('create_room', params: {
-                    'p_name': nameController.text.trim(),
+                    'p_name': _generateRoomName(),
                     'p_password': privateRoom ? passwordController.text : null,
                   });
                   final row = Map<String, dynamic>.from((result as List).first as Map);
@@ -202,7 +208,6 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
       ),
     );
 
-    nameController.dispose();
     passwordController.dispose();
     if (created != null) {
       await _refresh();
