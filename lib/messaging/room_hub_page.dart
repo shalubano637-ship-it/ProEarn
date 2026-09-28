@@ -39,13 +39,87 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
     if (mounted) setState(() {});
   }
 
+  Future<void> _searchRoom() async {
+    final controller = TextEditingController();
+    bool busy = false;
+
+    final room = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Find Room'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            maxLength: 10,
+            decoration: const InputDecoration(
+              labelText: 'Room ID',
+              hintText: 'Enter numeric Room ID',
+              prefixIcon: Icon(Icons.tag),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: busy ? null : () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: busy ? null : () async {
+                final id = int.tryParse(controller.text.trim());
+                if (id == null || id <= 0) return;
+                setDialogState(() => busy = true);
+                try {
+                  final result = await Supabase.instance.client.rpc(
+                    'search_room_by_number',
+                    params: {'p_room_number': id},
+                  );
+                  final rows = (result as List)
+                      .map((e) => Map<String, dynamic>.from(e as Map))
+                      .toList();
+                  if (rows.isEmpty) {
+                    setDialogState(() => busy = false);
+                    if (dialogContext.mounted) {
+                      ScaffoldMessenger.of(dialogContext).showSnackBar(
+                        const SnackBar(content: Text('Room not found.')),
+                      );
+                    }
+                    return;
+                  }
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext, rows.first);
+                  }
+                } catch (_) {
+                  setDialogState(() => busy = false);
+                  if (dialogContext.mounted) {
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
+                      const SnackBar(content: Text('Could not search Room.')),
+                    );
+                  }
+                }
+              },
+              child: busy
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('Search'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    controller.dispose();
+    if (room != null && mounted) {
+      await _enterRoom(room);
+    }
+  }
+
   Future<void> _createRoom() async {
     final nameController = TextEditingController();
     final passwordController = TextEditingController();
     bool privateRoom = false;
     bool busy = false;
 
-    final created = await showDialog<bool>(
+    final created = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
@@ -83,11 +157,12 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
                     (privateRoom && passwordController.text.isEmpty)) return;
                 setDialogState(() => busy = true);
                 try {
-                  await Supabase.instance.client.rpc('create_room', params: {
+                  final result = await Supabase.instance.client.rpc('create_room', params: {
                     'p_name': nameController.text.trim(),
                     'p_password': privateRoom ? passwordController.text : null,
                   });
-                  if (dialogContext.mounted) Navigator.pop(dialogContext, true);
+                  final row = Map<String, dynamic>.from((result as List).first as Map);
+                  if (dialogContext.mounted) Navigator.pop(dialogContext, row);
                 } catch (e) {
                   setDialogState(() => busy = false);
                   if (dialogContext.mounted) {
@@ -113,7 +188,14 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
 
     nameController.dispose();
     passwordController.dispose();
-    if (created == true) await _refresh();
+    if (created != null) {
+      await _refresh();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Room created • ID #${created['room_number']}')),
+        );
+      }
+    }
   }
 
   Future<void> _enterRoom(Map<String, dynamic> room) async {
@@ -272,11 +354,44 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
   }
 
   Widget _roomBody() => Column(children: [
-    Material(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: TabBar(controller: _tabs, tabs: const [
-        Tab(text: 'My Room'), Tab(text: 'Public Room'), Tab(text: 'Private Room')
-      ]),
+    Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: AppRadius.pillRadius,
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: List.generate(3, (index) {
+            final selected = _tabs.index == index;
+            final labels = const ['My Room', 'Public Room', 'Private Room'];
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => _tabs.animateTo(index),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: selected ? AppColors.accent : AppColors.transparent,
+                    borderRadius: AppRadius.pillRadius,
+                  ),
+                  child: Text(
+                    labels[index],
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      color: selected ? AppColors.textOnAccent : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+      ),
     ),
     Expanded(child: TabBarView(controller: _tabs, children: [
       _roomList('my'), _roomList('public'), _roomList('private')
@@ -291,14 +406,16 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
           child: Row(children: [
             const Expanded(child: Text('Rooms', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800))),
+            IconButton(onPressed: _searchRoom, icon: const Icon(Icons.search), tooltip: 'Search Room by ID'),
             IconButton(onPressed: _createRoom, icon: const Icon(Icons.add_circle_outline), tooltip: 'Create Room'),
           ]),
-        ),
+        );
         Expanded(child: _roomBody()),
       ]);
     }
     return Scaffold(
       appBar: AppBar(title: const Text('Rooms'), actions: [
+        IconButton(onPressed: _searchRoom, icon: const Icon(Icons.search), tooltip: 'Search Room by ID'),
         IconButton(onPressed: _createRoom, icon: const Icon(Icons.add_circle_outline), tooltip: 'Create Room'),
       ]),
       body: _roomBody(),
