@@ -9,6 +9,7 @@ import '../ad_unit_ids.dart';
 import '../theme/theme.dart';
 import '../service.dart';
 import 'chat_page.dart';
+import 'room_chat_page.dart';
 import 'message_requests_page.dart';
 import '../user_profile_features.dart';
 import '../widgets/error_retry_view.dart';
@@ -139,6 +140,8 @@ class _MessagesListPageState extends State<MessagesListPage> {
               ),
             ),
           ),
+          if (!widget.isForwardMode)
+            const _RoomSection(),
           Expanded(
             child: FutureBuilder<List<Map<String, dynamic>>>(
               future: _conversationsFuture,
@@ -310,55 +313,6 @@ class _ConversationsListState extends State<_ConversationsList> {
     return {for (final p in rows) p['uid'] as String: p};
   }
 
-  Future<void> _toggleSave(String conversationId, bool currentlySaved) async {
-    try {
-      await Supabase.instance.client.rpc('save_conversation', params: {
-        'p_conversation_id': conversationId,
-        'p_saved': !currentlySaved,
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(!currentlySaved ? "Chat saved — won't clear when app closes" : "Chat unsaved")),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Couldn't update — please try again."), backgroundColor: AppColors.error),
-        );
-      }
-    }
-  }
-
-  Future<void> _confirmDelete(String conversationId, String userName) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text("Delete chat with $userName?"),
-        content: const Text("This removes it from your list only — the other person still sees it."),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text("Cancel")),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text("Delete", style: TextStyle(color: AppColors.error)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      try {
-        await Supabase.instance.client.rpc('hide_conversation_for_me', params: {'p_conversation_id': conversationId});
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Couldn't delete — please try again."), backgroundColor: AppColors.error),
-          );
-        }
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Map<String, Map<String, dynamic>>>(
@@ -370,10 +324,8 @@ class _ConversationsListState extends State<_ConversationsList> {
           itemCount: widget.conversations.length,
           itemBuilder: (context, index) {
             final conv = widget.conversations[index];
-            final String conversationId = conv['id'] as String;
             final bool iAmA = conv['participantA'] == widget.currentUid;
             final String otherUid = iAmA ? conv['participantB'] : conv['participantA'];
-            final bool isSaved = iAmA ? (conv['savedByA'] ?? false) : (conv['savedByB'] ?? false);
 
             final profile = profiles[otherUid];
             final userName = profile?['userName'] ?? 'User';
@@ -390,9 +342,7 @@ class _ConversationsListState extends State<_ConversationsList> {
               return const SizedBox.shrink();
             }
 
-            return GestureDetector(
-              onLongPress: widget.isForwardMode ? null : () => _confirmDelete(conversationId, userName),
-              child: ListTile(
+            return ListTile(
                 onTap: widget.isForwardMode
                     ? () => _forwardTo(
                           context,
@@ -427,28 +377,50 @@ class _ConversationsListState extends State<_ConversationsList> {
                     ],
                   ],
                 ),
-                trailing: widget.isForwardMode
-                    ? null
-                    : IconButton(
-                        icon: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: isSaved ? AppColors.accent.withOpacity(0.15) : Colors.transparent,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            isSaved ? Icons.download_done : Icons.download_outlined,
-                            color: isSaved ? AppColors.accent : AppColors.textTertiary,
-                          ),
-                        ),
-                        tooltip: isSaved ? "Saved — won't auto-clear" : "Save this chat",
-                        onPressed: () => _toggleSave(conversationId, isSaved),
-                      ),
-              ),
             );
           },
         );
       },
+    );
+  }
+}
+
+class _RoomSection extends StatelessWidget {
+  const _RoomSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            child: Text(
+              'Rooms',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+          ),
+          ListTile(
+            dense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+            leading: CircleAvatar(
+              backgroundColor: AppColors.accent.withOpacity(.12),
+              child: const Icon(Icons.forum_outlined, color: AppColors.accent),
+            ),
+            title: const Text('Room'),
+            subtitle: const Text('Enter a fresh chat session'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const RoomChatPage()),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 }
