@@ -173,7 +173,10 @@ Future<void> _openRoomFromLeaderboard(BuildContext context, _RankedUser room) as
   if (room.roomId == null) return;
   String password = '';
 
-  if (room.isPrivateRoom) {
+  final currentUid = Supabase.instance.client.auth.currentUser?.id;
+  final isOwner = currentUid != null && currentUid == room.uid;
+
+  if (room.isPrivateRoom && !isOwner) {
     final entered = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
@@ -437,22 +440,20 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Row(
-          children: [
-            const Text("Leaderboard"),
-            const Spacer(),
-            _MetricToggle(
-              selected: _metric,
-              onChanged: (m) {
-                setState(() {
-                  _metric = m;
-                  _bodyKey = UniqueKey();
-                  _footerKey = UniqueKey();
-                });
-              },
-            ),
-          ],
-        ),
+        title: const Text("Leaderboard"),
+        actions: [
+          _MetricToggle(
+            selected: _metric,
+            onChanged: (m) {
+              setState(() {
+                _metric = m;
+                _bodyKey = UniqueKey();
+                _footerKey = UniqueKey();
+              });
+            },
+          ),
+          const SizedBox(width: 6),
+        ],
         backgroundColor: AppColors.background,
       ),
       body: Column(
@@ -496,9 +497,13 @@ class _MetricToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: _Metric.values.map((m) {
+    return SizedBox(
+      width: 235,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: _Metric.values.map((m) {
         final isSelected = m == selected;
         return Padding(
           padding: const EdgeInsets.only(left: 6),
@@ -526,7 +531,9 @@ class _MetricToggle extends StatelessWidget {
             ),
           ),
         );
-      }).toList(),
+          }).toList(),
+        ),
+      ),
     );
   }
 }
@@ -766,7 +773,7 @@ class _RankRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () => _openProfile(context, user.uid),
+      onTap: () => user.isRoom ? _openRoomFromLeaderboard(context, user) : _openProfile(context, user.uid),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
@@ -894,17 +901,22 @@ class _OwnRankCard extends StatelessWidget {
               borderRadius: AppRadius.lgRadius,
             ),
             child: Text(
-              period == _Period.allTime
-                  ? "You're not ranked yet — start earning gets to appear here."
-                  : "You're not ranked for this day yet.",
+              metric == _Metric.room
+                  ? (period == _Period.allTime
+                      ? "Your Room is not ranked yet — invite people to join."
+                      : "Your Room is not ranked for this day yet.")
+                  : period == _Period.allTime
+                      ? "You're not ranked yet — start earning gets to appear here."
+                      : "You're not ranked for this day yet.",
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.textSecondaryLight, fontSize: 13),
             ),
           );
         }
 
+        final isRoom = metric == _Metric.room && ownRank.roomId != null;
         return GestureDetector(
-          onTap: () => _openProfile(context, myUid),
+          onTap: isRoom ? null : () => _openProfile(context, myUid),
           child: Container(
             margin: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
             padding: const EdgeInsets.all(AppSpacing.md),
@@ -929,7 +941,9 @@ class _OwnRankCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "You (@$currentUserName)",
+                        isRoom
+                            ? "${ownRank.roomName ?? 'Your Room'} • #${ownRank.roomNumber ?? ''}"
+                            : "You (@$currentUserName)",
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimaryLight, fontWeight: FontWeight.w700),
@@ -939,7 +953,7 @@ class _OwnRankCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                         decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: AppRadius.smRadius),
                         child: Text(
-                          "PERSONAL BEST",
+                          isRoom ? "ROOM RANK" : "PERSONAL BEST",
                           style: AppTextStyles.caption.copyWith(color: AppColors.accentMuted, fontWeight: FontWeight.w700, fontSize: 10),
                         ),
                       ),
