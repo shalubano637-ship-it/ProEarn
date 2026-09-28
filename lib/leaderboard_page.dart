@@ -6,9 +6,10 @@ import 'models.dart';
 import 'service.dart';
 import 'user_profile_features.dart';
 import 'widgets/error_retry_view.dart';
+import 'messaging/room_chat_page.dart';
 
 enum _Period { yesterday, today, allTime }
-enum _Metric { popularity, gets, likes }
+enum _Metric { popularity, gets, likes, room }
 
 class _RankedUser {
   final String uid;
@@ -17,7 +18,10 @@ class _RankedUser {
   final String bio;
   final num score;
   final int rank;
-  final int? rankDelta; // positive = moved up vs previous period, negative = moved down, null = no comparison (new entry / All Time)
+  final int? rankDelta; // positive = moved up vs previous period
+  final String? roomId;
+  final int? roomNumber;
+  final bool isPrivateRoom;
 
   _RankedUser({
     required this.uid,
@@ -27,15 +31,30 @@ class _RankedUser {
     required this.score,
     required this.rank,
     required this.rankDelta,
+    this.roomId,
+    this.roomNumber,
+    this.isPrivateRoom = false,
   });
+
+  bool get isRoom => roomId != null;
 }
 
 class _OwnRank {
   final int rank;
   final num score;
   final int totalRanked;
+  final String? roomId;
+  final String? roomName;
+  final int? roomNumber;
 
-  _OwnRank({required this.rank, required this.score, required this.totalRanked});
+  _OwnRank({
+    required this.rank,
+    required this.score,
+    required this.totalRanked,
+    this.roomId,
+    this.roomName,
+    this.roomNumber,
+  });
 
   int get percentile {
     if (totalRanked <= 0) return 100;
@@ -69,7 +88,151 @@ Future<List<String>> _rankedUidsForDay(String istDate) async {
   return rows.map((r) => r['uid'] as String).toList();
 }
 
+Future<List<_RankedUser>> _fetchRoomLeaderboard(_Period period) async {
+  final periodName = switch (period) {
+    _Period.today => 'today',
+    _Period.yesterday => 'yesterday',
+    _Period.allTime => 'all_time',
+  };
+
+  final rows = List<Map<String, dynamic>>.from(
+    await Supabase.instance.client.rpc(
+      'get_room_leaderboard',
+      params: {'p_period': periodName, 'p_limit': 50},
+    ) as List,
+  );
+
+  List<Map<String, dynamic>> previousRows = const [];
+  if (period != _Period.allTime) {
+    final previousPeriod = period == _Period.today ? 'yesterday' : 'all_time';
+    previousRows = List<Map<String, dynamic>>.from(
+      await Supabase.instance.client.rpc(
+        'get_room_leaderboard',
+        params: {'p_period': previousPeriod, 'p_limit': 200},
+      ) as List,
+    );
+  }
+
+  final previousRank = <String, int>{
+    for (var i = 0; i < previousRows.length; i++)
+      previousRows[i]['room_id'].toString(): i + 1,
+  };
+
+  return List.generate(rows.length, (index) {
+    final row = rows[index];
+    final roomId = row['room_id'].toString();
+    final rank = index + 1;
+    final previous = previousRank[roomId];
+    return _RankedUser(
+      uid: row['owner_uid'].toString(),
+      userName: row['room_name']?.toString() ?? 'Room',
+      profileUrl: row['profile_url']?.toString() ?? '',
+      bio: '#${row['room_number']} • ${row['owner_name'] ?? 'User'}',
+      score: (row['score'] ?? 0) as num,
+      rank: rank,
+      rankDelta: previous == null ? null : previous - rank,
+      roomId: roomId,
+      roomNumber: (row['room_number'] as num?)?.toInt(),
+      isPrivateRoom: row['private_room'] == true,
+    );
+  });
+}
+
+Future<_OwnRank?> _fetchOwnRoomRank(_Period period) async {
+  final myUid = Supabase.instance.client.auth.currentUser?.id;
+  if (myUid == null) return null;
+
+  final periodName = switch (period) {
+    _Period.today => 'today',
+    _Period.yesterday => 'yesterday',
+    _Period.allTime => 'all_time',
+  };
+
+  final rows = List<Map<String, dynamic>>.from(
+    await Supabase.instance.client.rpc(
+      'get_room_leaderboard',
+      params: {'p_period': periodName, 'p_limit': 1000},
+    ) as List,
+  );
+
+  final index = rows.indexWhere((r) => r['owner_uid']?.toString() == myUid);
+  if (index == -1) return null;
+
+  final row = rows[index];
+  return _OwnRank(
+    rank: index + 1,
+    score: (row['score'] ?? 0) as num,
+    totalRanked: rows.length,
+    roomId: row['room_id']?.toString(),
+    roomName: row['room_name']?.toString(),
+    roomNumber: (row['room_number'] as num?)?.toInt(),
+  );
+}
+
+Future<void> _openRoomFromLeaderboard(BuildContext context, _RankedUser room) async {
+  if (room.roomId == null) return;
+  String password = '';
+
+  if (room.isPrivateRoom) {
+    final entered = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        final controller = TextEditingController();
+        return AlertDialog(
+          title: const Text('Private Room'),
+          content: TextField(
+            controller: controller,
+            obscureText: true,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'Password'),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text), child: const Text('Enter')),
+          ],
+        );
+      },
+    );
+    if (entered == null) return;
+    password = entered;
+  }
+
+  try {
+    final result = await Supabase.instance.client.rpc('enter_room', params: {
+      'p_room_id': room.roomId,
+      'p_password': password.isEmpty ? null : password,
+    });
+    final row = Map<String, dynamic>.from((result as List).first as Map);
+    if (!context.mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RoomChatPage(
+          roomId: row['room_id'] as String,
+          roomNumber: (row['room_number'] as num).toInt(),
+          roomName: row['room_name'] as String,
+          ownerUid: row['owner_uid'] as String,
+          profileUrl: row['profile_url']?.toString() ?? '',
+          hasPassword: row['has_password'] == true,
+          memberCount: (row['member_count'] as num?)?.toInt() ?? 0,
+        ),
+      ),
+    );
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().contains('WRONG_PASSWORD') ? 'Wrong password.' : 'Could not enter Room.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+}
+
 Future<List<_RankedUser>> _fetchLeaderboard(_Period period, _Metric metric) async {
+  if (metric == _Metric.room) return _fetchRoomLeaderboard(period);
+
   if (metric == _Metric.gets || metric == _Metric.likes) {
     List<Map<String, dynamic>> list;
     if (period != _Period.allTime) {
@@ -173,6 +336,8 @@ Future<List<_RankedUser>> _fetchLeaderboard(_Period period, _Metric metric) asyn
 }
 
 Future<_OwnRank?> _fetchOwnRank(_Period period, _Metric metric) async {
+  if (metric == _Metric.room) return _fetchOwnRoomRank(period);
+
   final myUid = Supabase.instance.client.auth.currentUser?.id;
   if (myUid == null) return null;
 
@@ -255,6 +420,16 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
     });
   }
 
+  void _swipeMetric(bool toRight) {
+    final next = _metric.index + (toRight ? 1 : -1);
+    if (next < 0 || next >= _Metric.values.length) return;
+    setState(() {
+      _metric = _Metric.values[next];
+      _bodyKey = UniqueKey();
+      _footerKey = UniqueKey();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasUser = Supabase.instance.client.auth.currentUser != null;
@@ -296,7 +471,15 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
             ),
           ),
           Expanded(
-            child: _LeaderboardBody(key: _bodyKey, period: _period, metric: _metric, onRetry: _reload),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onHorizontalDragEnd: (details) {
+                final velocity = details.primaryVelocity ?? 0;
+                if (velocity.abs() < 250) return;
+                _swipeMetric(velocity > 0);
+              },
+              child: _LeaderboardBody(key: _bodyKey, period: _period, metric: _metric, onRetry: _reload),
+            ),
           ),
           if (hasUser) _OwnRankCard(key: _footerKey, period: _period, metric: _metric),
         ],
@@ -333,9 +516,10 @@ class _MetricToggle extends StatelessWidget {
                   _Metric.popularity => "Popularity",
                   _Metric.gets => "Gets",
                   _Metric.likes => "Likes",
+                  _Metric.room => "Room",
                 },
                 style: AppTextStyles.labelMedium.copyWith(
-                  fontSize: 11,
+                  fontSize: 10,
                   color: isSelected ? AppColors.textOnAccent : AppColors.textSecondary,
                 ),
               ),
@@ -418,9 +602,11 @@ class _LeaderboardBody extends StatelessWidget {
         if (users.isEmpty) {
           return Center(
             child: Text(
-              period == _Period.allTime
-                  ? "No creators yet."
-                  : (metric == _Metric.likes ? "No likes yet for this day." : "No gets yet for this day."),
+              metric == _Metric.room
+                  ? (period == _Period.allTime ? "No Rooms yet." : "No Room visits yet for this day.")
+                  : period == _Period.allTime
+                      ? "No creators yet."
+                      : (metric == _Metric.likes ? "No likes yet for this day." : "No gets yet for this day."),
               style: const TextStyle(color: AppColors.textTertiary),
             ),
           );
@@ -494,7 +680,7 @@ class _PodiumSpot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => _openProfile(context, user.uid),
+      onTap: () => user.isRoom ? _openRoomFromLeaderboard(context, user) : _openProfile(context, user.uid),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -548,7 +734,7 @@ class _PodiumSpot extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            "@${user.userName}",
+            user.isRoom ? user.userName : "@${user.userName}",
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
@@ -607,7 +793,7 @@ class _RankRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "@${user.userName}",
+                    user.isRoom ? user.userName : "@${user.userName}",
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
