@@ -29,9 +29,22 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
     _tabs.dispose();
     super.dispose();
   }
+  Map<String, dynamic> _normalizeRoom(Map<String, dynamic> row) {
+    return {
+      'room_id': row['id'],
+      'room_number': row['number'],
+      'room_name': row['title'],
+      'owner_uid': row['owner_id'],
+      'owner_name': row['owner_name'],
+      'profile_url': row['avatar'],
+      'has_password': row['private_room'],
+      'member_count': row['members'],
+    };
+  }
+
   Future<List<Map<String, dynamic>>> _rooms(String kind) async {
     if (_futures.containsKey(kind)) return _futures[kind]!;
-    final future = Supabase.instance.client.rpc('list_rooms', params: {'p_kind': kind}).then((result) => (result as List).map((e) => Map<String, dynamic>.from(e as Map)).toList());
+    final future = Supabase.instance.client.rpc('list_rooms_v2', params: {'p_kind': kind}).then((result) => (result as List).map((e) => Map<String, dynamic>.from(e as Map)).toList());
     _futures[kind] = future;
     final result = await future;
     return result;
@@ -74,8 +87,8 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
                 setDialogState(() => busy = true);
                 try {
                   final result = await Supabase.instance.client.rpc(
-                    'search_room_by_number',
-                    params: {'p_room_number': id},
+                    'search_room_by_number_v2',
+                    params: {'p_number': id},
                   );
                   final rows = (result as List)
                       .map((e) => Map<String, dynamic>.from(e as Map))
