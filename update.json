@@ -1,17 +1,16 @@
 {
-  "published": false,
-  "versionCode": 1,
-  "versionName": "1.0.0",
+  "published": true,
+  "versionCode": 2,
+  "versionName": "1.0.1",
   "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/latest/download/proearn.apk",
-  "title": "New Pro Earn Update",
-  "message": "Latest fixes and improvements are available.",
+  "title": "Test Update",
+  "message": "Ye ek test update hai. Update popup aur update page ka flow check karne ke liye publish kiya gaya hai.",
   "newFeatures": [
-    "Rooms with automatic unique Room IDs",
-    "Improved gift and chat experience"
+    "Test update popup",
+    "Test More Info update page"
   ],
   "fixes": [
-    "Improved privacy and messaging controls",
-    "Fixed Room listing and Room ID handling"
+    "Update notification flow testing"
   ],
   "forceUpdate": false
 }
