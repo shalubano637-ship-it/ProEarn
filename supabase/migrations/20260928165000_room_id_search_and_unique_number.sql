@@ -36,3 +36,26 @@ $function$;
 
 revoke all on function public.search_room_by_number(bigint) from public, anon, authenticated;
 grant execute on function public.search_room_by_number(bigint) to authenticated;
+
+
+-- Fix ambiguous room_number references in list_rooms.
+create or replace function public.list_rooms(p_kind text)
+returns table(room_id uuid, room_number bigint, room_name text, owner_uid uuid, owner_name text, profile_url text, has_password boolean, member_count bigint)
+language sql security definer set search_path = public
+as $function$
+  select q.id, q.room_no, q.room_title, q.owner_id, q.owner_display_name, q.owner_profile_url, q.private_flag, q.active_members
+  from (
+    select r.id, r.room_number as room_no, r.name as room_title, r.owner_uid as owner_id,
+           coalesce(u."userName", 'User') as owner_display_name, coalesce(r.profile_url, '') as owner_profile_url,
+           (r.password_hash is not null) as private_flag,
+           (select count(*) from public.room_entries re where re.room_id = r.id and re.exited_at is null) as active_members,
+           r.created_at as created_at_value
+    from public.rooms r join public.users u on u.uid = r.owner_uid
+    where (p_kind = 'my' and r.owner_uid = auth.uid())
+       or (p_kind = 'public' and r.password_hash is null and r.owner_uid <> auth.uid())
+       or (p_kind = 'private' and r.password_hash is not null and r.owner_uid <> auth.uid())
+  ) q
+  order by q.active_members desc, q.created_at_value desc
+$function$;
+revoke all on function public.list_rooms(text) from public, anon, authenticated;
+grant execute on function public.list_rooms(text) to authenticated;
