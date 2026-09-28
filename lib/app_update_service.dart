@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
 class AppUpdateInfo {
+  final bool published;
   final int versionCode;
   final String versionName;
   final String apkUrl;
@@ -17,6 +18,7 @@ class AppUpdateInfo {
   final bool forceUpdate;
 
   const AppUpdateInfo({
+    required this.published,
     required this.versionCode,
     required this.versionName,
     required this.apkUrl,
@@ -28,6 +30,7 @@ class AppUpdateInfo {
   });
 
   factory AppUpdateInfo.fromJson(Map<String, dynamic> json) => AppUpdateInfo(
+        published: json['published'] == true,
         versionCode: (json['versionCode'] as num?)?.toInt() ?? 0,
         versionName: json['versionName']?.toString() ?? '',
         apkUrl: json['apkUrl']?.toString() ?? '',
@@ -54,6 +57,9 @@ class AppUpdateService {
       final info = AppUpdateInfo.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>,
       );
+
+      // Draft updates are intentionally invisible to users.
+      if (!info.published) return null;
       if (info.versionCode <= 0 || info.apkUrl.isEmpty) return null;
 
       final package = await PackageInfo.fromPlatform();
