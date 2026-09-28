@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/theme.dart';
+import '../cloudflare_media_service.dart';
 import '../user_profile_features.dart';
 
 class RoomChatPage extends StatefulWidget {
@@ -9,6 +12,7 @@ class RoomChatPage extends StatefulWidget {
   final int roomNumber;
   final String roomName;
   final String ownerUid;
+  final String profileUrl;
   final bool hasPassword;
   final int memberCount;
 
@@ -18,6 +22,7 @@ class RoomChatPage extends StatefulWidget {
     required this.roomNumber,
     required this.roomName,
     required this.ownerUid,
+    this.profileUrl = '',
     required this.hasPassword,
     required this.memberCount,
   });
@@ -104,6 +109,7 @@ class _RoomChatPageState extends State<RoomChatPage> {
           roomId: widget.roomId,
           roomNumber: widget.roomNumber,
           roomName: _roomName,
+          profileUrl: widget.profileUrl,
           ownerUid: widget.ownerUid,
           hasPassword: _hasPassword,
           memberCount: _memberCount,
@@ -132,6 +138,30 @@ class _RoomChatPageState extends State<RoomChatPage> {
     super.dispose();
   }
 
+  Future<void> _kickMember(Map<String, dynamic> member) async {
+    final uid = member['uid']?.toString();
+    final name = member['user_name']?.toString() ?? 'User';
+    if (uid == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: const Text('Kick member?'),
+        content: Text('Remove $name from this Room?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Kick')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await Supabase.instance.client.rpc('kick_room_member', params: {'p_room_id': widget.roomId, 'p_uid': uid});
+      await _loadMembers();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not kick member: $e'), backgroundColor: AppColors.error));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -146,6 +176,8 @@ class _RoomChatPageState extends State<RoomChatPage> {
             onTap: _openRoomInfo,
             child: Row(
               children: [
+                CircleAvatar(radius: 17, backgroundColor: AppColors.border, backgroundImage: widget.profileUrl.isNotEmpty ? NetworkImage(widget.profileUrl) : null, child: widget.profileUrl.isEmpty ? const Icon(Icons.forum_outlined, size: 18) : null),
+                const SizedBox(width: 8),
                 Flexible(child: Text(_roomName, overflow: TextOverflow.ellipsis)),
                 const SizedBox(width: 7),
                 Text('#' + widget.roomNumber.toString(), style: const TextStyle(fontSize: 12, color: AppColors.textTertiary)),
@@ -241,6 +273,7 @@ class RoomInfoPage extends StatefulWidget {
   final int roomNumber;
   final String roomName;
   final String ownerUid;
+  final String profileUrl;
   final bool hasPassword;
   final int memberCount;
   final bool isOwner;
@@ -251,6 +284,7 @@ class RoomInfoPage extends StatefulWidget {
     required this.roomNumber,
     required this.roomName,
     required this.ownerUid,
+    this.profileUrl = '',
     required this.hasPassword,
     required this.memberCount,
     required this.isOwner,
@@ -261,6 +295,10 @@ class RoomInfoPage extends StatefulWidget {
 }
 
 class _RoomInfoPageState extends State<RoomInfoPage> {
+  Future<File?> _pickRoomImage() async {
+    final x = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85, maxWidth: 900, maxHeight: 900);
+    return x == null ? null : File(x.path);
+  }
   late String _name;
   late bool _hasPassword;
   List<Map<String, dynamic>> _members = [];
@@ -289,10 +327,12 @@ class _RoomInfoPageState extends State<RoomInfoPage> {
   }
 
   Future<void> _editRoom() async {
+    String? newProfileUrl;
     final nameController = TextEditingController(text: _name);
     final passwordController = TextEditingController();
     bool changePassword = false;
     bool busy = false;
+    bool uploading = false;
 
     final changed = await showDialog<bool>(
       context: context,
@@ -316,6 +356,36 @@ class _RoomInfoPageState extends State<RoomInfoPage> {
                   obscureText: true,
                   decoration: const InputDecoration(labelText: 'New password (empty = public)'),
                 ),
+              const SizedBox(height: 8),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  radius: 24,
+                  backgroundColor: AppColors.border,
+                  backgroundImage: (newProfileUrl ?? widget.profileUrl).isNotEmpty ? NetworkImage(newProfileUrl ?? widget.profileUrl) : null,
+                  child: (newProfileUrl ?? widget.profileUrl).isEmpty ? const Icon(Icons.forum_outlined) : null,
+                ),
+                title: const Text('Room profile picture'),
+                subtitle: const Text('Owner can set a separate Room photo'),
+                trailing: IconButton(
+                  icon: uploading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.photo_camera_outlined),
+                  onPressed: uploading ? null : () async {
+                    // Image selection/upload is handled from the existing media pipeline.
+                    setDialogState(() => uploading = true);
+                    try {
+                      final picker = await _pickRoomImage();
+                      if (picker != null) {
+                        final url = await CloudflareMediaService.uploadImage(picker, folder: 'rooms');
+                        setDialogState(() => newProfileUrl = url);
+                      }
+                    } catch (e) {
+                      if (dialogContext.mounted) ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Could not set Room picture: $e'), backgroundColor: AppColors.error));
+                    } finally {
+                      if (dialogContext.mounted) setDialogState(() => uploading = false);
+                    }
+                  },
+                ),
+              ),
             ],
           ),
           actions: [
@@ -329,6 +399,7 @@ class _RoomInfoPageState extends State<RoomInfoPage> {
                     'p_name': nameController.text.trim(),
                     'p_password': passwordController.text,
                     'p_change_password': changePassword,
+                    'p_profile_url': newProfileUrl,
                   });
                   if (dialogContext.mounted) Navigator.pop(dialogContext, true);
                 } catch (_) {
@@ -403,7 +474,9 @@ class _RoomInfoPageState extends State<RoomInfoPage> {
             const Padding(padding: EdgeInsets.all(20), child: Text('No active members.'))
           else
             ..._members.map(
-              (m) => ListTile(
+              (m) {
+                final isMe = m['uid'] == Supabase.instance.client.auth.currentUser?.id;
+                return ListTile(
                 leading: GestureDetector(
                   onTap: () => Navigator.push(
                     context,
@@ -418,14 +491,19 @@ class _RoomInfoPageState extends State<RoomInfoPage> {
                     child: (m['profile_url']?.toString().isNotEmpty ?? false) ? null : const Icon(Icons.person),
                   ),
                 ),
-                title: Text(m['user_name']?.toString() ?? 'User'),
+                title: GestureDetector(
+                  onLongPress: widget.isOwner && !isMe ? () => _kickMember(m) : null,
+                  child: Text(m['user_name']?.toString() ?? 'User'),
+                ),
+                onLongPress: widget.isOwner && !isMe ? () => _kickMember(m) : null,
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => ProfilePage(isOwnProfile: m['uid'] == Supabase.instance.client.auth.currentUser?.id, otherUser: m['uid']),
                   ),
                 ),
-              ),
+              );
+              },
             ),
         ],
       ),
