@@ -14,6 +14,18 @@ class RoomHubPage extends StatefulWidget {
 class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStateMixin {
   late final TabController _tabs;
   final Map<String, Future<List<Map<String, dynamic>>>> _futures = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _tabs = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
   Future<List<Map<String, dynamic>>> _rooms(String kind) async {
     if (_futures.containsKey(kind)) return _futures[kind]!;
     final future = Supabase.instance.client.rpc('list_rooms', params: {'p_kind': kind}).then((result) => (result as List).map((e) => Map<String, dynamic>.from(e as Map)).toList());
