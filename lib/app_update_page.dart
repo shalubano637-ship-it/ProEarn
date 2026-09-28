@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'app_update_service.dart';
 import 'theme/theme.dart';
@@ -40,6 +42,22 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
   Future<void> _downloadAndInstall() async {
     final info = _info;
     if (info == null || _downloading) return;
+
+    if (kIsWeb) {
+      final launched = await launchUrl(
+        Uri.parse(info.apkUrl),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not open the download link.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return;
+    }
 
     setState(() {
       _downloading = true;
