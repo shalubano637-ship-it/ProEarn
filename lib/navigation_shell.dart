@@ -208,7 +208,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.search),            IconButton(
+              icon: const Icon(Icons.search),
+              tooltip: "Search",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SearchPage()),
+                );
+              },
+            ),
+            IconButton(
               icon: const Icon(Icons.card_giftcard_outlined),
               tooltip: "Rewards",
               onPressed: () {
@@ -218,8 +227,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 );
               },
             ),
-
-              tooltip: "Search",
               onPressed: () {
                 Navigator.push(
                   context,
