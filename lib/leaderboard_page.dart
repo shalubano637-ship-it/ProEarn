@@ -424,33 +424,36 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
   }
 
   void _handleHorizontalSwipe(bool swipeRight) {
-    // Today --left--> Yesterday --right--> All Time --right--> next metric.
-    if (_period == _Period.today && !swipeRight) {
-      setState(() { _period = _Period.yesterday; _bodyKey = UniqueKey(); _footerKey = UniqueKey(); });
-      return;
+    // Within a metric: Yesterday <-> Today <-> All Time.
+    // Crossing a boundary moves to the adjacent metric at Today.
+    // Metric order: Popularity -> Gets -> Likes -> Room.
+    final periodIndex = _period.index;
+    final metricIndex = _metric.index;
+    int nextPeriod;
+    int nextMetric = metricIndex;
+
+    if (swipeRight) {
+      if (periodIndex < _Period.values.length - 1) {
+        nextPeriod = periodIndex + 1;
+      } else {
+        nextPeriod = _Period.today.index;
+        nextMetric = (metricIndex + 1) % _Metric.values.length;
+      }
+    } else {
+      if (periodIndex > 0) {
+        nextPeriod = periodIndex - 1;
+      } else {
+        nextPeriod = _Period.today.index;
+        nextMetric = (metricIndex - 1 + _Metric.values.length) % _Metric.values.length;
+      }
     }
-    if (_period == _Period.yesterday && swipeRight) {
-      setState(() { _period = _Period.allTime; _bodyKey = UniqueKey(); _footerKey = UniqueKey(); });
-      return;
-    }
-    if (_period == _Period.allTime && swipeRight) {
-      final next = _metric.index + 1;
-      if (next >= _Metric.values.length) return;
-      setState(() {
-        _metric = _Metric.values[next];
-        _period = _Period.today;
-        _bodyKey = UniqueKey();
-        _footerKey = UniqueKey();
-      });
-      return;
-    }
-    if (_period == _Period.allTime && !swipeRight) {
-      setState(() { _period = _Period.yesterday; _bodyKey = UniqueKey(); _footerKey = UniqueKey(); });
-      return;
-    }
-    if (_period == _Period.yesterday && !swipeRight) {
-      setState(() { _period = _Period.today; _bodyKey = UniqueKey(); _footerKey = UniqueKey(); });
-    }
+
+    setState(() {
+      _period = _Period.values[nextPeriod];
+      _metric = _Metric.values[nextMetric];
+      _bodyKey = UniqueKey();
+      _footerKey = UniqueKey();
+    });
   }
 
   @override
