@@ -30,6 +30,7 @@ import 'global_image_adjuster.dart';
 class _UploadPageState extends State<UploadPage> {
   File? _pickedImageFile;
   Uint8List? _pickedImageBytes;
+  String _pickedImageContentType = 'image/jpeg';
   final ImagePicker _picker = ImagePicker();
   
   final TextEditingController promptController = TextEditingController();
@@ -52,6 +53,12 @@ class _UploadPageState extends State<UploadPage> {
           setState(() {
             _pickedImageBytes = bytes;
             _pickedImageFile = null;
+            final lower = image.name.toLowerCase();
+            _pickedImageContentType = lower.endsWith('.png')
+                ? 'image/png'
+                : lower.endsWith('.webp')
+                    ? 'image/webp'
+                    : 'image/jpeg';
           });
         }
         return;
@@ -68,6 +75,7 @@ class _UploadPageState extends State<UploadPage> {
               setState(() {
                 _pickedImageFile = croppedFile;
                 _pickedImageBytes = null;
+                _pickedImageContentType = 'image/jpeg';
               });
             },
           ),
@@ -104,7 +112,7 @@ class _UploadPageState extends State<UploadPage> {
     setState(() {
       _isUploading = true;
       _uploadPercentage = 0.0;
-      _uploadStatusText = "Optimizing image...";
+      _uploadStatusText = "Preparing image...";
     });
     
     try {
@@ -139,28 +147,42 @@ class _UploadPageState extends State<UploadPage> {
       }
 
       setState(() {
-        _uploadStatusText = "Uploading to ImgBB...";
+        _uploadStatusText = "Uploading and checking image...";
         _uploadPercentage = 0.0;
       });
 
-      final postLink = "app://post/${DateTime.now().millisecondsSinceEpoch}";
-      final response = await Supabase.instance.client.functions.invoke(
-        'imgbb-upload',
-        body: {
-          'imageBase64': base64Encode(bytes),
-          'caption': caption.isEmpty ? "No Caption" : caption,
-          'prompt': prompt,
-          'link': postLink,
-          'clientModerated': true,
-          'folder': 'posts',
-        },
-      );
-
-      final data = response.data;
-      if (data is! Map || data['url'] == null || data['url'].toString().isEmpty) {
-        throw StateError("ImgBB upload failed");
+      final postLink = "app://post/" + DateTime.now().millisecondsSinceEpoch.toString();
+      final Map<String, dynamic> response;
+      if (kIsWeb && _pickedImageBytes != null) {
+        response = await createPostThroughCloudflareBytes(
+          bytes: bytes,
+          contentType: _pickedImageContentType,
+          caption: caption.isEmpty ? "No Caption" : caption,
+          prompt: prompt,
+          link: postLink,
+          onProgress: (sent, total) {
+            if (!mounted || total <= 0) return;
+            setState(() => _uploadPercentage = (sent / total) * 70);
+          },
+        );
+      } else {
+        response = await createPostThroughCloudflare(
+          imageFile: finalCompressedFile!,
+          caption: caption.isEmpty ? "No Caption" : caption,
+          prompt: prompt,
+          link: postLink,
+          onProgress: (sent, total) {
+            if (!mounted || total <= 0) return;
+            setState(() => _uploadPercentage = (sent / total) * 70);
+          },
+        );
       }
 
+      if (response["url"] == null || response["url"].toString().isEmpty) {
+        throw StateError("Server did not return a post image URL");
+      }
+
+      if (mounted) setState(() => _uploadPercentage = 100);
       if (finalCompressedFile != null && await finalCompressedFile.exists()) {
         await finalCompressedFile.delete();
       }
