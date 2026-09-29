@@ -219,6 +219,48 @@ Future<String?> uploadImageToMediaGateway(
   }
 }
 
+Future<Map<String, dynamic>> createPostThroughCloudflareBytes({
+  required Uint8List bytes,
+  required String contentType,
+  required String caption,
+  required String prompt,
+  required String link,
+  void Function(int sent, int total)? onProgress,
+}) async {
+  if (bytes.isEmpty) throw StateError('Image is empty');
+  if (bytes.length > 9 * 1024 * 1024) throw StateError('Image is too large');
+  if (CloudflareMediaService.gatewayUrl.isEmpty) {
+    throw StateError('Cloudflare media gateway is not configured');
+  }
+
+  final intent = await _cloudflarePost('/v1/upload-intent', {
+    'contentType': contentType,
+    'folder': 'posts',
+  });
+  final uploadUrl = intent['uploadUrl']?.toString();
+  final objectKey = intent['objectKey']?.toString();
+  if (uploadUrl == null || objectKey == null) throw StateError('Invalid upload intent');
+
+  final request = http.Request('PUT', Uri.parse(uploadUrl));
+  request.headers['Content-Type'] = contentType;
+  request.bodyBytes = bytes;
+  onProgress?.call(0, bytes.length);
+  final response = await request.send();
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    throw StateError('R2 upload failed: ${response.statusCode}');
+  }
+  onProgress?.call(bytes.length, bytes.length);
+
+  return _cloudflarePost('/v1/finalize-post', {
+    'objectKey': objectKey,
+    'contentType': contentType,
+    'size': bytes.length,
+    'caption': caption,
+    'prompt': prompt,
+    'link': link,
+  });
+}
+
 Future<Map<String, dynamic>> createPostThroughCloudflare({
   required File imageFile,
   required String caption,
