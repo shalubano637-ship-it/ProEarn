@@ -178,7 +178,11 @@ class _RoomChatPageState extends State<RoomChatPage> {
       if (picked == null || !mounted) return;
       if (kIsWeb) {
         final bytes = await picked.readAsBytes();
-        final url = await uploadImageBytesToMediaGateway(bytes, folder: 'chat', clientModerated: true);
+        final url = await CloudflareMediaService.uploadImageBytes(
+          bytes,
+          folder: 'chat',
+          contentType: _imageContentType(picked.name),
+        );
         if (url != null && mounted) await _send(imageUrl: url);
       } else {
         final url = await showChatImagePreview(context, File(picked.path));
@@ -200,7 +204,11 @@ class _RoomChatPageState extends State<RoomChatPage> {
       if (kIsWeb) {
         for (final x in picked) {
           final bytes = await x.readAsBytes();
-          final url = await uploadImageBytesToMediaGateway(bytes, folder: 'chat', clientModerated: true);
+          final url = await CloudflareMediaService.uploadImageBytes(
+            bytes,
+            folder: 'chat',
+            contentType: _imageContentType(x.name),
+          );
           if (url != null && mounted) await _send(imageUrl: url);
         }
       } else {
