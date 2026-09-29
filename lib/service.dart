@@ -171,6 +171,7 @@ Future<String?> uploadImageToMediaGateway(
       body: {
         'imageBase64': base64Image,
         'folder': folder,
+        'clientModerated': folder == 'chat',
       },
     );
 
