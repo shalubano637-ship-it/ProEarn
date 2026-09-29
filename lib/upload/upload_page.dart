@@ -14,7 +14,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../service.dart';
-import '../cloudflare_media_service.dart';
 import '../theme/theme.dart';
 import '../moderation/moderation_config.dart';
 
@@ -139,15 +138,6 @@ class _UploadPageState extends State<UploadPage> {
       }
 
       setState(() {
-        _uploadStatusText = "Checking server-side safety...";
-      });
-
-      // Second independent moderation pass on Cloudflare Workers AI.
-      // This path does not store the image in R2.
-      final moderationApprovalToken =
-          await CloudflareMediaService.moderateImage(finalCompressedFile);
-
-      setState(() {
         _uploadStatusText = "Uploading to ImgBB...";
         _uploadPercentage = 0.0;
       });
@@ -161,7 +151,7 @@ class _UploadPageState extends State<UploadPage> {
           'caption': caption.isEmpty ? "No Caption" : caption,
           'prompt': prompt,
           'link': postLink,
-          'moderationApprovalToken': moderationApprovalToken,
+          'clientModerated': true,
         },
       );
 
