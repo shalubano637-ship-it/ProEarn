@@ -19,12 +19,14 @@ import '../theme/theme.dart';
 class _PushNotificationPageState extends State<PushNotificationPage> with WidgetsBindingObserver {
   final String _currentUid = Supabase.instance.client.auth.currentUser?.id ?? '';
   bool _isDevicePermissionGranted = false;
+  bool? _pushEnabled;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkCurrentDevicePermission();
+    _loadPushPreference();
   }
 
   @override
@@ -86,7 +88,7 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
             messages = userData['notifyMessages'] ?? true;
           }
 
-          bool finalPushState = dbPushEnabled;
+          finalPushState = _pushEnabled ?? dbPushEnabled;
 
           return ListView(
             padding: const EdgeInsets.symmetric(vertical: 10),
@@ -132,6 +134,19 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
     );
   }
 
+  bool finalPushState = false;
+
+  Future<void> _loadPushPreference() async {
+    try {
+      final row = await Supabase.instance.client
+          .from(kUsersCollection)
+          .select('pushNotificationsEnabled')
+          .eq('uid', _currentUid)
+          .maybeSingle();
+      if (mounted) setState(() => _pushEnabled = row?['pushNotificationsEnabled'] == true);
+    } catch (_) {}
+  }
+
   Widget buildSwitch(String title, IconData icon, bool value, Function(bool) onChanged) {
     return SwitchListTile(
       secondary: Icon(icon, color: AppColors.info),
@@ -143,6 +158,8 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
 
   Future<void> togglePushNotificationStatus(bool isEnabled, bool isDeviceGranted) async {
     final client = Supabase.instance.client;
+    final previous = _pushEnabled ?? false;
+    if (mounted) setState(() => _pushEnabled = isEnabled);
 
     if (isEnabled) {
       if (!isDeviceGranted) {
@@ -150,8 +167,9 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
         
         if (!accepted) {
           if (mounted) {
+            setState(() => _pushEnabled = previous);
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Please Check your system notification settings!")),
+              const SnackBar(content: Text("Please allow notifications in system/browser settings first.")),
             );
           }
           return;
@@ -175,6 +193,7 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
     }
     
     await _checkCurrentDevicePermission();
+    await _loadPushPreference();
   }
 
   Future<void> updateSinglePreference(String fieldKey, bool value) async {
