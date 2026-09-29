@@ -165,14 +165,10 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
       if (!isDeviceGranted) {
         final accepted = await OneSignal.Notifications.requestPermission(true);
         
-        if (!accepted) {
-          if (mounted) {
-            setState(() => _pushEnabled = previous);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Please allow notifications in system/browser settings first.")),
-            );
-          }
-          return;
+        if (!accepted && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Push is enabled in the app, but system/browser permission is still off.")),
+          );
         }
       }
 
