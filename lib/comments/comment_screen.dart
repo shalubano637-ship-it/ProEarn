@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:universal_io/universal_io.dart';
 
 import 'package:flutter/gestures.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -13,6 +14,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../models.dart';
 import '../service.dart';
+import '../cloudflare_media_service.dart';
 import '../user_profile_features.dart';
 import '../theme/theme.dart';
 import '../utils.dart';
@@ -363,16 +365,35 @@ class _CommentScreenState extends State<CommentScreen> {
     _focusNode.unfocus();
   }
 
+  String _imageContentType(String name) {
+    final lower = name.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    return 'image/jpeg';
+  }
+
   Future<void> _pickAndSendImage(ImageSource source) async {
     try {
       final picked = await _picker.pickImage(source: source, imageQuality: 90);
       if (picked == null || !mounted) return;
+
+      if (kIsWeb) {
+        final bytes = await picked.readAsBytes();
+        final url = await CloudflareMediaService.uploadImageBytes(
+          bytes,
+          folder: 'comments',
+          contentType: _imageContentType(picked.name),
+        );
+        if (mounted && url.isNotEmpty) await _postImageComment(url);
+        return;
+      }
+
       final url = await showChatImagePreview(context, File(picked.path));
       if (url != null) await _postImageComment(url);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Couldn't open camera/gallery."), backgroundColor: AppColors.error),
+          SnackBar(content: Text("Couldn't send photo: $e"), backgroundColor: AppColors.error),
         );
       }
     }
@@ -382,6 +403,19 @@ class _CommentScreenState extends State<CommentScreen> {
     try {
       final picked = await _picker.pickMultiImage(imageQuality: 90, limit: 20);
       if (picked.isEmpty || !mounted) return;
+
+      if (kIsWeb) {
+        for (final x in picked.take(20)) {
+          final bytes = await x.readAsBytes();
+          final url = await CloudflareMediaService.uploadImageBytes(
+            bytes,
+            folder: 'comments',
+            contentType: _imageContentType(x.name),
+          );
+          if (mounted && url.isNotEmpty) await _postImageComment(url);
+        }
+        return;
+      }
 
       var files = picked.map((x) => File(x.path)).toList();
       if (files.length > 20) {
@@ -400,7 +434,7 @@ class _CommentScreenState extends State<CommentScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Couldn't open gallery."), backgroundColor: AppColors.error),
+          SnackBar(content: Text("Couldn't send photos: $e"), backgroundColor: AppColors.error),
         );
       }
     }
