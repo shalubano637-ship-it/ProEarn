@@ -37,7 +37,10 @@ class RoomChatPage extends StatefulWidget {
 
 class _RoomChatPageState extends State<RoomChatPage> {
   final _controller = TextEditingController();
+  final _scrollController = ScrollController();
   final ImagePicker _picker = ImagePicker();
+  final Map<String, GlobalKey> _messageKeys = {};
+  String? _highlightedMessageId;
   Timer? _timer;
   List<Map<String, dynamic>> _messages = [];
   bool _loading = true;
@@ -58,6 +61,33 @@ class _RoomChatPageState extends State<RoomChatPage> {
     _memberCount = widget.memberCount;
     _loadMessages();
     _timer = Timer.periodic(const Duration(seconds: 3), (_) => _loadMessages(silent: true));
+  }
+
+  Future<void> _scrollToMessage(String messageId) async {
+    BuildContext? target = _messageKeys[messageId]?.currentContext;
+    if (target == null && _scrollController.hasClients) {
+      final index = _messages.indexWhere((m) => m['id']?.toString() == messageId);
+      if (index >= 0 && _messages.length > 1) {
+        final max = _scrollController.position.maxScrollExtent;
+        final estimate = max * (index / (_messages.length - 1));
+        _scrollController.jumpTo(estimate.clamp(0, max));
+        await Future.delayed(const Duration(milliseconds: 100));
+        target = _messageKeys[messageId]?.currentContext;
+      }
+    }
+    if (target == null || !mounted) return;
+    await Scrollable.ensureVisible(
+      target,
+      duration: const Duration(milliseconds: 350),
+      alignment: 0.5,
+    );
+    if (!mounted) return;
+    setState(() => _highlightedMessageId = messageId);
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted && _highlightedMessageId == messageId) {
+        setState(() => _highlightedMessageId = null);
+      }
+    });
   }
 
   Future<void> _loadMessages({bool silent = false}) async {
@@ -277,6 +307,7 @@ class _RoomChatPageState extends State<RoomChatPage> {
   void dispose() {
     _timer?.cancel();
     _controller.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -307,6 +338,7 @@ class _RoomChatPageState extends State<RoomChatPage> {
             child: _loading ? const Center(child: CircularProgressIndicator()) : _messages.isEmpty
               ? const Center(child: Text('No messages in this Room session yet.'))
               : ListView.builder(
+                  controller: _scrollController,
                   padding: const EdgeInsets.all(12),
                   itemCount: _messages.length,
                   itemBuilder: (context, index) {
@@ -316,25 +348,53 @@ class _RoomChatPageState extends State<RoomChatPage> {
                     final imageUrl = m['image_url']?.toString() ?? '';
                     final text = m['text']?.toString() ?? '';
                     final replyText = m['reply_text']?.toString() ?? '';
+                    final messageId = m['id']?.toString() ?? '$index';
+                    final replyId = m['reply_to_message_id']?.toString();
+                    final isHighlighted = _highlightedMessageId == messageId;
                     return Align(
                       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
                       child: GestureDetector(
                         onLongPress: () => _showMessageOptions(m, mine),
                         child: Container(
+                          key: _messageKeys.putIfAbsent(messageId, () => GlobalKey()),
                           constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * .78),
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: EdgeInsets.all(imageUrl.isNotEmpty && text.isEmpty ? 5 : 10),
                           decoration: BoxDecoration(
                             color: mine ? AppColors.accent : AppColors.surface,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: mine ? AppColors.accent : AppColors.border),
+                            border: Border.all(
+                              color: isHighlighted
+                                  ? AppColors.accent
+                                  : (mine ? AppColors.accent : AppColors.border),
+                              width: isHighlighted ? 2 : 1,
+                            ),
                           ),
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             if (!mine) Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.accent)),
-                            if (replyText.isNotEmpty) Container(
-                              width: double.infinity, padding: const EdgeInsets.all(7), margin: const EdgeInsets.only(bottom: 6),
-                              decoration: BoxDecoration(color: Colors.black.withOpacity(.12), borderRadius: BorderRadius.circular(9)),
-                              child: Text(replyText, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: mine ? AppColors.textOnAccent : AppColors.textSecondary)),
+                            if (replyText.isNotEmpty) GestureDetector(
+                              onTap: replyId == null ? null : () => _scrollToMessage(replyId),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(7),
+                                margin: const EdgeInsets.only(bottom: 6),
+                                decoration: BoxDecoration(
+                                  color: isHighlighted
+                                      ? AppColors.accent.withOpacity(.22)
+                                      : Colors.black.withOpacity(.12),
+                                  borderRadius: BorderRadius.circular(9),
+                                  border: isHighlighted ? Border.all(color: AppColors.accent) : null,
+                                ),
+                                child: Text(
+                                  replyText,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: mine ? AppColors.textOnAccent : AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
                             ),
                             if (imageUrl.isNotEmpty) GestureDetector(
                               onTap: () => _openImage(imageUrl),
@@ -370,9 +430,12 @@ class _RoomChatPageState extends State<RoomChatPage> {
                   icon: const Icon(Icons.camera_alt_outlined),
                 ),
                 Expanded(child: TextField(
-                  controller: _controller, maxLines: 4, minLines: 1,
+                  controller: _controller,
+                  maxLines: 4,
+                  minLines: 1,
+                  keyboardType: TextInputType.multiline,
+                  textInputAction: TextInputAction.newline,
                   decoration: InputDecoration(hintText: 'Message Room...', filled: true, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none)),
-                  onSubmitted: (_) => _send(),
                 )),
                 IconButton(
                   tooltip: 'Gallery',
