@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
+import 'package:universal_io/universal_io.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -41,6 +42,44 @@ class CloudflareMediaService {
       throw StateError('Cloudflare did not return a moderation approval');
     }
     return approvalToken;
+  }
+
+  static Future<String> uploadImageBytes(
+    Uint8List bytes, {
+    String folder = 'posts',
+    String contentType = 'image/jpeg',
+    void Function(int sent, int total)? onProgress,
+  }) async {
+    if (bytes.isEmpty) throw StateError('Image is empty');
+    if (bytes.length > 9 * 1024 * 1024) throw StateError('Image is too large');
+
+    final intent = await _post('/v1/upload-intent', {
+      'contentType': contentType,
+      'folder': folder,
+    });
+    final uploadUrl = intent['uploadUrl']?.toString();
+    final objectKey = intent['objectKey']?.toString();
+    if (uploadUrl == null || objectKey == null) throw StateError('Invalid upload intent');
+
+    final request = http.Request('PUT', Uri.parse(uploadUrl));
+    request.headers['Content-Type'] = contentType;
+    request.bodyBytes = bytes;
+    onProgress?.call(0, bytes.length);
+    final response = await request.send();
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('R2 upload failed: ${response.statusCode}');
+    }
+    onProgress?.call(bytes.length, bytes.length);
+
+    final finalized = await _post('/v1/finalize-media', {
+      'objectKey': objectKey,
+      'contentType': contentType,
+      'size': bytes.length,
+      'folder': folder,
+    });
+    final url = finalized['url']?.toString();
+    if (url == null || url.isEmpty) throw StateError('Server moderation did not approve media');
+    return url;
   }
 
   static Future<String> uploadImage(
