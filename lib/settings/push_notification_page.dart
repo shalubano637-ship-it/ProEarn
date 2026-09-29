@@ -172,7 +172,7 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
         }
       }
 
-      OneSignal.login(_currentUid);
+      await OneSignal.login(_currentUid);
       await client.from(kUsersCollection).update({
         'pushNotificationsEnabled': true,
         'notifyLikes': true,
