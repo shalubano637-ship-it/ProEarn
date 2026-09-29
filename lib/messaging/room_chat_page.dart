@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models.dart';
+import '../service.dart';
 import '../theme/theme.dart';
 import '../cloudflare_media_service.dart';
 import '../user_profile_features.dart';
