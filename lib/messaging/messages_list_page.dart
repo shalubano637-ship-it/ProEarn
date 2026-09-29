@@ -393,6 +393,7 @@ class _ConversationsListState extends State<_ConversationsList> {
                       width: 48,
                       height: 48,
                       fit: BoxFit.cover,
+                      filterQuality: FilterQuality.high,
                       errorWidget: const Icon(Icons.person),
                     ),
                   ),
