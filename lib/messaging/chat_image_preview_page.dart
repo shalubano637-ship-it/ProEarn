@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import '../theme/theme.dart';
 import '../service.dart';
 import '../moderation/moderation_config.dart';
+import '../cloudflare_media_service.dart';
 
 Future<String?> showChatImagePreview(BuildContext context, File imageFile) {
   return Navigator.push<String?>(
@@ -70,7 +71,7 @@ class _ChatImagePreviewPageState extends State<_ChatImagePreviewPage> {
     setState(() { _isSending = true; });
 
     try {
-      final url = await uploadImageToMediaGateway(_compressedFile!, folder: 'chat');
+      final url = await CloudflareMediaService.uploadImage(_compressedFile!, folder: 'chat');
       if (url == null) throw Exception("Upload failed");
       if (mounted) Navigator.pop(context, url);
     } catch (e) {
