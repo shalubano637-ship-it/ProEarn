@@ -64,6 +64,7 @@ class PushService {
           'notifyComments': true,
           'notifyGets': true,
           'notifyFollow': true,
+          'notifyMessages': true,
         }).eq('uid', currentUser.id);
         debugPrint("OneSignal device linked with default preferences enabled.");
       }
@@ -169,6 +170,7 @@ Future<String?> uploadImageToMediaGateway(
       'imgbb-upload',
       body: {
         'imageBase64': base64Image,
+        'folder': folder,
       },
     );
 
