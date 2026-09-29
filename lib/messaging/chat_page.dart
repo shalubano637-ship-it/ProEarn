@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../models.dart';
 import '../theme/theme.dart';
 import '../service.dart';
+import '../cloudflare_media_service.dart';
 import 'chat_settings_page.dart';
 import 'chat_image_preview_page.dart';
 import 'chat_multi_image_preview_page.dart';
@@ -212,6 +213,13 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     }
   }
 
+  String _imageContentType(String name) {
+    final lower = name.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    return 'image/jpeg';
+  }
+
   Future<void> _pickAndSendImage(ImageSource source) async {
     try {
       final picked = await _picker.pickImage(source: source, imageQuality: 90);
@@ -219,7 +227,11 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
       if (kIsWeb) {
         final bytes = await picked.readAsBytes();
-        final url = await uploadImageBytesToMediaGateway(bytes, folder: 'chat', clientModerated: true);
+        final url = await CloudflareMediaService.uploadImageBytes(
+          bytes,
+          folder: 'chat',
+          contentType: _imageContentType(picked.name),
+        );
         if (url != null && mounted) await _sendMessage(imageUrl: url);
       } else {
         final url = await showChatImagePreview(context, File(picked.path));
@@ -242,7 +254,11 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       if (kIsWeb) {
         for (final x in picked) {
           final bytes = await x.readAsBytes();
-          final url = await uploadImageBytesToMediaGateway(bytes, folder: 'chat', clientModerated: true);
+          final url = await CloudflareMediaService.uploadImageBytes(
+            bytes,
+            folder: 'chat',
+            contentType: _imageContentType(x.name),
+          );
           if (url != null && mounted) await _sendMessage(imageUrl: url);
         }
         return;
