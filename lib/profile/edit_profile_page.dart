@@ -1,10 +1,12 @@
 
 
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:universal_io/universal_io.dart';
 
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -14,6 +16,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../models.dart';
 import '../service.dart';
+import '../cloudflare_media_service.dart';
 import '../moderation/moderation_config.dart';
 import '../theme/theme.dart';
 import 'image_crop_page.dart';
@@ -31,6 +34,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
   
 
   File? _selectedProfileImage;
+  Uint8List? _selectedProfileImageBytes;
+  String? _selectedProfileImageContentType;
   final ImagePicker _profilePicker = ImagePicker();
   
   
@@ -78,6 +83,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
       );
 
       if (image != null) {
+        if (kIsWeb) {
+          final bytes = await image.readAsBytes();
+          if (!mounted) return;
+          setState(() {
+            _selectedProfileImageBytes = bytes;
+            _selectedProfileImage = null;
+            final lower = image.name.toLowerCase();
+            _selectedProfileImageContentType = lower.endsWith('.png')
+                ? 'image/png'
+                : lower.endsWith('.webp')
+                    ? 'image/webp'
+                    : 'image/jpeg';
+          });
+          return;
+        }
+
         if (!mounted) return;
         final File? croppedFile = await Navigator.push(
           context,
@@ -90,6 +111,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
           if (!mounted) return;
           setState(() {
             _selectedProfileImage = croppedFile;
+            _selectedProfileImageBytes = null;
+            _selectedProfileImageContentType = null;
           });
         }
       }
@@ -143,7 +166,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ),
                     child: ClipOval(
                       child: _selectedProfileImage != null
-                          ? Image.file(_selectedProfileImage!, fit: BoxFit.cover)
+                          ? (kIsWeb && _selectedProfileImageBytes != null
+                              ? Image.memory(_selectedProfileImageBytes!, fit: BoxFit.cover)
+                              : Image.file(_selectedProfileImage!, fit: BoxFit.cover))
                           : (currentCloudPicUrl.isNotEmpty
                               ? GlobalCachedImage(imageUrl: currentCloudPicUrl, fit: BoxFit.cover,
                                   errorWidget: const Icon(Icons.person, size: 70))
@@ -237,8 +262,59 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
                   String targetProfilePicUrl = currentCloudPicUrl;
 
-                  if (_selectedProfileImage != null) {
+                  if (_selectedProfileImageBytes != null) {
                     try {
+                      final uploadedProfileUrl = await CloudflareMediaService.uploadImageBytes(
+                        _selectedProfileImageBytes!,
+                        folder: 'profile',
+                        contentType: _selectedProfileImageContentType ?? 'image/jpeg',
+                      );
+                      targetProfilePicUrl = uploadedProfileUrl;
+                      currentUserProfile = uploadedProfileUrl;
+                    } catch (e) {
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Profile picture upload failed: $e"), backgroundColor: AppColors.error),
+                        );
+                      }
+                      return;
+                    }
+                  } else if (_selectedProfileImage != null) {
+                    try {
+                      final tempDir = await getTemporaryDirectory();
+                      final compressedPath = "${tempDir.absolute.path}/profile_compressed_${DateTime.now().millisecondsSinceEpoch}.jpg";
+
+                      final compressedXFile = await FlutterImageCompress.compressAndGetFile(
+                        _selectedProfileImage!.absolute.path,
+                        compressedPath,
+                        quality: 100,
+                        format: CompressFormat.jpeg,
+                      );
+                      if (compressedXFile == null) throw StateError("Compression failed");
+
+                      final finalUploadFile = File(compressedXFile.path);
+                      final uploadedProfileUrl = await CloudflareMediaService.uploadImage(
+                        finalUploadFile,
+                        folder: 'profile',
+                      );
+                      targetProfilePicUrl = uploadedProfileUrl;
+                      currentUserProfile = uploadedProfileUrl;
+
+                      if (await finalUploadFile.exists()) await finalUploadFile.delete();
+                    } catch (e) {
+                      debugPrint("Profile image upload failed: $e");
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Profile picture upload failed: $e"), backgroundColor: AppColors.error),
+                        );
+                      }
+                      return;
+                    }
+                  }
+
+                  try {
                       final tempDir = await getTemporaryDirectory();
                       final compressedPath = "${tempDir.absolute.path}/profile_compressed_${DateTime.now().millisecondsSinceEpoch}.jpg";
 
@@ -314,7 +390,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         .update(updatedFields)
                         .eq('uid', user.id);
                     
-                    if (_selectedProfileImage != null) {
+                    if (_selectedProfileImage != null || _selectedProfileImageBytes != null) {
                       await Supabase.instance.client
                           .from(kPostsCollection)
                           .update({'userPhotoUrl': targetProfilePicUrl})
