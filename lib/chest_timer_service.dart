@@ -52,6 +52,7 @@ class _SupabaseChestRepository implements ChestRepository {
       currentChestIndex: existing['currentChestIndex'] as int,
       remainingSeconds: existing['remainingSeconds'] as int,
       isUnlocked: existing['isUnlocked'] as bool,
+      unlockAt: existing['unlockAt'] == null ? null : DateTime.tryParse(existing['unlockAt'].toString()),
     );
   }
 
