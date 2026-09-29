@@ -56,13 +56,29 @@ Deno.serve(async (req) => {
     if (!targetData) return json({ success: true });
 
     const pushEnabled = targetData.pushNotificationsEnabled === true;
-    if (!pushEnabled && type !== "chest_ready") return json({ success: true });
+    if (!pushEnabled) return json({ success: true });
     if (type === "like" && targetData.notifyLikes === false) return json({ success: true });
     if (type === "comment" && targetData.notifyComments === false) return json({ success: true });
     if (type === "follow" && targetData.notifyFollow === false) return json({ success: true });
     if (type === "message" && targetData.notifyMessages === false) return json({ success: true });
     if (type === "message" && Array.isArray(targetData.mutedUsers) && targetData.mutedUsers.includes(senderId)) {
       return json({ success: true });
+    }
+
+    if (type === "message") {
+      const { data: presence } = await admin
+        .from("user_presence")
+        .select("screen, chattingWithUid, updatedAt")
+        .eq("uid", targetOwnerId)
+        .maybeSingle();
+
+      const activeChat =
+        presence?.screen === "chat" &&
+        presence?.chattingWithUid?.toString() === senderId &&
+        presence?.updatedAt &&
+        (Date.now() - new Date(presence.updatedAt).getTime()) < 120000;
+
+      if (activeChat) return json({ success: true });
     }
 
     const { data: senderData } = await admin
@@ -90,7 +106,7 @@ Deno.serve(async (req) => {
     if (type === "like") pushBody = "Someone liked your post";
     else if (type === "follow") pushBody = "Someone started following you";
     else if (type === "comment") pushBody = "Someone commented on your post";
-    else if (type === "message") pushBody = `${activeName} sent you a message`;
+    else if (type === "message") pushBody = "Someone sent you a message";
 
     if (!pushEnabled) return json({ success: true });
 
