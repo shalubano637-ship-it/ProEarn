@@ -217,9 +217,13 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       final picked = await _picker.pickImage(source: source, imageQuality: 90);
       if (picked == null || !mounted) return;
 
-      final url = await showChatImagePreview(context, File(picked.path));
-      if (url != null) {
-        await _sendMessage(imageUrl: url);
+      if (kIsWeb) {
+        final bytes = await picked.readAsBytes();
+        final url = await uploadImageBytesToMediaGateway(bytes, folder: 'chat', clientModerated: true);
+        if (url != null && mounted) await _sendMessage(imageUrl: url);
+      } else {
+        final url = await showChatImagePreview(context, File(picked.path));
+        if (url != null) await _sendMessage(imageUrl: url);
       }
     } catch (e) {
       if (mounted) {
@@ -234,6 +238,15 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     try {
       final picked = await _picker.pickMultiImage(imageQuality: 90, limit: 20);
       if (picked.isEmpty || !mounted) return;
+
+      if (kIsWeb) {
+        for (final x in picked) {
+          final bytes = await x.readAsBytes();
+          final url = await uploadImageBytesToMediaGateway(bytes, folder: 'chat', clientModerated: true);
+          if (url != null && mounted) await _sendMessage(imageUrl: url);
+        }
+        return;
+      }
 
       var files = picked.map((x) => File(x.path)).toList();
       if (files.length > 20) {
