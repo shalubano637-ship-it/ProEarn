@@ -42,39 +42,37 @@ class _UploadPageState extends State<UploadPage> {
 
   Future<void> pickImageFromGallery() async {
     try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-      );
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image == null) return;
+      _transformationController.value = Matrix4.identity();
 
-      if (image != null) {
-        _transformationController.value = Matrix4.identity();
-        if (kIsWeb) {
-          final bytes = await image.readAsBytes();
-          if (mounted) setState(() {
+      if (kIsWeb) {
+        final bytes = await image.readAsBytes();
+        if (mounted) {
+          setState(() {
             _pickedImageBytes = bytes;
             _pickedImageFile = null;
-        _pickedImageBytes = null;
           });
-          return;
         }
-        final originalFile = File(image.path);
-        if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => GlobalImageAdjuster(
-                imageFile: originalFile,
-                onConfirm: (File croppedFile) {
-                  setState(() {
-                    _pickedImageFile = croppedFile;
-                    _pickedImageBytes = null;
-                  });
-                },
-              ),
-            ),
-          );
-        }
-      }      }
+        return;
+      }
+
+      final originalFile = File(image.path);
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => GlobalImageAdjuster(
+            imageFile: originalFile,
+            onConfirm: (File croppedFile) {
+              setState(() {
+                _pickedImageFile = croppedFile;
+                _pickedImageBytes = null;
+              });
+            },
+          ),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -170,7 +168,8 @@ class _UploadPageState extends State<UploadPage> {
       if (!mounted) return;
       setState(() {
         _isUploading = false;
-        _pickedImageFile = null; 
+        _pickedImageFile = null;
+        _pickedImageBytes = null;
       });
       
       promptController.clear(); 
@@ -247,7 +246,7 @@ class _UploadPageState extends State<UploadPage> {
                       border: Border.all(color: theme.colorScheme.outlineVariant, width: 1),
                     ),
                     clipBehavior: Clip.antiAlias,
-                    child: _pickedImageFile == null
+                    child: (_pickedImageFile == null && _pickedImageBytes == null)
                         ? Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
