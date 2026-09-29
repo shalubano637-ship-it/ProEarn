@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import '../theme/theme.dart';
 import '../service.dart';
 import '../moderation/moderation_config.dart';
+import '../cloudflare_media_service.dart';
 
 Future<List<String>?> showChatMultiImagePreview(BuildContext context, List<File> imageFiles) {
   return Navigator.push<List<String>?>(
@@ -88,7 +89,7 @@ class _ChatMultiImagePreviewPageState extends State<_ChatMultiImagePreviewPage> 
     final urls = <String>[];
     try {
       for (final item in _sendableItems) {
-        final url = await uploadImageToMediaGateway(item.compressed!, folder: 'chat');
+        final url = await CloudflareMediaService.uploadImage(item.compressed!, folder: 'chat');
         if (url != null) urls.add(url);
       }
       if (mounted) Navigator.pop(context, urls);
