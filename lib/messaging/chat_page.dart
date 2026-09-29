@@ -1160,10 +1160,7 @@ class _ImageGroupViewerPageState extends State<_ImageGroupViewerPage> {
 
   @override
   void dispose() {
-    Supabase.instance.client.rpc('set_presence', params: {'p_screen': 'other'})
-        .catchError((e) => debugPrint('set_presence failed: $e'));
-    WidgetsBinding.instance.removeObserver(this);
-    _messageController.dispose();
-    _scrollController.dispose();
+    _pageController.dispose();
     super.dispose();
-  }}
+  }
+}
