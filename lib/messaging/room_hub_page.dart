@@ -16,6 +16,7 @@ class RoomHubPage extends StatefulWidget {
 class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStateMixin {
   late final TabController _tabs;
   final Map<String, Future<List<Map<String, dynamic>>>> _futures = {};
+  Future<List<Map<String, dynamic>>>? _favoritesFuture;
 
   @override
   void initState() {
@@ -41,7 +42,13 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
     return future;
   }
 
-  Future<void> _refresh() async { _futures.clear(); if (mounted) setState(() {}); }
+  Future<void> _refresh() async { _futures.clear(); _favoritesFuture = null; if (mounted) setState(() {}); }
+
+  Future<List<Map<String, dynamic>>> _favoriteRooms() {
+    return _favoritesFuture ??= Supabase.instance.client.rpc('list_favorite_rooms').then(
+      (result) => (result as List).map((e) => _normalizeRoom(Map<String, dynamic>.from(e as Map))).toList(),
+    );
+  }
 
   Future<void> _searchRoom() async {
     final controller = TextEditingController();
@@ -214,28 +221,97 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
   Widget _roomList(String kind) => FutureBuilder<List<Map<String, dynamic>>>(
     future: _rooms(kind),
     builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-      if (snapshot.hasError) return Center(child: Text('Could not load Rooms: ${snapshot.error}'));
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (snapshot.hasError) {
+        return Center(child: Text('Could not load Rooms: ${snapshot.error}'));
+      }
+
       final rooms = snapshot.data ?? [];
-      if (rooms.isEmpty) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(kind == 'my' ? 'You have not created a Room yet.' : 'No Rooms available.'), if (kind == 'my') ...[const SizedBox(height: 12), FilledButton.icon(onPressed: _createRoom, icon: const Icon(Icons.add), label: const Text('Create Room'))]]));
-      return ListView.separated(
-        itemCount: rooms.length,
-        separatorBuilder: (_, __) => const Divider(height: 1),
-        itemBuilder: (_, i) {
-          final room = rooms[i];
-          final url = room['profile_url']?.toString() ?? '';
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            onTap: () => _enterRoom(room),
-            leading: CircleAvatar(radius: 25, backgroundColor: AppColors.border, backgroundImage: url.isNotEmpty ? CachedNetworkImageProvider(url) : null, child: url.isEmpty ? const Icon(Icons.forum_outlined) : null),
-            title: Text(room['room_name']?.toString() ?? 'Room', style: const TextStyle(fontWeight: FontWeight.w700)),
-            subtitle: Text('#${room['room_number']}  •  ${room['owner_name']}'),
-            trailing: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(room['has_password'] == true ? Icons.lock_outline : Icons.public, size: 18), const SizedBox(height: 3), Text('${room['member_count'] ?? 0}')]),
+      if (kind != 'my') {
+        if (rooms.isEmpty) return const Center(child: Text('No Rooms available.'));
+        return ListView.separated(
+          itemCount: rooms.length,
+          separatorBuilder: (_, __) => const Divider(height: 1),
+          itemBuilder: (_, i) => _roomTile(rooms[i]),
+        );
+      }
+
+      return FutureBuilder<List<Map<String, dynamic>>>(
+        future: _favoriteRooms(),
+        builder: (context, favSnapshot) {
+          final favorites = favSnapshot.data ?? [];
+          if (rooms.isEmpty && favorites.isEmpty) {
+            return Center(
+              child: FilledButton.icon(
+                onPressed: _createRoom,
+                icon: const Icon(Icons.add),
+                label: const Text('Create Room'),
+              ),
+            );
+          }
+
+          return ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              if (rooms.isNotEmpty) ...[
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(12, 8, 12, 4),
+                  child: Text('My Room', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                ),
+                _roomTile(rooms.first),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(12, 12, 12, 4),
+                  child: Text('Favourite', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                ),
+              ] else
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(12, 8, 12, 4),
+                  child: Text('Favourite', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                ),
+              if (favSnapshot.connectionState == ConnectionState.waiting)
+                const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (favorites.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Center(child: Text('No favourite Rooms yet.')),
+                )
+              else
+                ...favorites.map(_roomTile),
+            ],
           );
         },
       );
     },
   );
+
+  Widget _roomTile(Map<String, dynamic> room) {
+    final url = room['profile_url']?.toString() ?? '';
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      onTap: () => _enterRoom(room),
+      leading: CircleAvatar(
+        radius: 25,
+        backgroundColor: AppColors.border,
+        backgroundImage: url.isNotEmpty ? CachedNetworkImageProvider(url) : null,
+        child: url.isEmpty ? const Icon(Icons.forum_outlined) : null,
+      ),
+      title: Text(room['room_name']?.toString() ?? 'Room', style: const TextStyle(fontWeight: FontWeight.w700)),
+      subtitle: Text('#${room['room_number']}  •  ${room['owner_name']}'),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(room['has_password'] == true ? Icons.lock_outline : Icons.public, size: 18),
+          const SizedBox(height: 3),
+          Text('${room['member_count'] ?? 0}'),
+        ],
+      ),
+    );
+  }
 
   Widget _roomBody() {
     const labels = ['My Room', 'Public Room', 'Private Room'];
@@ -256,7 +332,7 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
                 final selected = _tabs.index == index;
                 return Expanded(
                   child: GestureDetector(
-                    onTap: () => _tabs.animateTo(index),
+                    onTap: () => _tabs.animateTo(index, duration: const Duration(milliseconds: 120)),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
                       padding: const EdgeInsets.symmetric(vertical: 10),
