@@ -411,7 +411,7 @@ class GlobalCachedImage extends StatelessWidget {
       width: width,
       height: height,
       fit: fit,
-      filterQuality: FilterQuality.medium,
+      filterQuality: filterQuality,
       cacheManager: CustomImageCacheManager.instance,
       useOldImageOnUrlChange: true,
       placeholder: (context, url) => Container(
