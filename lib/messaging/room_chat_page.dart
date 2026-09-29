@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:universal_io/universal_io.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -138,8 +139,14 @@ class _RoomChatPageState extends State<RoomChatPage> {
     try {
       final picked = await _picker.pickImage(source: source, imageQuality: 90);
       if (picked == null || !mounted) return;
-      final url = await showChatImagePreview(context, File(picked.path));
-      if (url != null) await _send(imageUrl: url);
+      if (kIsWeb) {
+        final bytes = await picked.readAsBytes();
+        final url = await uploadImageBytesToMediaGateway(bytes, folder: 'chat', clientModerated: true);
+        if (url != null && mounted) await _send(imageUrl: url);
+      } else {
+        final url = await showChatImagePreview(context, File(picked.path));
+        if (url != null) await _send(imageUrl: url);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -153,11 +160,19 @@ class _RoomChatPageState extends State<RoomChatPage> {
     try {
       final picked = await _picker.pickMultiImage(imageQuality: 90, limit: 20);
       if (picked.isEmpty || !mounted) return;
-      final files = picked.map((x) => File(x.path)).toList();
-      final urls = await showChatMultiImagePreview(context, files);
-      if (urls == null || urls.isEmpty || !mounted) return;
-      for (final url in urls) {
-        await _send(imageUrl: url);
+      if (kIsWeb) {
+        for (final x in picked) {
+          final bytes = await x.readAsBytes();
+          final url = await uploadImageBytesToMediaGateway(bytes, folder: 'chat', clientModerated: true);
+          if (url != null && mounted) await _send(imageUrl: url);
+        }
+      } else {
+        final files = picked.map((x) => File(x.path)).toList();
+        final urls = await showChatMultiImagePreview(context, files);
+        if (urls == null || urls.isEmpty || !mounted) return;
+        for (final url in urls) {
+          await _send(imageUrl: url);
+        }
       }
     } catch (e) {
       if (mounted) {
