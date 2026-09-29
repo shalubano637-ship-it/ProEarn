@@ -497,7 +497,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
               onHorizontalDragEnd: (details) {
                 final velocity = details.primaryVelocity ?? 0;
                 if (velocity.abs() < 250) return;
-                _handleHorizontalSwipe(velocity > 0);
+                _handleHorizontalSwipe(velocity < 0);
               },
               child: _LeaderboardBody(key: _bodyKey, period: _period, metric: _metric, onRetry: _reload),
             ),
