@@ -47,6 +47,8 @@ class _RoomChatPageState extends State<RoomChatPage> {
   List<Map<String, dynamic>> _messages = [];
   bool _loading = true;
   bool _sending = false;
+  bool _isFavorite = false;
+  bool _favoriteBusy = false;
   late String _roomName;
   late bool _hasPassword;
   late int _memberCount;
@@ -55,6 +57,39 @@ class _RoomChatPageState extends State<RoomChatPage> {
   String get _myUid => Supabase.instance.client.auth.currentUser?.id ?? '';
   bool get _isOwner => _myUid == widget.ownerUid;
 
+  Future<void> _loadFavorite() async {
+    try {
+      final value = await Supabase.instance.client.rpc(
+        'get_room_favorite_status',
+        params: {'p_room_id': widget.roomId},
+      );
+      if (mounted) setState(() => _isFavorite = value == true);
+    } catch (e) {
+      debugPrint('Room favourite load failed: $e');
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    if (_favoriteBusy) return;
+    setState(() => _favoriteBusy = true);
+    try {
+      final value = await Supabase.instance.client.rpc(
+        'toggle_room_favorite',
+        params: {'p_room_id': widget.roomId},
+      );
+      if (mounted) setState(() => _isFavorite = value == true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not update favourite Room.'), backgroundColor: AppColors.error),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _favoriteBusy = false);
+    }
+  }
+
+
   @override
   void initState() {
     super.initState();
@@ -62,6 +97,7 @@ class _RoomChatPageState extends State<RoomChatPage> {
     _hasPassword = widget.hasPassword;
     _memberCount = widget.memberCount;
     _loadMessages();
+    _loadFavorite();
     _timer = Timer.periodic(const Duration(seconds: 3), (_) => _loadMessages(silent: true));
   }
 
@@ -348,6 +384,16 @@ class _RoomChatPageState extends State<RoomChatPage> {
               Text(_memberCount.toString(), style: const TextStyle(fontSize: 12)),
             ]),
           ),
+          actions: [
+            IconButton(
+              tooltip: _isFavorite ? 'Remove from favourites' : 'Add to favourites',
+              onPressed: _favoriteBusy ? null : _toggleFavorite,
+              icon: Icon(
+                _isFavorite ? Icons.star : Icons.star_border,
+                color: _isFavorite ? AppColors.accent : null,
+              ),
+            ),
+          ],
         ),
         body: Column(children: [
           Expanded(
