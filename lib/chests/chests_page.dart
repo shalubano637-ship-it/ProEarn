@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
-import '../ad_unit_ids.dart';
 import '../theme/theme.dart';
 import '../service.dart';
 import '../chest_timer_service.dart';
@@ -19,54 +17,16 @@ class ChestsPage extends StatefulWidget {
 }
 
 class _ChestsPageState extends State<ChestsPage> {
-  BannerAd? _bannerAd;
-  bool _isBannerLoaded = false;
-
-  RewardedAd? _rewardedAd;
-  bool _isAdLoading = false;
   bool _isClaiming = false;
   String? _referralCode;
 
   @override
   void initState() {
     super.initState();
-    _loadBannerAd();
-    _loadRewardedAd();
     if (!chestTimerService.isLoaded) {
       chestTimerService.initialize();
     }
     _loadReferralCode();
-  }
-
-  void _loadBannerAd() {
-    _bannerAd = BannerAd(
-      adUnitId: AdUnitIds.banner,
-      size: AdSize.banner,
-      request: const AdRequest(),
-      listener: BannerAdListener(
-        onAdLoaded: (ad) { if (mounted) setState(() => _isBannerLoaded = true); },
-        onAdFailedToLoad: (ad, error) => ad.dispose(),
-      ),
-    )..load();
-  }
-
-  void _loadRewardedAd() {
-    if (_isAdLoading) return;
-    setState(() { _isAdLoading = true; });
-    RewardedAd.load(
-      adUnitId: AdUnitIds.rewarded,
-      request: const AdRequest(),
-      rewardedAdLoadCallback: RewardedAdLoadCallback(
-        onAdLoaded: (ad) {
-          _rewardedAd = ad;
-          if (mounted) setState(() { _isAdLoading = false; });
-        },
-        onAdFailedToLoad: (error) {
-          _rewardedAd = null;
-          if (mounted) setState(() { _isAdLoading = false; });
-        },
-      ),
-    );
   }
 
   Future<void> _loadReferralCode() async {
@@ -101,50 +61,33 @@ class _ChestsPageState extends State<ChestsPage> {
   Future<void> _openChest() async {
     final service = chestTimerService;
     if (!service.isUnlocked || _isClaiming) return;
-    if (_rewardedAd == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Ad not ready yet — try again in a moment.")),
-      );
-      _loadRewardedAd();
-      return;
-    }
 
-    final adToShow = _rewardedAd!;
-    _rewardedAd = null;
+    if (mounted) setState(() => _isClaiming = true);
     final chestIndexBeingClaimed = service.currentChestIndex;
-
-    adToShow.show(onUserEarnedReward: (ad, reward) async {
-      if (mounted) setState(() => _isClaiming = true);
-      try {
-        final result = await Supabase.instance.client.rpc(
-          'claim_chest_reward',
-          params: {'p_chest_index': chestIndexBeingClaimed},
+    try {
+      final result = await Supabase.instance.client.rpc(
+        'claim_chest_reward',
+        params: {'p_chest_index': chestIndexBeingClaimed},
+      );
+      if (mounted) {
+        final giftName = result['giftName'] as String?;
+        final message = giftName != null
+            ? "Chest opened! You got a $giftName! Check your Bag."
+            : "Chest opened!";
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), duration: const Duration(seconds: 4)),
         );
-
-        if (mounted) {
-          final giftName = result['giftName'] as String?;
-          final message = giftName != null
-              ? "Chest opened! You got a $giftName! Check your Bag."
-              : "Chest opened!";
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(message), duration: const Duration(seconds: 4)),
-          );
-        }
-        service.advanceToNextChest();
-        _loadRewardedAd();
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Couldn't claim chest — please try again."),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-      } finally {
-        if (mounted) setState(() => _isClaiming = false);
       }
-    });
+      service.advanceToNextChest();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't claim chest — please try again."), backgroundColor: AppColors.error),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isClaiming = false);
+    }
   }
 
   String _formatTime(int totalSeconds) {
@@ -155,8 +98,6 @@ class _ChestsPageState extends State<ChestsPage> {
 
   @override
   void dispose() {
-    _bannerAd?.dispose();
-    _rewardedAd?.dispose();
     super.dispose();
   }
 
@@ -166,12 +107,6 @@ class _ChestsPageState extends State<ChestsPage> {
       appBar: AppBar(title: const Text("Rewards")),
       body: Column(
         children: [
-          if (_isBannerLoaded && _bannerAd != null)
-            SizedBox(
-              width: _bannerAd!.size.width.toDouble(),
-              height: _bannerAd!.size.height.toDouble(),
-              child: AdWidget(ad: _bannerAd!),
-            ),
           Expanded(
             child: AnimatedBuilder(
               animation: chestTimerService,
