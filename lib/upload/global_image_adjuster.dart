@@ -61,7 +61,7 @@ class _GlobalImageAdjusterState extends State<GlobalImageAdjuster> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.textPrimary,
-        title: const Text("Adjust 9:16 Post Size"),
+        title: const Text("Edit Uploads"),
         actions: [
           IconButton(
             icon: const Icon(Icons.check, size: 28, color: AppColors.success),
