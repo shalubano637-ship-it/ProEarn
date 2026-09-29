@@ -2,9 +2,11 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:universal_io/universal_io.dart';
 
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -27,6 +29,7 @@ import 'global_image_adjuster.dart';
 }
 class _UploadPageState extends State<UploadPage> {
   File? _pickedImageFile;
+  Uint8List? _pickedImageBytes;
   final ImagePicker _picker = ImagePicker();
   
   final TextEditingController promptController = TextEditingController();
@@ -44,9 +47,17 @@ class _UploadPageState extends State<UploadPage> {
       );
 
       if (image != null) {
-        File originalFile = File(image.path);
         _transformationController.value = Matrix4.identity();
-        
+        if (kIsWeb) {
+          final bytes = await image.readAsBytes();
+          if (mounted) setState(() {
+            _pickedImageBytes = bytes;
+            _pickedImageFile = null;
+        _pickedImageBytes = null;
+          });
+          return;
+        }
+        final originalFile = File(image.path);
         if (mounted) {
           Navigator.push(
             context,
@@ -56,13 +67,14 @@ class _UploadPageState extends State<UploadPage> {
                 onConfirm: (File croppedFile) {
                   setState(() {
                     _pickedImageFile = croppedFile;
+                    _pickedImageBytes = null;
                   });
                 },
               ),
             ),
           );
         }
-      }
+      }      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -75,7 +87,7 @@ class _UploadPageState extends State<UploadPage> {
     final prompt = promptController.text.trim(); 
     final caption = captionController.text.trim(); 
 
-    if (_pickedImageFile == null) { 
+    if (_pickedImageFile == null && _pickedImageBytes == null) { 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Select image first")), 
       );
@@ -98,43 +110,34 @@ class _UploadPageState extends State<UploadPage> {
     });
     
     try {
-      final dir = await getTemporaryDirectory();
-      final targetPath = "${dir.absolute.path}/temp_compressed_${DateTime.now().millisecondsSinceEpoch}.jpg";
+      Uint8List bytes;
+      File? finalCompressedFile;
 
-      XFile? compressedXFile = await FlutterImageCompress.compressAndGetFile(
-        _pickedImageFile!.absolute.path,
-        targetPath,
-        quality: 65, // Fast processing optimization
-        minWidth: 1080, // Downscale max widths
-        format: CompressFormat.jpeg,
-      );
-
-      if (compressedXFile == null) {
-        throw Exception("Compression failed");
-      }
-
-      File finalCompressedFile = File(compressedXFile.path);
-
-      setState(() {
-        _uploadStatusText = "Checking security policy...";
-      });
-
-      final onDeviceVerdict = await moderationPipeline.check(finalCompressedFile);
-      if (!onDeviceVerdict.isSafe) {
-        if (await finalCompressedFile.exists()) {
-          await finalCompressedFile.delete();
-        }
-        setState(() { _isUploading = false; });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("🚨 Upload Blocked: ${onDeviceVerdict.rejectionReason ?? "content policy violation"}"),
-              backgroundColor: AppColors.error,
-              duration: const Duration(seconds: 4),
-            ),
+      if (kIsWeb && _pickedImageBytes != null) {
+        bytes = _pickedImageBytes!;
+      } else {
+        final dir = await getTemporaryDirectory();
+        final targetPath = "${dir.absolute.path}/temp_compressed_${DateTime.now().millisecondsSinceEpoch}.jpg";
+        final compressedXFile = await FlutterImageCompress.compressAndGetFile(
+          _pickedImageFile!.absolute.path,
+          targetPath,
+          quality: 65,
+          minWidth: 1080,
+          format: CompressFormat.jpeg,
+        );
+        if (compressedXFile == null) throw Exception("Compression failed");
+        finalCompressedFile = File(compressedXFile.path);
+        setState(() { _uploadStatusText = "Checking security policy..."; });
+        final verdict = await moderationPipeline.check(finalCompressedFile);
+        if (!verdict.isSafe) {
+          if (await finalCompressedFile.exists()) await finalCompressedFile.delete();
+          setState(() { _isUploading = false; });
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Upload Blocked: ${verdict.rejectionReason ?? "content policy violation"}"), backgroundColor: AppColors.error),
           );
+          return;
         }
-        return;
+        bytes = await finalCompressedFile.readAsBytes();
       }
 
       setState(() {
@@ -143,7 +146,6 @@ class _UploadPageState extends State<UploadPage> {
       });
 
       final postLink = "app://post/${DateTime.now().millisecondsSinceEpoch}";
-      final bytes = await finalCompressedFile.readAsBytes();
       final response = await Supabase.instance.client.functions.invoke(
         'imgbb-upload',
         body: {
@@ -152,6 +154,7 @@ class _UploadPageState extends State<UploadPage> {
           'prompt': prompt,
           'link': postLink,
           'clientModerated': true,
+          'folder': 'posts',
         },
       );
 
@@ -160,7 +163,7 @@ class _UploadPageState extends State<UploadPage> {
         throw StateError("ImgBB upload failed");
       }
 
-      if (await finalCompressedFile.exists()) {
+      if (finalCompressedFile != null && await finalCompressedFile.exists()) {
         await finalCompressedFile.delete();
       }
 
@@ -256,7 +259,9 @@ class _UploadPageState extends State<UploadPage> {
                         : Stack(
                             children: [
                               Positioned.fill(
-                                child: Image.file(_pickedImageFile!, fit: BoxFit.cover),
+                                child: kIsWeb && _pickedImageBytes != null
+                                    ? Image.memory(_pickedImageBytes!, fit: BoxFit.cover)
+                                    : Image.file(_pickedImageFile!, fit: BoxFit.cover),
                               ),
                               if (!_isUploading)
                                 Positioned(
