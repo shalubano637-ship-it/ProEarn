@@ -313,66 +313,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       return;
                     }
                   }
-
-                  try {
-                      final tempDir = await getTemporaryDirectory();
-                      final compressedPath = "${tempDir.absolute.path}/profile_compressed_${DateTime.now().millisecondsSinceEpoch}.jpg";
-
-                      XFile? compressedXFile = await FlutterImageCompress.compressAndGetFile(
-                        _selectedProfileImage!.absolute.path,
-                        compressedPath,
-                        quality: 100,
-                        format: CompressFormat.jpeg,
-                      );
-
-                      if (compressedXFile != null) {
-                        File finalUploadFile = File(compressedXFile.path);
-                        
-                        final onDeviceVerdict = await moderationPipeline.check(finalUploadFile);
-
-                        if (!onDeviceVerdict.isSafe) {
-                          if (await finalUploadFile.exists()) {
-                            await finalUploadFile.delete();
-                          }
-                          
-                          if (context.mounted) {
-                            Navigator.pop(context); // Close loader
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("🚨 Upload Blocked: ${onDeviceVerdict.rejectionReason ?? "content policy violation"}"),
-                                backgroundColor: AppColors.error,
-                                duration: const Duration(seconds: 4),
-                              ),
-                            );
-                          }
-                          return; // Code execution breaks here safely
-                        }
-                        
-                        String? uploadedProfileUrl = await uploadImageToMediaGateway(
-                          finalUploadFile,
-                          folder: 'profile',
-                        );
-                        
-                        if (uploadedProfileUrl != null) {
-                          targetProfilePicUrl = uploadedProfileUrl;
-                          currentUserProfile = uploadedProfileUrl; // Sync global state
-                        } else {
-                          if (context.mounted) {
-                            Navigator.pop(context); // Close loader
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("Failed to upload selected profile picture to server.")),
-                            );
-                          }
-                          return;
-                        }
-
-                        if (await finalUploadFile.exists()) {
-                          await finalUploadFile.delete();
-                        }
-                      }
-                    } catch (compressError) {
-                      debugPrint("Compression/Safety analysis failed fallback: $compressError");
-                    }
                   }
 
                   try {
