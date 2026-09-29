@@ -58,7 +58,7 @@ async function getUser(request: Request, env: Env) {
 }
 
 function r2Key(userId: string, folder: string, extension: string) {
-  const safeFolder = folder === "profile" ? "profile" : folder === "chat" ? "chat" : "posts";
+  const safeFolder = ["profile", "chat", "comments", "rooms"].includes(folder) ? folder : "posts";
   return `${safeFolder}/${userId}/${crypto.randomUUID()}.${extension}`;
 }
 
@@ -195,7 +195,7 @@ export default {
         if (!/^[0-9a-f-]{36}$/i.test(userId)) return json({ error: "Invalid userId" }, 400);
 
         let deleted = 0;
-        for (const prefix of ["posts/" + userId + "/", "profile/" + userId + "/", "chat/" + userId + "/"]) {
+        for (const prefix of ["posts/" + userId + "/", "profile/" + userId + "/", "chat/" + userId + "/", "comments/" + userId + "/", "rooms/" + userId + "/"]) {
           let cursor: string | undefined;
           do {
             const listed = await env.R2_BUCKET.list({ prefix, cursor, limit: 1000 });
