@@ -86,7 +86,7 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
             messages = userData['notifyMessages'] ?? true;
           }
 
-          bool finalPushState = dbPushEnabled && _isDevicePermissionGranted;
+          bool finalPushState = dbPushEnabled;
 
           return ListView(
             padding: const EdgeInsets.symmetric(vertical: 10),
