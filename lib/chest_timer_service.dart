@@ -123,9 +123,15 @@ class ChestTimerService extends ChangeNotifier {
         isUnlocked = false;
       } else {
         currentChestIndex = existing.currentChestIndex;
-        remainingSeconds = existing.remainingSeconds;
-        isUnlocked = existing.isUnlocked;
         _unlockAt = existing.unlockAt;
+        if (_unlockAt != null) {
+          final serverRemaining = _unlockAt!.difference(DateTime.now()).inSeconds;
+          remainingSeconds = math.max(0, serverRemaining);
+          isUnlocked = existing.isUnlocked || remainingSeconds <= 0;
+        } else {
+          remainingSeconds = existing.remainingSeconds;
+          isUnlocked = existing.isUnlocked;
+        }
       }
 
       isLoaded = true;
