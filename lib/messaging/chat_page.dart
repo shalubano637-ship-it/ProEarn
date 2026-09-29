@@ -192,7 +192,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       sendNotification(
         targetOwnerId: widget.otherUid,
         type: 'message',
-        message: imageUrl != null ? 'Someone sent you a photo' : 'Someone texted you',
+        message: 'Someone sent you a message',
       );
 
       Supabase.instance.client
@@ -830,13 +830,16 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                       child: TextField(
                         controller: _messageController,
                         textCapitalization: TextCapitalization.sentences,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
+                        maxLines: 4,
+                        minLines: 1,
                         decoration: InputDecoration(
                           hintText: "Message...",
                           filled: true,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
                         ),
-                        onSubmitted: (_) => _sendMessage(),
                       ),
                     ),
                     IconButton(
