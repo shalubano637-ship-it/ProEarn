@@ -24,13 +24,15 @@ Deno.serve(async req=>{
   const auth=req.headers.get("Authorization")??"";
   const client=createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{global:{headers:{Authorization:auth}}});
   const {data:u,error:ae}=await client.auth.getUser();if(ae||!u?.user)return json({error:"Unauthorized"},401);
-  const body=await req.json().catch(()=>({}));const image=String(body.imageBase64??"");
+  const body=await req.json().catch(()=>({}));const image=String(body.imageBase64??"");const folder=String(body.folder??"posts");const clientModerated=body.clientModerated===true;
   if(!image)return json({error:"imageBase64 required"},400);if(image.length>MAX_BASE64_LENGTH)return json({error:"Image too large"},400);
   if(!await verify(String(body.moderationApprovalToken??""),image,u.user.id))return json({error:"Server moderation approval required"},403);
   const form=new FormData();form.append("image",image);
   const r=await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`,{method:"POST",body:form});const data=await r.json();
   if(!r.ok||!data?.data?.url)return json({error:"Upload failed"},502);
   const {data:owner,error:oe}=await client.from("users").select("isPrivateAccount").eq("uid",u.user.id).maybeSingle();if(oe)return json({error:"Post privacy lookup failed"},500);
+  if(folder==="chat")return json({url:data.data.url});
+
   const {data:post,error:pe}=await client.from("posts").insert({userName:u.user.id,caption:String(body.caption??"No Caption"),prompt:String(body.prompt??""),link:String(body.link??`app://post/${Date.now()}`),imageUrl:data.data.url,moderationStatus:"approved",moderationCheckedAt:new Date().toISOString(),moderationReason:null,mediaObjectKey:null,isPrivatePost:owner?.isPrivateAccount===true}).select().single();
   if(pe){console.error(pe);return json({error:"Post creation failed"},500)}
   return json({url:data.data.url,post});
