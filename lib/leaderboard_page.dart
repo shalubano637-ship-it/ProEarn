@@ -423,17 +423,34 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
     });
   }
 
-  void _swipeMetric(bool swipeRight) {
-    // Finger right -> previous section; finger left -> next section.
-    final next = _metric.index + (swipeRight ? -1 : 1);
-    if (next < 0 || next >= _Metric.values.length) return;
-    setState(() {
-      _metric = _Metric.values[next];
-      // Every leaderboard section always opens on Today.
-      _period = _Period.today;
-      _bodyKey = UniqueKey();
-      _footerKey = UniqueKey();
-    });
+  void _handleHorizontalSwipe(bool swipeRight) {
+    // Today --left--> Yesterday --right--> All Time --right--> next metric.
+    if (_period == _Period.today && !swipeRight) {
+      setState(() { _period = _Period.yesterday; _bodyKey = UniqueKey(); _footerKey = UniqueKey(); });
+      return;
+    }
+    if (_period == _Period.yesterday && swipeRight) {
+      setState(() { _period = _Period.allTime; _bodyKey = UniqueKey(); _footerKey = UniqueKey(); });
+      return;
+    }
+    if (_period == _Period.allTime && swipeRight) {
+      final next = _metric.index + 1;
+      if (next >= _Metric.values.length) return;
+      setState(() {
+        _metric = _Metric.values[next];
+        _period = _Period.today;
+        _bodyKey = UniqueKey();
+        _footerKey = UniqueKey();
+      });
+      return;
+    }
+    if (_period == _Period.allTime && !swipeRight) {
+      setState(() { _period = _Period.yesterday; _bodyKey = UniqueKey(); _footerKey = UniqueKey(); });
+      return;
+    }
+    if (_period == _Period.yesterday && !swipeRight) {
+      setState(() { _period = _Period.today; _bodyKey = UniqueKey(); _footerKey = UniqueKey(); });
+    }
   }
 
   @override
@@ -480,7 +497,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
               onHorizontalDragEnd: (details) {
                 final velocity = details.primaryVelocity ?? 0;
                 if (velocity.abs() < 250) return;
-                _swipeMetric(velocity > 0);
+                _handleHorizontalSwipe(velocity > 0);
               },
               child: _LeaderboardBody(key: _bodyKey, period: _period, metric: _metric, onRetry: _reload),
             ),
