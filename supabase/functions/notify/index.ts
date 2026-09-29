@@ -56,7 +56,6 @@ Deno.serve(async (req) => {
     if (!targetData) return json({ success: true });
 
     const pushEnabled = targetData.pushNotificationsEnabled === true;
-    if (!pushEnabled) return json({ success: true });
     if (type === "like" && targetData.notifyLikes === false) return json({ success: true });
     if (type === "comment" && targetData.notifyComments === false) return json({ success: true });
     if (type === "follow" && targetData.notifyFollow === false) return json({ success: true });
