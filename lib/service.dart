@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:universal_io/universal_io.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -153,6 +154,31 @@ Future<void> sendNotification({
     );
   } catch (e) {
     debugPrint("Notification send error: $e");
+  }
+}
+
+Future<String?> uploadImageBytesToMediaGateway(
+  Uint8List bytes, {
+  String folder = 'posts',
+  bool clientModerated = false,
+}) async {
+  try {
+    final response = await Supabase.instance.client.functions.invoke(
+      'imgbb-upload',
+      body: {
+        'imageBase64': base64Encode(bytes),
+        'folder': folder,
+        'clientModerated': clientModerated,
+      },
+    );
+    final data = response.data;
+    if (data is! Map) throw StateError('Invalid ImgBB response');
+    final url = data['url']?.toString();
+    if (url == null || url.isEmpty) throw StateError('ImgBB did not return an image URL');
+    return url;
+  } catch (e) {
+    debugPrint("ImgBB byte upload failed: $e");
+    return null;
   }
 }
 
