@@ -301,6 +301,7 @@ class GlobalCachedImage extends StatelessWidget {
   final double? width;
   final double? height;
   final Widget? errorWidget;
+  final FilterQuality filterQuality;
 
   const GlobalCachedImage({
     super.key,
@@ -310,6 +311,7 @@ class GlobalCachedImage extends StatelessWidget {
     this.width,
     this.height,
     this.errorWidget,
+    this.filterQuality = FilterQuality.high,
   });
 
   @override
@@ -332,7 +334,7 @@ class GlobalCachedImage extends StatelessWidget {
         width: width,
         height: height,
         fit: fit,
-        filterQuality: FilterQuality.medium,
+        filterQuality: filterQuality,
         gaplessPlayback: true,
         loadingBuilder: (context, child, progress) {
           if (progress == null) return child;
