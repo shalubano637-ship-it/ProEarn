@@ -313,7 +313,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       return;
                     }
                   }
-                  }
 
                   try {
                     currentUserName = nameController.text.trim();
