@@ -544,9 +544,20 @@ class RoomInfoPage extends StatefulWidget {
 }
 
 class _RoomInfoPageState extends State<RoomInfoPage> {
-  Future<File?> _pickRoomImage() async {
-    final x = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85, maxWidth: 900, maxHeight: 900);
-    return x == null ? null : File(x.path);
+  Future<XFile?> _pickRoomImage() async {
+    return ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 90,
+      maxWidth: 1200,
+      maxHeight: 1200,
+    );
+  }
+
+  String _imageContentType(String name) {
+    final lower = name.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    return 'image/jpeg';
   }
   late String _name;
   late bool _hasPassword;
@@ -648,7 +659,12 @@ class _RoomInfoPageState extends State<RoomInfoPage> {
                     try {
                       final picker = await _pickRoomImage();
                       if (picker != null) {
-                        final url = await CloudflareMediaService.uploadImage(picker, folder: 'rooms');
+                        final bytes = await picker.readAsBytes();
+                        final url = await CloudflareMediaService.uploadImageBytes(
+                          bytes,
+                          folder: 'rooms',
+                          contentType: _imageContentType(picker.name),
+                        );
                         setDialogState(() => newProfileUrl = url);
                       }
                     } catch (e) {
