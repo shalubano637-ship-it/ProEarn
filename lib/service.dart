@@ -163,21 +163,12 @@ Future<String?> uploadImageBytesToMediaGateway(
   bool clientModerated = false,
 }) async {
   try {
-    final response = await Supabase.instance.client.functions.invoke(
-      'imgbb-upload',
-      body: {
-        'imageBase64': base64Encode(bytes),
-        'folder': folder,
-        'clientModerated': clientModerated,
-      },
+    return await CloudflareMediaService.uploadImageBytes(
+      bytes,
+      folder: folder,
     );
-    final data = response.data;
-    if (data is! Map) throw StateError('Invalid ImgBB response');
-    final url = data['url']?.toString();
-    if (url == null || url.isEmpty) throw StateError('ImgBB did not return an image URL');
-    return url;
   } catch (e) {
-    debugPrint("ImgBB byte upload failed: $e");
+    debugPrint("Cloudflare moderation + ImgBB upload failed: $e");
     return null;
   }
 }
@@ -188,33 +179,13 @@ Future<String?> uploadImageToMediaGateway(
   void Function(int sent, int total)? onProgress,
 }) async {
   try {
-    final bytes = await imageFile.readAsBytes();
-    final base64Image = base64Encode(bytes);
-    onProgress?.call(0, bytes.length);
-
-    final response = await Supabase.instance.client.functions.invoke(
-      'imgbb-upload',
-      body: {
-        'imageBase64': base64Image,
-        'folder': folder,
-        'clientModerated': folder == 'chat',
-      },
+    return await CloudflareMediaService.uploadImage(
+      imageFile,
+      folder: folder,
+      onProgress: onProgress,
     );
-
-    final data = response.data;
-    if (data is! Map) {
-      throw StateError('Invalid ImgBB response');
-    }
-
-    final url = data['url']?.toString();
-    if (url == null || url.isEmpty) {
-      throw StateError('ImgBB did not return an image URL');
-    }
-
-    onProgress?.call(bytes.length, bytes.length);
-    return url;
   } catch (e) {
-    debugPrint("ImgBB image upload failed: $e");
+    debugPrint("Cloudflare moderation + ImgBB upload failed: $e");
     return null;
   }
 }
@@ -227,38 +198,17 @@ Future<Map<String, dynamic>> createPostThroughCloudflareBytes({
   required String link,
   void Function(int sent, int total)? onProgress,
 }) async {
-  if (bytes.isEmpty) throw StateError('Image is empty');
-  if (bytes.length > 9 * 1024 * 1024) throw StateError('Image is too large');
-  if (CloudflareMediaService.gatewayUrl.isEmpty) {
-    throw StateError('Cloudflare media gateway is not configured');
-  }
-
-  final intent = await _cloudflarePost('/v1/upload-intent', {
-    'contentType': contentType,
-    'folder': 'posts',
-  });
-  final uploadUrl = intent['uploadUrl']?.toString();
-  final objectKey = intent['objectKey']?.toString();
-  if (uploadUrl == null || objectKey == null) throw StateError('Invalid upload intent');
-
-  final request = http.Request('PUT', Uri.parse(uploadUrl));
-  request.headers['Content-Type'] = contentType;
-  request.bodyBytes = bytes;
-  onProgress?.call(0, bytes.length);
-  final response = await request.send();
-  if (response.statusCode < 200 || response.statusCode >= 300) {
-    throw StateError('R2 upload failed: ${response.statusCode}');
-  }
-  onProgress?.call(bytes.length, bytes.length);
-
-  return _cloudflarePost('/v1/finalize-post', {
-    'objectKey': objectKey,
-    'contentType': contentType,
-    'size': bytes.length,
-    'caption': caption,
-    'prompt': prompt,
-    'link': link,
-  });
+  final url = await CloudflareMediaService.uploadImageBytes(
+    bytes,
+    folder: 'posts',
+    contentType: contentType,
+    caption: caption,
+    prompt: prompt,
+    link: link,
+    onProgress: onProgress,
+  );
+  if (url.isEmpty) throw StateError('ImgBB did not return a post image URL');
+  return {'url': url};
 }
 
 Future<Map<String, dynamic>> createPostThroughCloudflare({
@@ -268,62 +218,16 @@ Future<Map<String, dynamic>> createPostThroughCloudflare({
   required String link,
   void Function(int sent, int total)? onProgress,
 }) async {
-  final bytes = await imageFile.readAsBytes();
-  final contentType = imageFile.path.toLowerCase().endsWith('.png')
-      ? 'image/png'
-      : imageFile.path.toLowerCase().endsWith('.webp')
-          ? 'image/webp'
-          : 'image/jpeg';
-
-  if (CloudflareMediaService.gatewayUrl.isEmpty) {
-    throw StateError('Cloudflare media gateway is not configured');
-  }
-
-  final intent = await _cloudflarePost('/v1/upload-intent', {
-    'contentType': contentType,
-    'folder': 'posts',
-  });
-  final uploadUrl = intent['uploadUrl']?.toString();
-  final objectKey = intent['objectKey']?.toString();
-  if (uploadUrl == null || objectKey == null) throw StateError('Invalid upload intent');
-
-  final request = http.Request('PUT', Uri.parse(uploadUrl));
-  request.headers['Content-Type'] = contentType;
-  request.bodyBytes = bytes;
-  onProgress?.call(0, bytes.length);
-  final response = await request.send();
-  if (response.statusCode < 200 || response.statusCode >= 300) {
-    throw StateError('R2 upload failed: ${response.statusCode}');
-  }
-  onProgress?.call(bytes.length, bytes.length);
-
-  return _cloudflarePost('/v1/finalize-post', {
-    'objectKey': objectKey,
-    'contentType': contentType,
-    'size': bytes.length,
-    'caption': caption,
-    'prompt': prompt,
-    'link': link,
-  });
-}
-
-Future<Map<String, dynamic>> _cloudflarePost(String path, Map<String, dynamic> body) async {
-  final token = Supabase.instance.client.auth.currentSession?.accessToken;
-  if (token == null) throw StateError('Not authenticated');
-  final response = await http.post(
-    Uri.parse('${CloudflareMediaService.gatewayUrl}$path'),
-    headers: {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    },
-    body: jsonEncode(body),
+  final url = await CloudflareMediaService.uploadImage(
+    imageFile,
+    folder: 'posts',
+    caption: caption,
+    prompt: prompt,
+    link: link,
+    onProgress: onProgress,
   );
-  final decoded = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body);
-  if (response.statusCode < 200 || response.statusCode >= 300) {
-    final reason = decoded is Map ? decoded['reason'] ?? decoded['error'] : null;
-    throw StateError(reason?.toString() ?? 'Cloudflare request failed');
-  }
-  return Map<String, dynamic>.from(decoded as Map);
+  if (url.isEmpty) throw StateError('ImgBB did not return a post image URL');
+  return {'url': url};
 }
 
 class CustomImageCacheManager {
