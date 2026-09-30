@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:universal_io/universal_io.dart';
+import 'package:flutter/foundation.dart';
+import 'moderation/moderation_config.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -101,6 +103,17 @@ class CloudflareMediaService {
     if (bytes.isEmpty) throw StateError('Image is empty');
     if (bytes.length > 9 * 1024 * 1024) {
       throw StateError('Image is too large');
+    }
+
+    // Web must pass the browser-side classifier before any network upload.
+    if (kIsWeb) {
+      final verdict = await moderationPipeline.checkBytes(bytes);
+      if (!verdict.isSafe) {
+        throw StateError(
+          'Device moderation rejected image: ' +
+              (verdict.rejectionReason ?? 'content policy violation'),
+        );
+      }
     }
 
     final response = await Supabase.instance.client.functions.invoke(
