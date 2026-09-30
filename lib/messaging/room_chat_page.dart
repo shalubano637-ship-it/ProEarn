@@ -560,6 +560,14 @@ class RoomInfoPage extends StatefulWidget {
 }
 
 class _RoomInfoPageState extends State<RoomInfoPage> {
+  String _imageContentType(String name) {
+    final lower = name.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    return 'image/jpeg';
+  }
+
   Future<XFile?> _pickRoomImage() async {
     return ImagePicker().pickImage(
       source: ImageSource.gallery,
