@@ -68,8 +68,23 @@
         }
 
         await enginePromise;
-        modelPromise = window.nsfwjs.load();
-        await modelPromise;
+        let lastError;
+        for (const modelUrl of [
+          'https://cdn.jsdelivr.net/npm/nsfwjs@4.4.0/dist/models/mobilenet_v2/model.json',
+          'https://unpkg.com/nsfwjs@4.4.0/dist/models/mobilenet_v2/model.json'
+        ]) {
+          try {
+            modelPromise = window.nsfwjs.load(modelUrl);
+            await modelPromise;
+            break;
+          } catch (e) {
+            lastError = e;
+            modelPromise = null;
+          }
+        }
+        if (!modelPromise) {
+          throw lastError || new Error('NSFW model could not be loaded');
+        }
         return true;
       };
 
