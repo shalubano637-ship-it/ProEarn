@@ -11,74 +11,113 @@ class CloudflareMediaService {
     defaultValue: '',
   );
 
-  static Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body) async {
-    if (gatewayUrl.isEmpty) throw StateError('Cloudflare media gateway is not configured');
+  static Future<Map<String, dynamic>> _post(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    if (gatewayUrl.isEmpty) {
+      throw StateError('Cloudflare moderation gateway is not configured');
+    }
+
     final token = Supabase.instance.client.auth.currentSession?.accessToken;
     if (token == null) throw StateError('Not authenticated');
+
     final response = await http.post(
       Uri.parse('$gatewayUrl$path'),
-      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
       body: jsonEncode(body),
     );
-    final decoded = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body);
+
+    final decoded =
+        response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body);
+
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      final reason = decoded is Map ? decoded['reason'] ?? decoded['error'] : null;
-      throw StateError(reason?.toString() ?? 'Cloudflare media request failed');
+      final reason =
+          decoded is Map ? decoded['reason'] ?? decoded['error'] : null;
+      throw StateError(
+        reason?.toString() ?? 'Cloudflare moderation request failed',
+      );
     }
+
     return Map<String, dynamic>.from(decoded as Map);
   }
 
-  static Future<String> moderateImage(File file) async {
-    final bytes = await file.readAsBytes();
+  /// Second moderation gate. This does NOT store the image.
+  /// It only sends the bytes to Cloudflare for server-side safety analysis
+  /// and returns a short-lived approval token for the ImgBB Edge Function.
+  static Future<String> moderateImageBytes(
+    Uint8List bytes, {
+    String contentType = 'image/jpeg',
+  }) async {
+    if (bytes.isEmpty) throw StateError('Image is empty');
+    if (bytes.length > 9 * 1024 * 1024) {
+      throw StateError('Image is too large');
+    }
+
     final result = await _post('/v1/moderate-image', {
-      'contentType': _contentType(file.path),
+      'contentType': contentType,
       'imageBase64': base64Encode(bytes),
     });
+
     if (result['safe'] != true) {
-      throw StateError(result['reason']?.toString() ?? 'Server moderation rejected the image');
+      throw StateError(
+        result['reason']?.toString() ?? 'Cloudflare rejected the image',
+      );
     }
+
     final approvalToken = result['approvalToken']?.toString();
     if (approvalToken == null || approvalToken.isEmpty) {
       throw StateError('Cloudflare did not return a moderation approval');
     }
+
     return approvalToken;
   }
 
+  /// Backwards-compatible file API. It performs server-side moderation only;
+  /// the actual storage upload is handled by the ImgBB Edge Function.
+  static Future<String> moderateImage(File file) async {
+    final bytes = await file.readAsBytes();
+    return moderateImageBytes(
+      bytes,
+      contentType: _contentType(file.path),
+    );
+  }
+
+  /// Kept with the existing call sites so chat/comments/profile/room uploads
+  /// automatically use the new pipeline:
+  /// device moderation -> Cloudflare moderation -> ImgBB storage.
   static Future<String> uploadImageBytes(
     Uint8List bytes, {
     String folder = 'posts',
     String contentType = 'image/jpeg',
     void Function(int sent, int total)? onProgress,
   }) async {
-    if (bytes.isEmpty) throw StateError('Image is empty');
-    if (bytes.length > 9 * 1024 * 1024) throw StateError('Image is too large');
+    final approvalToken = await moderateImageBytes(
+      bytes,
+      contentType: contentType,
+    );
 
-    final intent = await _post('/v1/upload-intent', {
-      'contentType': contentType,
-      'folder': folder,
-    });
-    final uploadUrl = intent['uploadUrl']?.toString();
-    final objectKey = intent['objectKey']?.toString();
-    if (uploadUrl == null || objectKey == null) throw StateError('Invalid upload intent');
+    final response = await Supabase.instance.client.functions.invoke(
+      'imgbb-upload',
+      body: {
+        'imageBase64': base64Encode(bytes),
+        'folder': folder,
+        'moderationApprovalToken': approvalToken,
+      },
+    );
 
-    final request = http.Request('PUT', Uri.parse(uploadUrl));
-    request.headers['Content-Type'] = contentType;
-    request.bodyBytes = bytes;
-    onProgress?.call(0, bytes.length);
-    final response = await request.send();
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('R2 upload failed: ${response.statusCode}');
+    final data = response.data;
+    if (data is! Map) throw StateError('Invalid ImgBB response');
+
+    final url = data['url']?.toString();
+    if (url == null || url.isEmpty) {
+      throw StateError('ImgBB did not return an image URL');
     }
-    onProgress?.call(bytes.length, bytes.length);
 
-    final finalized = await _post('/v1/finalize-media', {
-      'objectKey': objectKey,
-      'contentType': contentType,
-      'size': bytes.length,
-      'folder': folder,
-    });
-    final url = finalized['url']?.toString();
-    if (url == null || url.isEmpty) throw StateError('Server moderation did not approve media');
+    onProgress?.call(bytes.length, bytes.length);
     return url;
   }
 
@@ -88,34 +127,12 @@ class CloudflareMediaService {
     void Function(int sent, int total)? onProgress,
   }) async {
     final bytes = await file.readAsBytes();
-    final contentType = _contentType(file.path);
-    final intent = await _post('/v1/upload-intent', {
-      'contentType': contentType,
-      'folder': folder,
-    });
-    final uploadUrl = intent['uploadUrl']?.toString();
-    final objectKey = intent['objectKey']?.toString();
-    if (uploadUrl == null || objectKey == null) throw StateError('Invalid upload intent');
-
-    final request = http.Request('PUT', Uri.parse(uploadUrl));
-    request.headers['Content-Type'] = contentType;
-    request.bodyBytes = bytes;
-    onProgress?.call(0, bytes.length);
-    final response = await request.send();
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('R2 upload failed: ${response.statusCode}');
-    }
-    onProgress?.call(bytes.length, bytes.length);
-
-    final finalized = await _post('/v1/finalize-media', {
-      'objectKey': objectKey,
-      'contentType': contentType,
-      'size': bytes.length,
-      'folder': folder,
-    });
-    final url = finalized['url']?.toString();
-    if (url == null || url.isEmpty) throw StateError('Server moderation did not approve media');
-    return url;
+    return uploadImageBytes(
+      bytes,
+      folder: folder,
+      contentType: _contentType(file.path),
+      onProgress: onProgress,
+    );
   }
 
   static String _contentType(String path) {
