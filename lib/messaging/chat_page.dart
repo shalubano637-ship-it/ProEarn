@@ -221,10 +221,21 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   }
 
   Future<void> _pickAndSendImage(ImageSource source) async {
+    XFile? picked;
     try {
-      final picked = await _picker.pickImage(source: source, imageQuality: 90);
-      if (picked == null || !mounted) return;
+      picked = await _picker.pickImage(source: source, imageQuality: 90);
+    } catch (e) {
+      debugPrint("Image picker failed: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Couldn't open " + (source == ImageSource.camera ? "camera" : "gallery") + ": $e"), backgroundColor: AppColors.error),
+        );
+      }
+      return;
+    }
+    if (picked == null || !mounted) return;
 
+    try {
       if (kIsWeb) {
         final bytes = await picked.readAsBytes();
         final url = await CloudflareMediaService.uploadImageBytes(
@@ -232,25 +243,37 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
           folder: 'chat',
           contentType: _imageContentType(picked.name),
         );
-        if (url != null && mounted) await _sendMessage(imageUrl: url);
+        if (mounted) await _sendMessage(imageUrl: url);
       } else {
         final url = await showChatImagePreview(context, File(picked.path));
         if (url != null) await _sendMessage(imageUrl: url);
       }
     } catch (e) {
+      debugPrint("Image send/upload failed: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Couldn't open camera/gallery."), backgroundColor: AppColors.error),
+          SnackBar(content: Text("Image upload failed: $e"), backgroundColor: AppColors.error),
         );
       }
     }
   }
 
   Future<void> _pickAndSendMultipleImages() async {
+    List<XFile> picked;
     try {
-      final picked = await _picker.pickMultiImage(imageQuality: 90, limit: 20);
-      if (picked.isEmpty || !mounted) return;
+      picked = await _picker.pickMultiImage(imageQuality: 90, limit: 20);
+    } catch (e) {
+      debugPrint("Gallery picker failed: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Couldn't open gallery: $e"), backgroundColor: AppColors.error),
+        );
+      }
+      return;
+    }
+    if (picked.isEmpty || !mounted) return;
 
+    try {
       if (kIsWeb) {
         for (final x in picked) {
           final bytes = await x.readAsBytes();
@@ -259,7 +282,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
             folder: 'chat',
             contentType: _imageContentType(x.name),
           );
-          if (url != null && mounted) await _sendMessage(imageUrl: url);
+          if (mounted) await _sendMessage(imageUrl: url);
         }
         return;
       }
@@ -279,14 +302,14 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         await _sendMessage(imageUrl: url);
       }
     } catch (e) {
+      debugPrint("Gallery image upload failed: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Couldn't open gallery."), backgroundColor: AppColors.error),
+          SnackBar(content: Text("Image upload failed: $e"), backgroundColor: AppColors.error),
         );
       }
     }
   }
-
   void _startReply(Map<String, dynamic> msg) {
     setState(() { _replyingTo = msg; });
   }
