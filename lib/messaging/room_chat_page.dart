@@ -55,6 +55,14 @@ class _RoomChatPageState extends State<RoomChatPage> {
   Map<String, dynamic>? _replyingTo;
 
   String get _myUid => Supabase.instance.client.auth.currentUser?.id ?? '';
+  String _imageContentType(String name) {
+    final lower = name.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    return 'image/jpeg';
+  }
+
   bool get _isOwner => _myUid == widget.ownerUid;
 
   Future<void> _loadFavorite() async {
@@ -561,12 +569,6 @@ class _RoomInfoPageState extends State<RoomInfoPage> {
     );
   }
 
-  String _imageContentType(String name) {
-    final lower = name.toLowerCase();
-    if (lower.endsWith('.png')) return 'image/png';
-    if (lower.endsWith('.webp')) return 'image/webp';
-    return 'image/jpeg';
-  }
   late String _name;
   late bool _hasPassword;
   List<Map<String, dynamic>> _members = [];
