@@ -14,41 +14,93 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/nsfwjs@4.4.0/dist/nsfwjs.min.js"></script>
   <script>
     (function () {
       let modelPromise = null;
+      let enginePromise = null;
+
+      function loadScript(url) {
+        return new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = url;
+          script.async = false;
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error('Failed to load ' + url));
+          document.head.appendChild(script);
+        });
+      }
+
+      async function loadFirst(urls) {
+        let lastError;
+        for (const url of urls) {
+          try {
+            await loadScript(url);
+            return;
+          } catch (e) {
+            lastError = e;
+          }
+        }
+        throw lastError || new Error('Script load failed');
+      }
+
       window.proEarnNsfwLoad = async function () {
         if (modelPromise) return modelPromise;
-        if (!window.tf || !window.nsfwjs) throw new Error('Browser moderation engine is unavailable');
-        window.tf.enableProdMode();
-        await window.tf.ready();
+        if (!enginePromise) {
+          enginePromise = (async () => {
+            if (!window.tf) {
+              await loadFirst([
+                'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js',
+                'https://unpkg.com/@tensorflow/tfjs@4.22.0/dist/tf.min.js'
+              ]);
+            }
+            if (!window.nsfwjs) {
+              await loadFirst([
+                'https://cdn.jsdelivr.net/npm/nsfwjs@4.4.0/dist/nsfwjs.min.js',
+                'https://unpkg.com/nsfwjs@4.4.0/dist/nsfwjs.min.js'
+              ]);
+            }
+            if (!window.tf || !window.nsfwjs) {
+              throw new Error('TensorFlow.js/NSFWJS global was not created');
+            }
+            window.tf.enableProdMode();
+            await window.tf.ready();
+          })();
+        }
+
+        await enginePromise;
         modelPromise = window.nsfwjs.load();
         await modelPromise;
         return true;
       };
+
       window.proEarnNsfwCheck = async function (base64) {
         await window.proEarnNsfwLoad();
+
         const binary = atob(base64);
         const bytes = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
         const bitmap = await createImageBitmap(new Blob([bytes]));
-        const predictions = await (await modelPromise).classify(bitmap);
-        bitmap.close();
-        let unsafeScore = 0;
-        let topClass = 'Safe';
-        let topProbability = 0;
-        for (const p of predictions) {
-          if (p.className === 'Porn' || p.className === 'Hentai' || p.className === 'Sexy') {
-            unsafeScore += p.probability;
-            if (p.probability > topProbability) {
-              topProbability = p.probability;
-              topClass = p.className;
+        try {
+          const predictions = await (await modelPromise).classify(bitmap);
+          let unsafeScore = 0;
+          let topClass = 'Safe';
+          let topProbability = 0;
+
+          for (const p of predictions) {
+            if (p.className === 'Porn' || p.className === 'Hentai' || p.className === 'Sexy') {
+              unsafeScore += p.probability;
+              if (p.probability > topProbability) {
+                topProbability = p.probability;
+                topClass = p.className;
+              }
             }
           }
+
+          return JSON.stringify({unsafeScore, topClass, topProbability});
+        } finally {
+          bitmap.close();
         }
-        return JSON.stringify({unsafeScore, topClass, topProbability});
       };
     })();
   </script>
