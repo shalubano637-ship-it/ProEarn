@@ -93,6 +93,9 @@ class CloudflareMediaService {
     Uint8List bytes, {
     String folder = 'posts',
     String contentType = 'image/jpeg',
+    String? caption,
+    String? prompt,
+    String? link,
     void Function(int sent, int total)? onProgress,
   }) async {
     final approvalToken = await moderateImageBytes(
@@ -106,6 +109,9 @@ class CloudflareMediaService {
         'imageBase64': base64Encode(bytes),
         'folder': folder,
         'moderationApprovalToken': approvalToken,
+        if (caption != null) 'caption': caption,
+        if (prompt != null) 'prompt': prompt,
+        if (link != null) 'link': link,
       },
     );
 
