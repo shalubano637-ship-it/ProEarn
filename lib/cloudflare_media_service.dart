@@ -98,17 +98,17 @@ class CloudflareMediaService {
     String? link,
     void Function(int sent, int total)? onProgress,
   }) async {
-    final approvalToken = await moderateImageBytes(
-      bytes,
-      contentType: contentType,
-    );
+    if (bytes.isEmpty) throw StateError('Image is empty');
+    if (bytes.length > 9 * 1024 * 1024) {
+      throw StateError('Image is too large');
+    }
 
     final response = await Supabase.instance.client.functions.invoke(
       'imgbb-upload',
       body: {
         'imageBase64': base64Encode(bytes),
         'folder': folder,
-        'moderationApprovalToken': approvalToken,
+        'contentType': contentType,
         if (caption != null) 'caption': caption,
         if (prompt != null) 'prompt': prompt,
         if (link != null) 'link': link,
@@ -130,6 +130,9 @@ class CloudflareMediaService {
   static Future<String> uploadImage(
     File file, {
     String folder = 'posts',
+    String? caption,
+    String? prompt,
+    String? link,
     void Function(int sent, int total)? onProgress,
   }) async {
     final bytes = await file.readAsBytes();
@@ -137,6 +140,9 @@ class CloudflareMediaService {
       bytes,
       folder: folder,
       contentType: _contentType(file.path),
+      caption: caption,
+      prompt: prompt,
+      link: link,
       onProgress: onProgress,
     );
   }
