@@ -122,19 +122,6 @@ class _UploadPageState extends State<UploadPage> {
       if (kIsWeb && _pickedImageBytes != null) {
         bytes = _pickedImageBytes!;
         setState(() { _uploadStatusText = "Checking image on this device..."; });
-        final verdict = await moderationPipeline.checkBytes(bytes);
-        if (!verdict.isSafe) {
-          setState(() { _isUploading = false; });
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text("Upload Blocked: ${verdict.rejectionReason ?? "content policy violation"}"),
-                backgroundColor: AppColors.error,
-              ),
-            );
-          }
-          return;
-        }
       } else {
         final dir = await getTemporaryDirectory();
         final targetPath = "${dir.absolute.path}/temp_compressed_${DateTime.now().millisecondsSinceEpoch}.jpg";
