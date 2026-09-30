@@ -26,7 +26,7 @@ Deno.serve(async req=>{
   const {data:u,error:ae}=await client.auth.getUser();if(ae||!u?.user)return json({error:"Unauthorized"},401);
   const body=await req.json().catch(()=>({}));const image=String(body.imageBase64??"");const folder=String(body.folder??"posts");
   if(!image)return json({error:"imageBase64 required"},400);if(image.length>MAX_BASE64_LENGTH)return json({error:"Image too large"},400);
-  if(!clientModerated && !await verify(String(body.moderationApprovalToken??""),image,u.user.id))return json({error:"Server moderation approval required"},403);
+  if(!await verify(String(body.moderationApprovalToken??""),image,u.user.id))return json({error:"Cloudflare moderation approval required"},403);
   const form=new FormData();form.append("image",image);
   const r=await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`,{method:"POST",body:form});const data=await r.json();
   if(!r.ok||!data?.data?.url)return json({error:"Upload failed"},502);
