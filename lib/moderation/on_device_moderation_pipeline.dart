@@ -1,4 +1,5 @@
 
+import 'dart:typed_data';
 import 'package:universal_io/universal_io.dart';
 import 'moderation_result.dart';
 import 'stage1_quality_check.dart';
@@ -29,6 +30,15 @@ class OnDeviceModerationPipeline {
 
     results.add(await nsfwClassifier.check(imageFile));
 
+    return RuleEngineStage.decide(results);
+  }
+
+  Future<ModerationVerdict> checkBytes(Uint8List bytes) async {
+    final results = <StageResult>[];
+    final qualityResult = await QualityCheckStage.checkBytes(bytes);
+    results.add(qualityResult);
+    if (!qualityResult.passed) return RuleEngineStage.decide(results);
+    results.add(await nsfwClassifier.checkBytes(bytes));
     return RuleEngineStage.decide(results);
   }
 
