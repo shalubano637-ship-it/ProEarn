@@ -2,16 +2,9 @@ name = "proearn-media-gateway"
 main = "worker.ts"
 compatibility_date = "2026-09-27"
 
-[[r2_buckets]]
-binding = "R2_BUCKET"
-bucket_name = "proearn-media"
-
 [vars]
-R2_ACCOUNT_ID = ""
-R2_PUBLIC_BASE_URL = "https://YOUR-MEDIA-DOMAIN"
 SUPABASE_URL = "https://mltvpfqfhbhgkejcjpmq.supabase.co"
 SUPABASE_ANON_KEY = ""
-INTERNAL_DELETE_TOKEN = ""
 
 [ai]
 binding = "AI"
