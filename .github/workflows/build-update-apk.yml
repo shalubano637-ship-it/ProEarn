@@ -1,0 +1,44 @@
+name: Build and Publish Android Update
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release --build-name=1.0.1 --build-number=2
+
+      - name: Prepare APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk proearn.apk
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete v1.0.1 --yes --cleanup-tag 2>/dev/null || true
+          gh release create v1.0.1 proearn.apk \
+            --title "v1.0.1" \
+            --notes "Test update release for the in-app updater." \
+            --latest
+
+      - name: Verify release asset
+        run: |
+          curl -fL -o /dev/null "https://github.com/${{ github.repository }}/releases/download/v1.0.1/proearn.apk"
