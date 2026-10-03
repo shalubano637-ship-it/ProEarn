@@ -33,8 +33,6 @@ android {
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.proearn"
-        // You can update the following values to match your application needs.
-        // For more information, see https://flutter.dev/to/review-gradle-config.
         minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -59,10 +57,16 @@ android {
     buildTypes {
         release {
             val f = rootProject.file("key.properties")
-            check(f.exists()) {
-                "Release signing is not configured. Create android/key.properties from key.properties.example."
+
+            // FlutLab/CI may not have the private release keystore.
+            // Use the debug signing key only as a build fallback.
+            // A real release keystore is still required for Play Store publishing.
+            signingConfig = if (f.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
             }
-            signingConfig = signingConfigs.getByName("release")
+
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
