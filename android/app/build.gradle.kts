@@ -5,6 +5,9 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+import java.io.FileInputStream
+import java.util.Properties
+
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
 }
@@ -20,18 +23,18 @@ android {
     }
 
     kotlin {
-    compilerOptions {
-        jvmTarget.set(
-            org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
-        )
+        compilerOptions {
+            jvmTarget.set(
+                org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+            )
+        }
     }
-}
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.proearn"
         // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        // For more information, see https://flutter.dev/to/review-gradle-config.
         minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -42,11 +45,13 @@ android {
         create("release") {
             val f = rootProject.file("key.properties")
             if (f.exists()) {
-                val p = java.util.Properties().apply { load(java.io.FileInputStream(f)) }
-                storeFile = file(p["storeFile"] as String)
-                storePassword = p["storePassword"] as String
-                keyAlias = p["keyAlias"] as String
-                keyPassword = p["keyPassword"] as String
+                val p = Properties().apply {
+                    load(FileInputStream(f))
+                }
+                storeFile = file(p.getProperty("storeFile"))
+                storePassword = p.getProperty("storePassword")
+                keyAlias = p.getProperty("keyAlias")
+                keyPassword = p.getProperty("keyPassword")
             }
         }
     }
