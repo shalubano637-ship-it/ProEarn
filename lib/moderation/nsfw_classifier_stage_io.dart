@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:universal_io/universal_io.dart';
 import 'package:nsfw_detector_flutter/nsfw_detector_flutter.dart';
 import 'moderation_result.dart';
@@ -10,6 +11,22 @@ class NsfwClassifierStage {
 
   Future<void> loadModel() async {
     _detector = await NsfwDetector.load(threshold: unsafeThreshold);
+  }
+
+  Future<StageResult> checkBytes(Uint8List bytes) async {
+    final tempFile = File(
+      '${Directory.systemTemp.path}/proearn_moderation_${DateTime.now().microsecondsSinceEpoch}.jpg',
+    );
+    try {
+      await tempFile.writeAsBytes(bytes, flush: true);
+      return await check(tempFile);
+    } finally {
+      try {
+        if (await tempFile.exists()) {
+          await tempFile.delete();
+        }
+      } catch (_) {}
+    }
   }
 
   Future<StageResult> check(File imageFile) async {
