@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths:
+      - update.json
   workflow_dispatch:
 
 permissions:
@@ -17,6 +19,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Read update metadata
+        id: metadata
+        shell: bash
+        run: |
+          VERSION_NAME="$(jq -r '.versionName' update.json)"
+          VERSION_CODE="$(jq -r '.versionCode' update.json)"
+          PUBLISHED="$(jq -r '.published' update.json)"
+
+          if [ "$PUBLISHED" != "true" ]; then
+            echo "update.json is not published; skipping release."
+            exit 0
+          fi
+
+          if ! [[ "$VERSION_CODE" =~ ^[0-9]+$ ]] || [ "$VERSION_CODE" -le 0 ]; then
+            echo "Invalid versionCode: $VERSION_CODE"
+            exit 1
+          fi
+
+          if [ -z "$VERSION_NAME" ] || [ "$VERSION_NAME" = "null" ]; then
+            echo "Invalid versionName"
+            exit 1
+          fi
+
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -27,7 +55,7 @@ jobs:
         run: flutter pub get
 
       - name: Build APK
-        run: flutter build apk --release --build-name=1.0.1 --build-number=2
+        run: flutter build apk --release --build-name=${{ steps.metadata.outputs.version_name }} --build-number=${{ steps.metadata.outputs.version_code }}
 
       - name: Prepare APK
         run: cp build/app/outputs/flutter-apk/app-release.apk proearn.apk
@@ -35,13 +63,17 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION_NAME: ${{ steps.metadata.outputs.version_name }}
         run: |
-          gh release delete v1.0.1 --yes --cleanup-tag 2>/dev/null || true
-          gh release create v1.0.1 proearn.apk \
-            --title "v1.0.1" \
-            --notes "Test update release for the in-app updater." \
+          TAG="v$VERSION_NAME"
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$TAG" proearn.apk \
+            --title "$TAG" \
+            --notes "Published from the Pro Earn Admin Update Manager." \
             --latest
 
       - name: Verify release asset
+        env:
+          VERSION_NAME: ${{ steps.metadata.outputs.version_name }}
         run: |
-          curl -fL -o /dev/null "https://github.com/${{ github.repository }}/releases/download/v1.0.1/proearn.apk"
+          curl -fL -o /dev/null "https://github.com/${{ github.repository }}/releases/download/v$VERSION_NAME/proearn.apk"
