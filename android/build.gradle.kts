@@ -1,6 +1,5 @@
 import com.android.build.gradle.LibraryExtension
 import com.android.build.gradle.AppExtension
-import org.gradle.api.tasks.compile.JavaCompile
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 allprojects {
@@ -21,8 +20,9 @@ subprojects {
 subprojects {
     project.evaluationDependsOn(":app")
 
-    // Android library/application modules can otherwise keep their plugin default
-    // Java target (often 1.8). Force them to the same JVM target as Kotlin.
+    // Keep Android Java and Kotlin compilation on the same JVM target.
+    // Configure Android compileOptions directly; do not mutate finalized
+    // JavaCompile task properties after the Android plugin has finalized them.
     plugins.withId("com.android.library") {
         extensions.configure<LibraryExtension> {
             compileOptions {
@@ -39,12 +39,6 @@ subprojects {
                 targetCompatibility = JavaVersion.VERSION_17
             }
         }
-    }
-
-    tasks.withType<JavaCompile>().configureEach {
-        sourceCompatibility = JavaVersion.VERSION_17.toString()
-        targetCompatibility = JavaVersion.VERSION_17.toString()
-        options.release.set(17)
     }
 
     tasks.withType<KotlinCompile>().configureEach {
