@@ -1,3 +1,5 @@
+import com.android.build.gradle.LibraryExtension
+import com.android.build.gradle.AppExtension
 import org.gradle.api.tasks.compile.JavaCompile
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
@@ -19,11 +21,30 @@ subprojects {
 subprojects {
     project.evaluationDependsOn(":app")
 
-    // Keep all Android/plugin modules on the same JVM target.
-    // This is required by modules such as tflite_flutter.
+    // Android library/application modules can otherwise keep their plugin default
+    // Java target (often 1.8). Force them to the same JVM target as Kotlin.
+    plugins.withId("com.android.library") {
+        extensions.configure<LibraryExtension> {
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
+        }
+    }
+
+    plugins.withId("com.android.application") {
+        extensions.configure<AppExtension> {
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
+        }
+    }
+
     tasks.withType<JavaCompile>().configureEach {
         sourceCompatibility = JavaVersion.VERSION_17.toString()
         targetCompatibility = JavaVersion.VERSION_17.toString()
+        options.release.set(17)
     }
 
     tasks.withType<KotlinCompile>().configureEach {
