@@ -11,7 +11,8 @@
   ],
   "fixes": [
     "Update notification flow testing",
-    "Release build pipeline verification"
+    "Release build pipeline verification",
+    "Gradle release build retry"
   ],
   "forceUpdate": false
 }
