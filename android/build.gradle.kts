@@ -18,8 +18,6 @@ subprojects {
 }
 
 subprojects {
-    project.evaluationDependsOn(":app")
-
     // Keep Android Java and Kotlin compilation on the same JVM target.
     // Configure Android compileOptions directly; do not mutate finalized
     // JavaCompile task properties after the Android plugin has finalized them.
