@@ -8,6 +8,7 @@ on:
       - update.json
       - android/build.gradle.kts
       - android/gradle.properties
+      - android/app/build.gradle.kts
       - .github/workflows/build-update-apk.yml
   workflow_dispatch:
 
