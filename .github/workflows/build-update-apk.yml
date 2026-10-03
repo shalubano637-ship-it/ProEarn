@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - update.json
+      - android/build.gradle.kts
+      - android/gradle.properties
   workflow_dispatch:
 
 permissions:
