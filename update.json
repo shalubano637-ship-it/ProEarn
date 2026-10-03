@@ -10,7 +10,8 @@
     "Test More Info update page"
   ],
   "fixes": [
-    "Update notification flow testing"
+    "Update notification flow testing",
+    "Release build pipeline verification"
   ],
   "forceUpdate": false
 }
