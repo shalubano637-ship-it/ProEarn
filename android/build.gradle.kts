@@ -1,7 +1,6 @@
 import com.android.build.gradle.LibraryExtension
 import com.android.build.gradle.AppExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.gradle.api.tasks.compile.JavaCompile
 
 allprojects {
     repositories {
@@ -38,10 +37,6 @@ subprojects {
                 targetCompatibility = JavaVersion.VERSION_17
             }
         }
-    }
-
-    tasks.withType<JavaCompile>().configureEach {
-        options.release.set(17)
     }
 
     tasks.withType<KotlinCompile>().configureEach {
