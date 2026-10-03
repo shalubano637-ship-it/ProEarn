@@ -1,12 +1,12 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
-
-import java.io.FileInputStream
-import java.util.Properties
 
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
