@@ -40,8 +40,8 @@ class _ProfilePageState extends State<ProfilePage> {
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
 
-  BannerAd? _gridMediumAd;
-  bool _isGridAdLoaded = false;
+  Future<Map<String, dynamic>?>? _profileFuture;
+  String? _loadedTargetUid;
 
   @override
   void initState() {
@@ -67,29 +67,12 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     )..load();
 
-    _gridMediumAd = BannerAd(
-      adUnitId: AdUnitIds.banner,
-      size: AdSize.mediumRectangle,
-      request: const AdRequest(),
-      listener: BannerAdListener(
-        onAdLoaded: (ad) {
-          setState(() {
-            _isGridAdLoaded = true;
-          });
-        },
-        onAdFailedToLoad: (ad, error) {
-          debugPrint('Grid MediumAd failed: $error');
-          ad.dispose();
-        },
-      ),
-    )..load();
   }
 
   @override
   void dispose() {
     _bannerAd?.dispose();
-    _gridMediumAd?.dispose();
-    super.dispose();
+        super.dispose();
   }
 
   Future<void> deleteSelectedPosts() async {
@@ -133,14 +116,19 @@ class _ProfilePageState extends State<ProfilePage> {
     final theme = Theme.of(context);
     final currentUser = Supabase.instance.client.auth.currentUser;
     
-    final String targetUid = widget.isOwnProfile 
-        ? (currentUser?.id ?? '') 
+    final String targetUid = widget.isOwnProfile
+        ? (currentUser?.id ?? '')
         : (widget.otherUser ?? '');
+
+    if (_profileFuture == null || _loadedTargetUid != targetUid) {
+      _loadedTargetUid = targetUid;
+      _profileFuture = _loadProfileData(targetUid);
+    }
 
     return Scaffold(
       appBar: AppBar(
         title: FutureBuilder<Map<String, dynamic>?>(
-          future: Supabase.instance.client.from('public_profiles').select().eq('uid', targetUid).maybeSingle(),
+          future: _profileFuture,
           builder: (context, snapshot) {
             String appBarTitle = "Profile";
             if (snapshot.hasData && snapshot.data != null) {
@@ -225,7 +213,7 @@ class _ProfilePageState extends State<ProfilePage> {
         ],
       ),
       body: FutureBuilder<Map<String, dynamic>?>(
-        future: _loadProfileData(targetUid),
+        future: _profileFuture,
         builder: (context, userSnapshot) {
           String displayUsername = "Loading...";
           String displayBio = "Creative AI Artist";
