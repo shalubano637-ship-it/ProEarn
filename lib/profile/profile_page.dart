@@ -42,6 +42,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<Map<String, dynamic>?>? _profileFuture;
   String? _loadedTargetUid;
+  Stream<List<Map<String, dynamic>>>? _postsStream;
 
   @override
   void initState() {
@@ -123,6 +124,10 @@ class _ProfilePageState extends State<ProfilePage> {
     if (_profileFuture == null || _loadedTargetUid != targetUid) {
       _loadedTargetUid = targetUid;
       _profileFuture = _loadProfileData(targetUid);
+      _postsStream = Supabase.instance.client
+          .from(kPostsCollection)
+          .stream(primaryKey: ['id'])
+          .eq(kPostOwnerUidField, targetUid);
     }
 
     return Scaffold(
@@ -448,10 +453,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
                 if (canSeePrivateProfile)
                   StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: Supabase.instance.client
-                      .from(kPostsCollection)
-                      .stream(primaryKey: ['id'])
-                      .eq(kPostOwnerUidField, targetUid),
+                  stream: _postsStream,
                   builder: (context, postSnapshot) {
                     if (postSnapshot.connectionState == ConnectionState.waiting) {
                       return const Padding(padding: EdgeInsets.all(20.0), child: Center(child: CircularProgressIndicator()));
@@ -471,47 +473,19 @@ class _ProfilePageState extends State<ProfilePage> {
                     
                     final userPostDocs = postSnapshot.data!;
 
-                    const int adInterval = 5;
-                    int totalAdsCount = (_isGridAdLoaded && _gridMediumAd != null) ? (userPostDocs.length ~/ adInterval) : 0;
-                    int totalItemCount = userPostDocs.length + totalAdsCount;
+                    final totalItemCount = userPostDocs.length;
 
                     return GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: totalItemCount,
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3, 
-                        crossAxisSpacing: 2, 
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 2,
                         mainAxisSpacing: 2,
                       ),
                       itemBuilder: (context, index) {
-                        bool isAdPosition = _isGridAdLoaded && _gridMediumAd != null && ((index + 1) % (adInterval + 1) == 0);
-
-                        if (isAdPosition) {
-                          return Container(
-                            alignment: Alignment.center,
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            child: SizedBox(
-                              width: _gridMediumAd!.size.width.toDouble(),
-                              height: _gridMediumAd!.size.height.toDouble(),
-                              child: AdWidget(ad: _gridMediumAd!),
-                            ),
-                          );
-                        }
-
-                        int adCountBeforeIndex = 0;
-                        if (_isGridAdLoaded && _gridMediumAd != null) {
-                          for (int i = 0; i <= index; i++) {
-                            if ((i + 1) % (adInterval + 1) == 0) {
-                              adCountBeforeIndex++;
-                            }
-                          }
-                        }
-                        int postIndex = index - adCountBeforeIndex;
-
-                        if (postIndex >= userPostDocs.length) {
-                          return const SizedBox.shrink();
-                        }
+                        final postIndex = index;
 
                         final pData = userPostDocs[postIndex];
                         final String currentPostId = pData['id'].toString();
