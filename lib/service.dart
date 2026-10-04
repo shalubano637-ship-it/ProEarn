@@ -252,28 +252,54 @@ class GlobalCachedImage extends StatelessWidget {
   const GlobalCachedImage({
     super.key,
     required this.imageUrl,
-    this.fit = BoxFit
-        .cover,
+    this.fit = BoxFit.cover,
     this.width,
     this.height,
     this.errorWidget,
     this.filterQuality = FilterQuality.high,
   });
 
+  static const Map<String, String> _imageHeaders = {
+    'User-Agent': 'ProEarn/1.0 (Android)',
+    'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+  };
+
+  Widget _error(BuildContext context, {Object? error}) {
+    return SizedBox(
+      width: width,
+      height: height,
+      child: this.errorWidget ??
+          const Center(
+            child: Icon(Icons.broken_image, color: AppColors.textTertiary),
+          ),
+    );
+  }
+
+  Widget _directNetworkFallback(BuildContext context) {
+    return Image.network(
+      imageUrl,
+      width: width,
+      height: height,
+      fit: fit,
+      filterQuality: filterQuality,
+      headers: _imageHeaders,
+      gaplessPlayback: true,
+      errorBuilder: (context, error, stackTrace) => _error(
+        context,
+        error: error,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (imageUrl.isEmpty || !imageUrl.startsWith('http')) {
-      return Container(
-        width: width,
-        height: height,
-        color: AppColors.surfaceElevated,
-        child: errorWidget ?? const Icon(Icons.person, color: AppColors.textTertiary),
-      );
+    if (imageUrl.isEmpty ||
+        (!imageUrl.startsWith('http://') &&
+            !imageUrl.startsWith('https://'))) {
+      return _error(context);
     }
 
-    // CachedNetworkImage has limited web caching support. On web, use the
-    // browser's native image pipeline so a refresh does not depend on the
-    // custom CacheManager implementation.
+    // Direct browser/native pipeline on web.
     if (kIsWeb) {
       return Image.network(
         imageUrl,
@@ -281,6 +307,7 @@ class GlobalCachedImage extends StatelessWidget {
         height: height,
         fit: fit,
         filterQuality: filterQuality,
+        headers: _imageHeaders,
         gaplessPlayback: true,
         loadingBuilder: (context, child, progress) {
           if (progress == null) return child;
@@ -292,21 +319,13 @@ class GlobalCachedImage extends StatelessWidget {
               child: SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.textTertiary,
-                ),
+                child: CircularProgressIndicator(strokeWidth: 2),
               ),
             ),
           );
         },
-        errorBuilder: (context, url, error) => Container(
-          width: width,
-          height: height,
-          color: AppColors.surfaceElevated,
-          child: this.errorWidget ??
-              const Icon(Icons.broken_image, color: AppColors.textTertiary),
-        ),
+        errorBuilder: (context, error, stackTrace) =>
+            _error(context, error: error),
       );
     }
 
@@ -316,7 +335,10 @@ class GlobalCachedImage extends StatelessWidget {
       height: height,
       fit: fit,
       filterQuality: filterQuality,
-      cacheManager: CustomImageCacheManager.instance,
+      // Keep disk caching, but use the package's default cache manager
+      // instead of the app-specific manager. This avoids stale/corrupt
+      // cache entries preventing otherwise valid ImgBB URLs from loading.
+      httpHeaders: _imageHeaders,
       useOldImageOnUrlChange: true,
       placeholder: (context, url) => Container(
         width: width,
@@ -326,20 +348,16 @@ class GlobalCachedImage extends StatelessWidget {
           child: SizedBox(
             width: 20,
             height: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: AppColors.textTertiary,
-            ),
+            child: CircularProgressIndicator(strokeWidth: 2),
           ),
         ),
       ),
-      errorWidget: (context, url, error) => Container(
-        width: width,
-        height: height,
-        color: AppColors.surfaceElevated,
-        child: this.errorWidget ??
-            const Icon(Icons.broken_image, color: AppColors.textTertiary),
-      ),
+      errorWidget: (context, url, error) {
+        // A failed disk-cache/network-cache read gets one independent
+        // direct-network attempt. If that also fails, show the normal
+        // placeholder instead of leaving the entire image area blank.
+        return _directNetworkFallback(context);
+      },
     );
   }
 }
