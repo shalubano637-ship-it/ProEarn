@@ -309,12 +309,11 @@ class GlobalCachedImage extends StatelessWidget {
     // Direct browser/native pipeline on web.
     if (kIsWeb) {
       return Image.network(
-        imageUrl,
+        _resolvedImageUrl(),
         width: width,
         height: height,
         fit: fit,
         filterQuality: filterQuality,
-        headers: _imageHeaders,
         gaplessPlayback: true,
         loadingBuilder: (context, child, progress) {
           if (progress == null) return child;
