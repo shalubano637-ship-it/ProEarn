@@ -1,17 +1,12 @@
 {
   "published": false,
-  "versionCode": 3,
-  "versionName": "1.0.2",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/latest/download/proearn.apk",
-  "title": "ProEarn Update",
-  "message": "Naya update available hai. Update flow aur release build ko verify karne ke liye ye test release hai.",
-  "newFeatures": [
-    "Updated release build",
-    "App update system verification"
-  ],
-  "fixes": [
-    "Release signing and APK update compatibility testing"
-  ],
-  "forceUpdate": false,
-  "status": "testing"
+  "status": "testing",
+  "versionCode": 4,
+  "versionName": "1.0.3",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.3/proearn.apk",
+  "title": "New Update Available",
+  "message": "",
+  "newFeatures": [],
+  "fixes": [],
+  "forceUpdate": false
 }
