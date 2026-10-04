@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -33,20 +31,56 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentEmail = Supabase.instance.client.auth.currentUser?.email?.toLowerCase().trim();
+    final currentEmail =
+        Supabase.instance.client.auth.currentUser?.email?.toLowerCase().trim();
     final isAdmin = currentEmail == kAdminEmail.toLowerCase();
 
     return Scaffold(
       body: ListView(
         children: [
-          buildTile(context: context, icon: Icons.person_outline, title: "Push Notification", page: const PushNotificationPage()),
-          buildTile(context: context, icon: Icons.security, title: "Security", page: const SecurityPage()),
-          buildTile(context: context, icon: Icons.lock_outline, title: "Privacy", page: const PrivacyPage()),
-          buildTile(context: context, icon: Icons.help_outline, title: "Help", page: const HelpPage()),
-          buildTile(context: context, icon: Icons.system_update_alt, title: "Update", page: const AppUpdatePage()),
+          buildTile(
+            context: context,
+            icon: Icons.person_outline,
+            title: "Push Notification",
+            page: const PushNotificationPage(),
+          ),
+          buildTile(
+            context: context,
+            icon: Icons.security,
+            title: "Security",
+            page: const SecurityPage(),
+          ),
+          buildTile(
+            context: context,
+            icon: Icons.lock_outline,
+            title: "Privacy",
+            page: const PrivacyPage(),
+          ),
+          buildTile(
+            context: context,
+            icon: Icons.help_outline,
+            title: "Help",
+            page: const HelpPage(),
+          ),
           if (isAdmin) ...[
-            buildTile(context: context, icon: Icons.shield_outlined, title: "Admin Panel", page: const AdminReportsPage()),
-            buildTile(context: context, icon: Icons.publish_outlined, title: "Publish Update", page: const AdminUpdatePage()),
+            buildTile(
+              context: context,
+              icon: Icons.system_update_alt,
+              title: "Update",
+              page: const AppUpdatePage(),
+            ),
+            buildTile(
+              context: context,
+              icon: Icons.shield_outlined,
+              title: "Admin Panel",
+              page: const AdminReportsPage(),
+            ),
+            buildTile(
+              context: context,
+              icon: Icons.science_outlined,
+              title: "Test Update",
+              page: const AdminUpdatePage(),
+            ),
           ],
         ],
       ),
