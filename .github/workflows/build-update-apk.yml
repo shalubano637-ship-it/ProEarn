@@ -29,10 +29,10 @@ jobs:
         run: |
           VERSION_NAME="$(jq -r '.versionName' update.json)"
           VERSION_CODE="$(jq -r '.versionCode' update.json)"
-          PUBLISHED="$(jq -r '.published' update.json)"
+          STATUS="$(jq -r '.status // "published"' update.json)"
 
-          if [ "$PUBLISHED" != "true" ]; then
-            echo "update.json is not published; skipping release."
+          if [ "$STATUS" != "testing" ] && [ "$STATUS" != "published" ]; then
+            echo "No build requested (status=$STATUS)."
             exit 0
           fi
 
@@ -48,6 +48,7 @@ jobs:
 
           echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -92,12 +93,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION_NAME: ${{ steps.metadata.outputs.version_name }}
+          STATUS: ${{ steps.metadata.outputs.status }}
         run: |
           TAG="v$VERSION_NAME"
           gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          if [ "$STATUS" = "testing" ]; then
+            NOTES="Admin test build. This update is NOT visible to normal users until the admin publishes it."
+          else
+            NOTES="Published from the Pro Earn Admin Update Manager."
+          fi
           gh release create "$TAG" proearn.apk \
             --title "$TAG" \
-            --notes "Published from the Pro Earn Admin Update Manager." \
+            --notes "$NOTES" \
             --latest
 
       - name: Verify release asset
