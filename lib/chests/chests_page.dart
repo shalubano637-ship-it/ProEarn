@@ -6,6 +6,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/theme.dart';
 import '../service.dart';
 import '../chest_timer_service.dart';
+import '../ad_preloader.dart';
+import '../ad_unit_ids.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 const List<String> _chestDurationLabels = ["1 min", "5 min", "10 min", "30 min", "45 min"];
 
@@ -23,6 +26,7 @@ class _ChestsPageState extends State<ChestsPage> {
   @override
   void initState() {
     super.initState();
+    RewardedAdPreloader.preload();
     if (!chestTimerService.isLoaded) {
       chestTimerService.initialize();
     }
@@ -65,6 +69,35 @@ class _ChestsPageState extends State<ChestsPage> {
     if (mounted) setState(() => _isClaiming = true);
     final chestIndexBeingClaimed = service.currentChestIndex;
     try {
+      final rewardedAd = RewardedAdPreloader.takeReadyAd();
+      if (rewardedAd == null) {
+        RewardedAdPreloader.preload();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Reward ad is loading. Please try again in a moment.")),
+          );
+        }
+        return;
+      }
+
+      var rewardEarned = false;
+      await rewardedAd.show(
+        onUserEarnedReward: (ad, reward) {
+          rewardEarned = true;
+        },
+      );
+      rewardedAd.dispose();
+
+      if (!rewardEarned) {
+        RewardedAdPreloader.preload();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Watch the reward ad completely to open the chest.")),
+          );
+        }
+        return;
+      }
+
       final result = await Supabase.instance.client.rpc(
         'claim_chest_reward',
         params: {'p_chest_index': chestIndexBeingClaimed},
