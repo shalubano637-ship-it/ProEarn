@@ -22,7 +22,15 @@ Deno.serve(async req=>{
   if(!moderationResponse.ok||moderationBody?.safe!==true)return json({error:moderationBody?.reason??"Cloudflare moderation rejected the image"},moderationResponse.status===422?422:503);
   const form=new FormData();form.append("image",image);
   const r=await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`,{method:"POST",body:form});const data=await r.json();
-  if(!r.ok||!data?.data?.url)return json({error:"Upload failed"},502);
+  if(!r.ok||!data?.data?.url){
+    console.error("ImgBB upstream upload failed", r.status, data);
+    const upstreamMessage =
+      data?.error?.message ??
+      data?.error?.error?.message ??
+      data?.status_txt ??
+      "ImgBB upload failed";
+    return json({error:"Upload failed",details:String(upstreamMessage)},502);
+  }
   const {data:owner,error:oe}=await client.from("users").select("isPrivateAccount").eq("uid",u.user.id).maybeSingle();if(oe)return json({error:"Post privacy lookup failed"},500);
   if(folder==="chat")return json({url:data.data.url});
 
