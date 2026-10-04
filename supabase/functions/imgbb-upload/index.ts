@@ -3,6 +3,7 @@ const SUPABASE_URL=Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY=Deno.env.get("SUPABASE_ANON_KEY")!;
 const IMGBB_API_KEY=Deno.env.get("IMGBB_API_KEY")!;
 const CLOUDFLARE_MODERATION_URL="https://proearn-media-gateway.shalubano637.workers.dev/v1/moderate-image";
+const IMAGE_PROXY_BASE="https://proearn-media-gateway.shalubano637.workers.dev/v1/image-proxy?url=";
 const MAX_BASE64_LENGTH=12_000_000;
 const CORS_HEADERS={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS"};
 function b64(v:string){const n=v.replace(/-/g,"+").replace(/_/g,"/");return atob(n+"=".repeat((4-n.length%4)%4))}
@@ -32,10 +33,11 @@ Deno.serve(async req=>{
     return json({error:"Upload failed",details:String(upstreamMessage)},502);
   }
   const {data:owner,error:oe}=await client.from("users").select("isPrivateAccount").eq("uid",u.user.id).maybeSingle();if(oe)return json({error:"Post privacy lookup failed"},500);
-  if(folder==="chat")return json({url:data.data.url});
+  const publicImageUrl = IMAGE_PROXY_BASE + data.data.url;
+  if(folder==="chat")return json({url:publicImageUrl});
 
-  const {data:post,error:pe}=await client.from("posts").insert({userName:u.user.id,caption:String(body.caption??"No Caption"),prompt:String(body.prompt??""),link:String(body.link??`app://post/${Date.now()}`),imageUrl:data.data.url,moderationStatus:"approved",moderationCheckedAt:new Date().toISOString(),moderationReason:null,mediaObjectKey:null,isPrivatePost:owner?.isPrivateAccount===true}).select().single();
+  const {data:post,error:pe}=await client.from("posts").insert({userName:u.user.id,caption:String(body.caption??"No Caption"),prompt:String(body.prompt??""),link:String(body.link??`app://post/${Date.now()}`),imageUrl:publicImageUrl,moderationStatus:"approved",moderationCheckedAt:new Date().toISOString(),moderationReason:null,mediaObjectKey:null,isPrivatePost:owner?.isPrivateAccount===true}).select().single();
   if(pe){console.error(pe);return json({error:"Post creation failed"},500)}
-  return json({url:data.data.url,post});
+  return json({url:publicImageUrl,post});
  }catch(e){console.error(e);return json({error:"Internal error"},500)}
 });
