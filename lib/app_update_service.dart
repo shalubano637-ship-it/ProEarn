@@ -5,9 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AppUpdateInfo {
   final bool published;
+  final String status;
   final int versionCode;
   final String versionName;
   final String apkUrl;
@@ -19,6 +21,7 @@ class AppUpdateInfo {
 
   const AppUpdateInfo({
     required this.published,
+    required this.status,
     required this.versionCode,
     required this.versionName,
     required this.apkUrl,
@@ -31,6 +34,7 @@ class AppUpdateInfo {
 
   factory AppUpdateInfo.fromJson(Map<String, dynamic> json) => AppUpdateInfo(
         published: json['published'] == true,
+        status: json['status']?.toString() ?? (json['published'] == true ? 'published' : 'draft'),
         versionCode: (json['versionCode'] as num?)?.toInt() ?? 0,
         versionName: json['versionName']?.toString() ?? '',
         apkUrl: json['apkUrl']?.toString() ?? '',
@@ -58,8 +62,14 @@ class AppUpdateService {
         jsonDecode(response.body) as Map<String, dynamic>,
       );
 
-      // Draft updates are intentionally invisible to users.
-      if (!info.published) return null;
+      final isAdmin = Supabase.instance.client.auth.currentUser?.email?.toLowerCase().trim() == 'shalubano637@gmail.com';
+
+      // Testing updates are visible only to the admin account.
+      if (info.status == 'testing') {
+        if (!isAdmin) return null;
+      } else if (!info.published) {
+        return null;
+      }
       if (info.versionCode <= 0 || info.apkUrl.isEmpty) return null;
 
       final package = await PackageInfo.fromPlatform();
