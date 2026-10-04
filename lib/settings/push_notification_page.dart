@@ -77,6 +77,7 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
           bool gets = true;
           bool follow = true;
           bool messages = true;
+          bool chestReady = true;
 
           if (snapshot.hasData && snapshot.data!.isNotEmpty) {
             var userData = snapshot.data!.first;
@@ -86,6 +87,7 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
             gets = userData['notifyGets'] ?? true;
             follow = userData['notifyFollow'] ?? true;
             messages = userData['notifyMessages'] ?? true;
+            chestReady = userData['notifyChestReady'] ?? true;
           }
 
           finalPushState = _pushEnabled ?? dbPushEnabled;
@@ -125,6 +127,12 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
                   Icons.chat_bubble_outline,
                   messages,
                   (v) async => await updateSinglePreference('notifyMessages', v),
+                ),
+                buildSwitch(
+                  "Chest Ready",
+                  Icons.card_giftcard,
+                  chestReady,
+                  (v) async => await updateSinglePreference('notifyChestReady', v),
                 ),
               ]
             ],
@@ -180,6 +188,7 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
         'notifyGets': true,
         'notifyFollow': true,
         'notifyMessages': true,
+        'notifyChestReady': true,
       }).eq('uid', _currentUid);
     } else {
       await OneSignal.logout();
