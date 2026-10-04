@@ -19,7 +19,7 @@ class _AdminUpdatePageState extends State<AdminUpdatePage> {
   final _features = TextEditingController();
   final _fixes = TextEditingController();
   bool _forceUpdate = false;
-  bool _publishing = false;
+  bool _working = false;
 
   @override
   void dispose() {
@@ -38,7 +38,7 @@ class _AdminUpdatePageState extends State<AdminUpdatePage> {
       .where((e) => e.isNotEmpty)
       .toList();
 
-  Future<void> _publish() async {
+  Future<void> _submit(String action) async {
     final email = Supabase.instance.client.auth.currentUser?.email?.toLowerCase().trim();
     if (email != kAdminEmail.toLowerCase()) {
       _snack('Not authorized.', error: true);
@@ -51,11 +51,12 @@ class _AdminUpdatePageState extends State<AdminUpdatePage> {
       return;
     }
 
-    setState(() => _publishing = true);
+    setState(() => _working = true);
     try {
       final response = await Supabase.instance.client.functions.invoke(
         'publish-app-update',
         body: {
+          'action': action,
           'versionCode': code,
           'versionName': _versionName.text.trim(),
           'title': _title.text.trim(),
@@ -68,15 +69,15 @@ class _AdminUpdatePageState extends State<AdminUpdatePage> {
 
       if (!mounted) return;
       if (response.status >= 200 && response.status < 300) {
-        _snack('Update publish ho gaya. GitHub Actions APK build karega.');
+        _snack(action == 'test' ? 'Test update saved. Ab sirf Admin ko update dikhega.' : 'Update public ho gaya. Ab users ko update dikhega.');
       } else {
         final data = response.data;
         _snack(data is Map && data['error'] != null ? data['error'].toString() : 'Publish failed.', error: true);
       }
     } catch (e) {
-      if (mounted) _snack('Publish failed: $e', error: true);
+      if (mounted) _snack('Operation failed: $e', error: true);
     } finally {
-      if (mounted) setState(() => _publishing = false);
+      if (mounted) setState(() => _working = false);
     }
   }
 
@@ -94,16 +95,16 @@ class _AdminUpdatePageState extends State<AdminUpdatePage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Admin — Publish Update')),
+      appBar: AppBar(title: const Text('Admin — App Updates')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           const Text(
-            'Publish a new app version',
+            'Test → Verify → Publish',
             style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 6),
-          const Text('Publishing commits update.json. GitHub Actions then builds and releases the APK.'),
+          const Text('Test Update: only the Admin account can see it. After installing and testing the APK, use Publish to Everyone.'),
           const SizedBox(height: 20),
           TextField(controller: _versionName, decoration: const InputDecoration(labelText: 'Version name', hintText: '1.0.2')),
           const SizedBox(height: 12),
@@ -134,18 +135,27 @@ class _AdminUpdatePageState extends State<AdminUpdatePage> {
             title: const Text('Force update'),
             subtitle: const Text('Users cannot dismiss the update popup.'),
             value: _forceUpdate,
-            onChanged: _publishing ? null : (v) => setState(() => _forceUpdate = v),
+            onChanged: _working ? null : (v) => setState(() => _forceUpdate = v),
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            height: 52,
-            child: FilledButton.icon(
-              onPressed: _publishing ? null : _publish,
-              icon: _publishing
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.publish),
-              label: Text(_publishing ? 'Publishing…' : 'Publish Update'),
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _working ? null : () => _submit('test'),
+                  icon: const Icon(Icons.science_outlined),
+                  label: const Text('Test Update'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _working ? null : () => _submit('publish'),
+                  icon: const Icon(Icons.public),
+                  label: const Text('Publish to Everyone'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
