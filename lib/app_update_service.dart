@@ -34,7 +34,7 @@ class AppUpdateInfo {
 
   factory AppUpdateInfo.fromJson(Map<String, dynamic> json) => AppUpdateInfo(
         published: json['published'] == true,
-        status: json['status']?.toString() ?? (json['published'] == true ? 'published' : 'draft'),
+        status: json['status']?.toString() ?? 'draft',
         versionCode: (json['versionCode'] as num?)?.toInt() ?? 0,
         versionName: json['versionName']?.toString() ?? '',
         apkUrl: json['apkUrl']?.toString() ?? '',
@@ -49,12 +49,21 @@ class AppUpdateInfo {
 class AppUpdateService {
   static const _metadataUrl =
       'https://raw.githubusercontent.com/shalubano637-ship-it/ProEarn/main/update.json';
+  static const _adminEmail = 'shalubano637@gmail.com';
   static const _channel = MethodChannel('proearn/updater');
 
+  static bool get isAdmin {
+    final email =
+        Supabase.instance.client.auth.currentUser?.email?.toLowerCase().trim();
+    return email == _adminEmail;
+  }
+
   static Future<AppUpdateInfo?> checkForUpdate() async {
+    if (!isAdmin) return null;
+
     try {
       final response = await http
-          .get(Uri.parse('$_metadataUrl?t=${DateTime.now().millisecondsSinceEpoch}'))
+          .get(Uri.parse(_metadataUrl + '?t=' + DateTime.now().millisecondsSinceEpoch.toString()))
           .timeout(const Duration(seconds: 8));
       if (response.statusCode != 200) return null;
 
@@ -62,14 +71,7 @@ class AppUpdateService {
         jsonDecode(response.body) as Map<String, dynamic>,
       );
 
-      final isAdmin = Supabase.instance.client.auth.currentUser?.email?.toLowerCase().trim() == 'shalubano637@gmail.com';
-
-      // Testing updates are visible only to the admin account.
-      if (info.status == 'testing') {
-        if (!isAdmin) return null;
-      } else if (!info.published) {
-        return null;
-      }
+      if (info.status != 'testing') return null;
       if (info.versionCode <= 0 || info.apkUrl.isEmpty) return null;
 
       final package = await PackageInfo.fromPlatform();
@@ -85,14 +87,14 @@ class AppUpdateService {
     void Function(int received, int total)? onProgress,
   }) async {
     final directory = await getTemporaryDirectory();
-    final file = File('${directory.path}/proearn-${info.versionName}.apk');
+    final file = File(directory.path + '/proearn-' + info.versionName + '.apk');
 
     final request = http.Request('GET', Uri.parse(info.apkUrl));
     final client = http.Client();
     final response = await client.send(request);
     if (response.statusCode != 200) {
       client.close();
-      throw Exception('Download failed (${response.statusCode})');
+      throw Exception('Download failed (' + response.statusCode.toString() + ')');
     }
 
     final total = response.contentLength ?? 0;
