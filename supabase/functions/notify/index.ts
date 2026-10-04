@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
 
     const { data: targetData } = await admin
       .from("users")
-      .select('"pushNotificationsEnabled", "notifyLikes", "notifyComments", "notifyFollow", "notifyMessages", "mutedUsers"')
+      .select('"pushNotificationsEnabled", "notifyLikes", "notifyComments", "notifyFollow", "notifyMessages", "notifyChestReady", "mutedUsers"')
       .eq("uid", targetOwnerId)
       .maybeSingle();
     if (!targetData) return json({ success: true });
@@ -60,6 +60,7 @@ Deno.serve(async (req) => {
     if (type === "comment" && targetData.notifyComments === false) return json({ success: true });
     if (type === "follow" && targetData.notifyFollow === false) return json({ success: true });
     if (type === "message" && targetData.notifyMessages === false) return json({ success: true });
+    if (type === "chest_ready" && targetData.notifyChestReady === false) return json({ success: true });
     if (type === "message" && Array.isArray(targetData.mutedUsers) && targetData.mutedUsers.includes(senderId)) {
       return json({ success: true });
     }
