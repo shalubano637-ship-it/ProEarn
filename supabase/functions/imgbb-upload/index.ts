@@ -2,7 +2,6 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const SUPABASE_URL=Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY=Deno.env.get("SUPABASE_ANON_KEY")!;
 const IMGBB_API_KEY=Deno.env.get("IMGBB_API_KEY")!;
-const CLOUDFLARE_MODERATION_URL="https://proearn-media-gateway.shalubano637.workers.dev/v1/moderate-image";
 const IMAGE_PROXY_BASE="https://proearn-media-gateway.shalubano637.workers.dev/v1/image-proxy?url=";
 const MAX_BASE64_LENGTH=12_000_000;
 const CORS_HEADERS={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS"};
@@ -18,9 +17,7 @@ Deno.serve(async req=>{
   const {data:u,error:ae}=await client.auth.getUser();if(ae||!u?.user)return json({error:"Unauthorized"},401);
   const body=await req.json().catch(()=>({}));const image=String(body.imageBase64??"");const folder=String(body.folder??"posts");
   if(!image)return json({error:"imageBase64 required"},400);if(image.length>MAX_BASE64_LENGTH)return json({error:"Image too large"},400);
-  const moderationResponse=await fetch(CLOUDFLARE_MODERATION_URL,{method:"POST",headers:{"Authorization":auth,"Content-Type":"application/json"},body:JSON.stringify({imageBase64:image,contentType:String(body.contentType??"image/jpeg")})});
-  const moderationBody=await moderationResponse.json().catch(()=>({}));
-  if(!moderationResponse.ok||moderationBody?.safe!==true)return json({error:moderationBody?.reason??"Cloudflare moderation rejected the image"},moderationResponse.status===422?422:503);
+  // Client-side moderation runs before upload; keep storage independent of temporary AI outages.
   const form=new FormData();form.append("image",image);
   const r=await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`,{method:"POST",body:form});const data=await r.json();
   if(!r.ok||!data?.data?.url){
