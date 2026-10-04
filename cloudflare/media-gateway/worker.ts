@@ -101,12 +101,10 @@ async function moderateBytes(env: Env, bytes: Uint8Array, contentType: string, u
         },
         {
           role: "user",
-          content: [
-            { type: "text", text: `Classify this uploaded image for userId ${userId}.` },
-            { type: "image_url", image_url: { url: dataUrl } },
-          ],
+          content: `Classify this uploaded image for userId ${userId}.`,
         },
       ],
+      image: dataUrl,
       max_tokens: 80,
       temperature: 0,
     });
@@ -209,6 +207,23 @@ export default {
         }
         return json({ success: true, deleted });
       }
+      if (url.pathname === "/v1/image-proxy" && request.method === "GET") {
+        const target = url.searchParams.get("url") ?? "";
+        let targetUrl: URL;
+        try { targetUrl = new URL(target); } catch { return json({ error: "Invalid image URL" }, 400); }
+        if (targetUrl.protocol !== "https:" || !["i.ibb.co", "i.imgbb.com"].includes(targetUrl.hostname)) {
+          return json({ error: "Image host not allowed" }, 403);
+        }
+        const upstream = await fetch(targetUrl.toString(), {
+          headers: { "User-Agent": "Mozilla/5.0 ProEarnImageProxy/1.0", "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8" },
+        });
+        if (!upstream.ok) return json({ error: "Image upstream failed", status: upstream.status }, 502);
+        const headers = new Headers(upstream.headers);
+        headers.set("Cache-Control", "public, max-age=86400");
+        headers.set("Access-Control-Allow-Origin", "*");
+        return new Response(upstream.body, { status: 200, headers });
+      }
+
       if (url.pathname === "/v1/upload-intent" && request.method === "POST") {
         const body = await request.json<{ contentType?: string; folder?: string }>();
         const contentType = String(body.contentType ?? "");
