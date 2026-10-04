@@ -7,7 +7,6 @@ import 'help_page.dart';
 import 'privacy_page.dart';
 import '../models.dart';
 import '../admin/admin_reports_page.dart';
-import '../admin/admin_update_page.dart';
 import '../app_update_page.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -74,12 +73,6 @@ class SettingsPage extends StatelessWidget {
               icon: Icons.shield_outlined,
               title: "Admin Panel",
               page: const AdminReportsPage(),
-            ),
-            buildTile(
-              context: context,
-              icon: Icons.science_outlined,
-              title: "Test Update",
-              page: const AdminUpdatePage(),
             ),
           ],
         ],
