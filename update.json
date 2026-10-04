@@ -1,6 +1,6 @@
 {
-  "published": false,
-  "status": "testing",
+  "published": true,
+  "status": "published",
   "versionCode": 4,
   "versionName": "1.0.3",
   "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.3/proearn.apk",
