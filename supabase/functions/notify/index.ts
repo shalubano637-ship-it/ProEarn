@@ -103,10 +103,12 @@ Deno.serve(async (req) => {
     }
 
     let pushBody = message;
+    let pushTitle = "You have a new notification";
     if (type === "like") pushBody = "Someone liked your post";
     else if (type === "follow") pushBody = "Someone started following you";
     else if (type === "comment") pushBody = "Someone commented on your post";
     else if (type === "message") pushBody = "Someone sent you a message";
+    else if (type === "chest_ready") { pushTitle = "Chest Ready"; pushBody = "Your chest is ready to open! 🎁"; }
 
     if (!pushEnabled) return json({ success: true });
 
@@ -120,8 +122,9 @@ Deno.serve(async (req) => {
         app_id: ONESIGNAL_APP_ID,
         target_channel: "push",
         include_aliases: { external_id: [targetOwnerId] },
-        headings: { en: "You have a new notification" },
+        headings: { en: pushTitle },
         contents: { en: pushBody },
+        data: { type, senderId, targetPostId },
         priority: 10,
       }),
     });
