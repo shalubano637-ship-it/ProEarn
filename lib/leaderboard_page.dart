@@ -271,11 +271,17 @@ Future<List<_RankedUser>> _fetchLeaderboard(_Period period, _Metric metric) asyn
   List<String>? previousRanking;
 
   if (period == _Period.allTime) {
-    rows = await Supabase.instance.client
-        .from('public_profiles')
-        .select()
-        .order('popularity', ascending: false)
-        .limit(50);
+    final result = await Supabase.instance.client.rpc(
+      'get_leaderboard_by_popularity_all_time',
+      params: {'p_limit': 50},
+    );
+    rows = List<Map<String, dynamic>>.from(result as List).map((row) => {
+      'uid': row['uid'],
+      'userName': row['userName'] ?? 'User',
+      'profileUrl': row['profileUrl'] ?? '',
+      'bio': row['bio'] ?? '',
+      'popularity': row['score'] ?? 0,
+    }).toList();
   } else {
     final daysAgo = period == _Period.today ? 0 : 1;
     final istDate = await _istDate(daysAgo);
@@ -374,15 +380,15 @@ Future<_OwnRank?> _fetchOwnRank(_Period period, _Metric metric) async {
   const cap = 1000;
 
   if (period == _Period.allTime) {
-    final rows = await client
-        .from('public_profiles')
-        .select('uid, popularity')
-        .order('popularity', ascending: false)
-        .limit(cap);
+    final result = await client.rpc(
+      'get_leaderboard_by_popularity_all_time',
+      params: {'p_limit': cap},
+    );
+    final rows = List<Map<String, dynamic>>.from(result as List);
 
     final index = rows.indexWhere((r) => r['uid'] == myUid);
     if (index == -1) return null;
-    final myScore = (rows[index]['popularity'] ?? 0) as num;
+    final myScore = (rows[index]['score'] ?? 0) as num;
     return _OwnRank(rank: index + 1, score: myScore, totalRanked: rows.length);
   } else {
     final daysAgo = period == _Period.today ? 0 : 1;
