@@ -1,5 +1,5 @@
 {
-  "published": true,
+  "published": false,
   "versionCode": 3,
   "versionName": "1.0.2",
   "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/latest/download/proearn.apk",
@@ -12,5 +12,6 @@
   "fixes": [
     "Release signing and APK update compatibility testing"
   ],
-  "forceUpdate": false
+  "forceUpdate": false,
+  "status": "testing"
 }
