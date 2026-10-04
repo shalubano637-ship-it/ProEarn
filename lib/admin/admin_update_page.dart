@@ -14,7 +14,7 @@ class AdminUpdatePage extends StatefulWidget {
 class _AdminUpdatePageState extends State<AdminUpdatePage> {
   bool _working = false;
 
-  Future<void> _submit(String action) async {
+  Future<void> _testUpdate() async {
     final email =
         Supabase.instance.client.auth.currentUser?.email?.toLowerCase().trim();
     if (email != kAdminEmail.toLowerCase()) {
@@ -26,7 +26,7 @@ class _AdminUpdatePageState extends State<AdminUpdatePage> {
     try {
       final response = await Supabase.instance.client.functions.invoke(
         'publish-app-update',
-        body: {'action': action},
+        body: {'action': 'test'},
       );
 
       if (!mounted) return;
@@ -38,21 +38,24 @@ class _AdminUpdatePageState extends State<AdminUpdatePage> {
         final build = update?['versionCode']?.toString();
 
         _snack(
-          action == 'test'
-              ? 'Test build ${version ?? ''} (build ${build ?? ''}) start ho gaya. Sirf Admin ko dikhega.'
-              : 'Update public ho gaya. Ab users ko update dikhega.',
+          'Test build ' +
+              (version ?? '') +
+              ' (build ' +
+              (build ?? '') +
+              ') start ho gaya. Sirf Admin ko dikhega. '
+                  'Public users Play Store se update karenge.',
         );
       } else {
         final data = response.data;
         _snack(
           data is Map && data['error'] != null
               ? data['error'].toString()
-              : 'Operation failed.',
+              : 'Test build start nahi hua.',
           error: true,
         );
       }
     } catch (e) {
-      if (mounted) _snack('Operation failed: $e', error: true);
+      if (mounted) _snack('Test build failed: ' + e.toString(), error: true);
     } finally {
       if (mounted) setState(() => _working = false);
     }
@@ -76,36 +79,32 @@ class _AdminUpdatePageState extends State<AdminUpdatePage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Admin — App Updates')),
+      appBar: AppBar(title: const Text('Admin — Test Updates')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           const Text(
-            'Test → Verify → Publish',
+            'Admin Test Update',
             style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           const Text(
-            'Ab version name, version code ya changelog manually enter karne ki zarurat nahi hai. '
-            'Test Update automatically next version/build banayega, update.json set karega aur GitHub Actions se APK build karega.',
+            'Yahan se sirf Admin ke liye test APK banega. '
+            'Version name aur build number automatically next value par jayega. '
+            'Normal users ke liye in-app update/publish nahi hai; woh Play Store se update karenge.',
           ),
           const SizedBox(height: 24),
           FilledButton.icon(
-            onPressed: _working ? null : () => _submit('test'),
+            onPressed: _working ? null : _testUpdate,
             icon: const Icon(Icons.science_outlined),
             label: const Text('Test Update'),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: _working ? null : () => _submit('publish'),
-            icon: const Icon(Icons.public),
-            label: const Text('Publish to Everyone'),
           ),
           const SizedBox(height: 18),
           if (_working) const Center(child: CircularProgressIndicator()),
           const SizedBox(height: 12),
           const Text(
-            'Flow: Test Update → APK build → Admin install/test → sab sahi ho to Publish to Everyone.',
+            'Flow: Test Update → GitHub Actions APK build → Admin install/test. '
+            'Public release ke liye Play Store use hoga.',
             style: TextStyle(fontSize: 13),
           ),
         ],
