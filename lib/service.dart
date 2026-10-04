@@ -259,10 +259,18 @@ class GlobalCachedImage extends StatelessWidget {
     this.filterQuality = FilterQuality.high,
   });
 
-  static const Map<String, String> _imageHeaders = {
-    'User-Agent': 'ProEarn/1.0 (Android)',
-    'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-  };
+  static const String _imageProxyBase =
+      'https://proearn-media-gateway.shalubano637.workers.dev/v1/image-proxy?url=';
+
+  String _resolvedImageUrl() {
+    final uri = Uri.tryParse(imageUrl);
+    if (uri == null) return imageUrl;
+    if (uri.scheme == 'https' &&
+        (uri.host == 'i.ibb.co' || uri.host == 'i.imgbb.com')) {
+      return _imageProxyBase + Uri.encodeComponent(imageUrl);
+    }
+    return imageUrl;
+  }
 
   Widget _error(BuildContext context, {Object? error}) {
     return SizedBox(
@@ -277,12 +285,11 @@ class GlobalCachedImage extends StatelessWidget {
 
   Widget _directNetworkFallback(BuildContext context) {
     return Image.network(
-      imageUrl,
+      _resolvedImageUrl(),
       width: width,
       height: height,
       fit: fit,
       filterQuality: filterQuality,
-      headers: _imageHeaders,
       gaplessPlayback: true,
       errorBuilder: (context, error, stackTrace) => _error(
         context,
@@ -329,8 +336,10 @@ class GlobalCachedImage extends StatelessWidget {
       );
     }
 
+    final resolvedUrl = _resolvedImageUrl();
+
     return CachedNetworkImage(
-      imageUrl: imageUrl,
+      imageUrl: resolvedUrl,
       width: width,
       height: height,
       fit: fit,
@@ -338,7 +347,6 @@ class GlobalCachedImage extends StatelessWidget {
       // Keep disk caching, but use the package's default cache manager
       // instead of the app-specific manager. This avoids stale/corrupt
       // cache entries preventing otherwise valid ImgBB URLs from loading.
-      httpHeaders: _imageHeaders,
       useOldImageOnUrlChange: true,
       placeholder: (context, url) => Container(
         width: width,
