@@ -181,7 +181,7 @@ class _VoicePreviewSheetState extends State<_VoicePreviewSheet> with SingleTicke
   }
 
   @override
-  void dispose() { _expiryTicker?.cancel(); _wave.dispose(); _player.dispose(); super.dispose(); }
+  void dispose() { _wave.dispose(); _player.dispose(); super.dispose(); }
 
   String _fmt(Duration d) {
     final s = d.inSeconds;
