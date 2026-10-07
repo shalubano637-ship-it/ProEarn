@@ -84,7 +84,20 @@ jobs:
         run: flutter pub get
 
       - name: Build APK
-        run: flutter build apk --release --build-name=${{ steps.metadata.outputs.version_name }} --build-number=${{ steps.metadata.outputs.version_code }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "APK build attempt $attempt/3"
+            if flutter build apk --release --build-name=${{ steps.metadata.outputs.version_name }} --build-number=${{ steps.metadata.outputs.version_code }}; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "Build failed; retrying after a short Gradle dependency/network cooldown..."
+              sleep 20
+            fi
+          done
+          exit 1
 
       - name: Prepare APK
         run: cp build/app/outputs/flutter-apk/app-release.apk proearn.apk
