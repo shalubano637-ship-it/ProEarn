@@ -330,10 +330,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         .eq('uid', user.id);
                     
                     if (_selectedProfileImage != null || _selectedProfileImageBytes != null) {
-                      await Supabase.instance.client
-                          .from(kPostsCollection)
-                          .update({'userPhotoUrl': targetProfilePicUrl})
-                          .eq(kPostOwnerUidField, user.id);
+                      // Profile data is already saved above. Updating old post snapshots is
+                      // best-effort so an RLS failure here cannot falsely report upload failure.
+                      try {
+                        await Supabase.instance.client
+                            .from(kPostsCollection)
+                            .update({'userPhotoUrl': targetProfilePicUrl})
+                            .eq(kPostOwnerUidField, user.id);
+                      } catch (postError) {
+                        debugPrint("Post profile photo sync skipped: $postError");
+                      }
                     }
 
                     if (context.mounted) Navigator.pop(context); // Close Loader
