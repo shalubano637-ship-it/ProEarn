@@ -79,7 +79,7 @@ class _ReelsPageState extends State<ReelsPage> {
           context: context,
           isScrollControlled: true,
           useSafeArea: true,
-          backgroundColor: AppColors.background,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
@@ -259,7 +259,7 @@ class _ReelsPageState extends State<ReelsPage> {
                   return Stack(
                     fit: StackFit.expand,
                     children: [
-                      Container(color: AppColors.background),
+                      Container(color: Theme.of(context).scaffoldBackgroundColor),
                       SizedBox.expand(
                         child: imageUrl.startsWith('http')
                             ? GlobalCachedImage(imageUrl: imageUrl, fit: BoxFit.cover)
