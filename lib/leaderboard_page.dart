@@ -874,10 +874,10 @@ class _RankDelta extends StatelessWidget {
       return const Text("NEW", style: TextStyle(color: AppColors.info, fontSize: 11, fontWeight: FontWeight.w600));
     }
     if (delta == 0) {
-      return const Row(
+      return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.remove, size: 12, color: AppColors.textTertiary),
+          const Icon(Icons.remove, size: 12, color: AppColors.textTertiary),
           Text(" 0", style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55), fontSize: 11)),
         ],
       );
