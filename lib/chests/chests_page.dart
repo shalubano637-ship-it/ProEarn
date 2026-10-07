@@ -115,7 +115,8 @@ class _ChestsPageState extends State<ChestsPage> {
           SnackBar(content: Text(message), duration: const Duration(seconds: 4)),
         );
       }
-      await service.advanceToNextChest();
+      // The claim RPC advances the server to the next chest. Reload that authoritative state.
+      await service.initialize();
     } catch (e) {
       // Restore the authoritative server state if the claim itself fails.
       try {
@@ -193,21 +194,21 @@ class _ChestsPageState extends State<ChestsPage> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: AppColors.surfaceElevated,
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(color: AppColors.accent.withOpacity(0.35)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'Refer & Earn',
                                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(height: 5),
-                              const Text(
+                              Text(
                                 'Invite a new user. You get a High gift and they get a Medium gift.',
-                                style: TextStyle(fontSize: 12),
+                                style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface),
                               ),
                               const SizedBox(height: 10),
                               Row(
@@ -221,7 +222,7 @@ class _ChestsPageState extends State<ChestsPage> {
                                       ),
                                       child: Text(
                                         _referralCode!,
-                                        style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2, fontSize: 18),
+                                        style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2, fontSize: 18, color: Theme.of(context).colorScheme.onSurface),
                                       ),
                                     ),
                                   ),
