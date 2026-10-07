@@ -130,3 +130,5 @@ jobs:
         if: always()
         run: |
           rm -f android/proearn-release.jks android/key.properties
+
+# Rebuild trigger after final voice-message compile fix.
