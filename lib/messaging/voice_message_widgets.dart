@@ -181,7 +181,7 @@ class _VoicePreviewSheetState extends State<_VoicePreviewSheet> with SingleTicke
   }
 
   @override
-  void dispose() { _wave.dispose(); _player.dispose(); super.dispose(); }
+  void dispose() { _expiryTicker?.cancel(); _wave.dispose(); _player.dispose(); super.dispose(); }
 
   String _fmt(Duration d) {
     final s = d.inSeconds;
@@ -264,6 +264,7 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> with SingleTick
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   bool _finalPlay = false;
+  Timer? _expiryTicker;
 
   @override
   void initState() {
@@ -275,6 +276,11 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> with SingleTick
     _player.onPositionChanged.listen((p) { if (mounted) setState(() => _position = p); });
     _player.onDurationChanged.listen((d) { if (mounted && d > Duration.zero) setState(() => _duration = d); });
     _player.onPlayerComplete.listen((_) => _finishPlayback());
+    if (widget.createdAt != null) {
+      _expiryTicker = Timer.periodic(const Duration(minutes: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    }
   }
 
   Future<void> _finishPlayback() async {
