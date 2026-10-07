@@ -18,5 +18,6 @@
     "Room owner profile picture now appears by default",
     "Signup reward popup now appears on app open with a one-day Turn off option"
   ],
-  "forceUpdate": false
+  "forceUpdate": false,
+  "buildTrigger": "1791367625686"
 }
