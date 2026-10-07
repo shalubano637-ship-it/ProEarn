@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:universal_io/universal_io.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -12,6 +13,7 @@ import '../cloudflare_media_service.dart';
 import '../user_profile_features.dart';
 import 'chat_image_preview_page.dart';
 import 'chat_multi_image_preview_page.dart';
+import 'voice_message_widgets.dart';
 
 class RoomChatPage extends StatefulWidget {
   final String roomId;
@@ -177,6 +179,32 @@ class _RoomChatPageState extends State<RoomChatPage> {
       }
     } finally {
       if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _sendVoiceMessage(String path, int durationMs, int listenLimit) async {
+    final bytes = await File(path).readAsBytes();
+    final replyId = _replyingTo?['id']?.toString();
+    if (mounted) setState(() => _replyingTo = null);
+    try {
+      await Supabase.instance.client.functions.invoke(
+        'voice-message',
+        body: {
+          'mode': 'upload',
+          'roomId': widget.roomId,
+          'audioBase64': base64Encode(bytes),
+          'durationMs': durationMs,
+          'listenLimit': listenLimit,
+          if (replyId != null) 'replyToMessageId': replyId,
+        },
+      );
+      await _loadMessages(silent: true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Voice message failed: $e'), backgroundColor: AppColors.error),
+        );
+      }
     }
   }
 
@@ -474,6 +502,18 @@ class _RoomChatPageState extends State<RoomChatPage> {
                                 ),
                               ),
                             ),
+                            if ((m['voice_path']?.toString().isNotEmpty ?? false))
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 2),
+                                child: VoiceMessageBubble(
+                                  messageId: messageId,
+                                  room: true,
+                                  isMe: mine,
+                                  durationMs: (m['voice_duration_ms'] as num?)?.toInt() ?? 0,
+                                  listenCount: (m['voice_listen_count'] as num?)?.toInt() ?? 0,
+                                  listenLimit: (m['voice_listen_limit'] as num?)?.toInt() ?? 1,
+                                ),
+                              ),
                             if (imageUrl.isNotEmpty) GestureDetector(
                               onTap: () => _openImage(imageUrl),
                               child: ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.network(imageUrl, width: 220, height: 220, fit: BoxFit.cover)),
@@ -494,7 +534,7 @@ class _RoomChatPageState extends State<RoomChatPage> {
               child: Row(children: [
                 const Icon(Icons.reply, size: 18),
                 const SizedBox(width: 8),
-                Expanded(child: Text(_replyingTo!['text']?.toString().isNotEmpty == true ? _replyingTo!['text'].toString() : 'Photo', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                Expanded(child: Text(_replyingTo!['text']?.toString().isNotEmpty == true ? _replyingTo!['text'].toString() : ((_replyingTo!['voice_path']?.toString().isNotEmpty ?? false) ? 'Voice message' : 'Photo'), maxLines: 1, overflow: TextOverflow.ellipsis)),
                 IconButton(onPressed: () => setState(() => _replyingTo = null), icon: const Icon(Icons.close)),
               ]),
             ),
@@ -513,7 +553,16 @@ class _RoomChatPageState extends State<RoomChatPage> {
                   minLines: 1,
                   keyboardType: TextInputType.multiline,
                   textInputAction: TextInputAction.newline,
-                  decoration: InputDecoration(hintText: 'Message Room...', filled: true, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none)),
+                  decoration: InputDecoration(
+                    hintText: 'Message Room...',
+                    filled: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                    suffixIcon: Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: VoiceRecorderButton(onSend: _sendVoiceMessage),
+                    ),
+                  ),
                 )),
                 IconButton(
                   tooltip: 'Gallery',
