@@ -212,9 +212,12 @@ class ChestTimerService extends ChangeNotifier {
     await initialize();
   }
 
-  void advanceToNextChest() {
+  Future<void> advanceToNextChest() async {
+    _localTicker?.cancel();
+    isUnlocked = false;
     _notifiedThisUnlock = false;
-    initialize(); // simplest correct way to pick up the new index/duration
+    notifyListeners();
+    await initialize();
   }
 
   @override
