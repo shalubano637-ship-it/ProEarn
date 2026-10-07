@@ -873,8 +873,9 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                                         room: false,
                                                         isMe: isMe,
                                                         durationMs: (msg['voiceDurationMs'] as num?)?.toInt() ?? 0,
-                                                        listenCount: (msg['voiceListenCount'] as num?)?.toInt() ?? 0,
-                                                        listenLimit: (msg['voiceListenLimit'] as num?)?.toInt() ?? 1,
+                                                        listenCount: (isMe ? (msg['voiceSenderListenCount'] as num?)?.toInt() : (msg['voiceListenCount'] as num?)?.toInt()) ?? 0,
+                                                        listenLimit: isMe ? 1 : ((msg['voiceListenLimit'] as num?)?.toInt() ?? 1),
+                                                        createdAt: msg['createdAt'] == null ? null : DateTime.tryParse(msg['createdAt'].toString()),
                                                       ),
                                                     ),
                                                   if (msg['imageUrl'] != null)
