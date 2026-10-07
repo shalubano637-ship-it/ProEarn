@@ -5,7 +5,7 @@
   "versionName": "1.0.9",
   "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.9/proearn.apk",
   "title": "New Update Available",
-  "message": "Admin test build. Build 10 UI, theme, chest and signup reward fixes.",
+  "message": "Admin test build. Build 10 UI, theme, chest and signup reward fixes. Fixed leaderboard light-theme build issue.",
   "newFeatures": [],
   "fixes": [
     "Fixed profile picture upload failure",
