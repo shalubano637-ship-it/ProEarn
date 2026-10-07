@@ -29,9 +29,10 @@ Deno.serve(async req=>{
       "ImgBB upload failed";
     return json({error:"Upload failed",details:String(upstreamMessage)},502);
   }
-  const {data:owner,error:oe}=await client.from("users").select("isPrivateAccount").eq("uid",u.user.id).maybeSingle();if(oe)return json({error:"Post privacy lookup failed"},500);
   const publicImageUrl = IMAGE_PROXY_BASE + data.data.url;
-  if(folder==="chat")return json({url:publicImageUrl});
+  if(folder!=="posts")return json({url:publicImageUrl});
+
+  const {data:owner,error:oe}=await client.from("users").select("isPrivateAccount").eq("uid",u.user.id).maybeSingle();if(oe)return json({error:"Post privacy lookup failed"},500);
 
   const {data:post,error:pe}=await client.from("posts").insert({userName:u.user.id,caption:String(body.caption??"No Caption"),prompt:String(body.prompt??""),link:String(body.link??`app://post/${Date.now()}`),imageUrl:publicImageUrl,moderationStatus:"approved",moderationCheckedAt:new Date().toISOString(),moderationReason:null,mediaObjectKey:null,isPrivatePost:owner?.isPrivateAccount===true}).select().single();
   if(pe){console.error(pe);return json({error:"Post creation failed"},500)}
