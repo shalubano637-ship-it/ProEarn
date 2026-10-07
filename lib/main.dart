@@ -16,6 +16,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'auth_screen.dart';
 import 'service.dart';
 import 'theme/theme.dart';
+import 'theme/theme_controller.dart';
 import 'moderation/moderation_config.dart';
 import 'chest_timer_service.dart';
 import 'ad_preloader.dart';
@@ -95,6 +96,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
       }
 
       try {
+        await appThemeController.load();
         await Supabase.initialize(
           url: const String.fromEnvironment(
             'SUPABASE_URL',
@@ -170,14 +172,17 @@ class AiSocialApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      scaffoldMessengerKey: scaffoldMessengerKey,
-      navigatorKey: navigatorKey,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.dark,
-      home: const SplashPage(),
+    return AnimatedBuilder(
+      animation: appThemeController,
+      builder: (context, _) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        scaffoldMessengerKey: scaffoldMessengerKey,
+        navigatorKey: navigatorKey,
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: appThemeController.mode,
+        home: const SplashPage(),
+      ),
     );
   }
 }
