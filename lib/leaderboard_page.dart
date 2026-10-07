@@ -541,7 +541,7 @@ class _MetricToggle extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.accent : AppColors.surface,
+                color: isSelected ? AppColors.accent : Theme.of(context).colorScheme.surface,
                 borderRadius: AppRadius.pillRadius,
                 border: Border.all(color: isSelected ? AppColors.accent : Theme.of(context).colorScheme.outline),
               ),
@@ -554,7 +554,7 @@ class _MetricToggle extends StatelessWidget {
                 },
                 style: AppTextStyles.labelMedium.copyWith(
                   fontSize: 10,
-                  color: isSelected ? AppColors.textOnAccent : Theme.of(context).colorScheme.onSurface.withOpacity(0.70),
+                  color: isSelected ? AppColors.textOnAccent : Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ),
