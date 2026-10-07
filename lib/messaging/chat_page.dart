@@ -1,4 +1,5 @@
 
+import 'dart:convert';
 import 'package:universal_io/universal_io.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -13,6 +14,7 @@ import 'chat_settings_page.dart';
 import 'chat_image_preview_page.dart';
 import 'chat_multi_image_preview_page.dart';
 import 'messages_list_page.dart';
+import 'voice_message_widgets.dart';
 
 class ChatPage extends StatefulWidget {
   final String otherUid;
@@ -210,6 +212,42 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       }
     } finally {
       if (mounted) setState(() { _isSending = false; });
+    }
+  }
+
+  Future<void> _sendVoiceMessage(String path, int durationMs, int listenLimit) async {
+    if (_conversationId == null) return;
+    final file = File(path);
+    final bytes = await file.readAsBytes();
+    final replyId = _replyingTo?['id']?.toString();
+    if (mounted) setState(() => _replyingTo = null);
+    try {
+      await Supabase.instance.client.functions.invoke(
+        'voice-message',
+        body: {
+          'mode': 'upload',
+          'conversationId': _conversationId,
+          'audioBase64': base64Encode(bytes),
+          'durationMs': durationMs,
+          'listenLimit': listenLimit,
+          if (replyId != null) 'replyToMessageId': replyId,
+        },
+      );
+      sendNotification(
+        targetOwnerId: widget.otherUid,
+        type: 'message',
+        message: 'Someone sent you a voice message',
+      );
+      Supabase.instance.client
+          .rpc('mark_conversation_read', params: {'p_conversation_id': _conversationId})
+          .catchError((e) => debugPrint('mark_conversation_read failed: $e'));
+    } catch (e) {
+      debugPrint('Voice message send failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Voice message failed: $e'), backgroundColor: AppColors.error),
+        );
+      }
     }
   }
 
@@ -827,6 +865,18 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                                       onTap: () => _scrollToMessage(repliedMsg['id'] as String),
                                                       child: _ReplyPreviewChip(message: repliedMsg, isMe: isMe),
                                                     ),
+                                                  if (msg['voicePath'] != null)
+                                                    Padding(
+                                                      padding: const EdgeInsets.only(bottom: 2),
+                                                      child: VoiceMessageBubble(
+                                                        messageId: msgId,
+                                                        room: false,
+                                                        isMe: isMe,
+                                                        durationMs: (msg['voiceDurationMs'] as num?)?.toInt() ?? 0,
+                                                        listenCount: (msg['voiceListenCount'] as num?)?.toInt() ?? 0,
+                                                        listenLimit: (msg['voiceListenLimit'] as num?)?.toInt() ?? 1,
+                                                      ),
+                                                    ),
                                                   if (msg['imageUrl'] != null)
                                                     GestureDetector(
                                                       onTap: isGift ? null : () => _viewImageFullscreen(msg['imageUrl'] as String),
@@ -892,6 +942,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                           filled: true,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                          suffixIcon: Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: VoiceRecorderButton(onSend: _sendVoiceMessage),
+                          ),
                         ),
                       ),
                     ),
@@ -992,7 +1046,10 @@ class _ReplyPreviewChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final removed = message['deletedForEveryone'] == true;
     final hasImage = message['imageUrl'] != null && !removed;
-    final text = removed ? "Message removed" : ((message['text'] ?? (hasImage ? "📷 Photo" : '')) as String);
+    final hasVoice = message['voicePath'] != null && !removed;
+    final text = removed
+        ? "Message removed"
+        : ((message['text'] ?? (hasImage ? "📷 Photo" : (hasVoice ? "🎙️ Voice message" : ''))) as String);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
@@ -1021,6 +1078,7 @@ class _ReplyComposerBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final removed = message['deletedForEveryone'] == true;
     final hasImage = message['imageUrl'] != null && !removed;
+    final hasVoice = message['voicePath'] != null && !removed;
     final text = removed ? "Message removed" : ((message['text'] ?? '') as String);
 
     return Container(
@@ -1035,7 +1093,7 @@ class _ReplyComposerBar extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              text.isEmpty ? (hasImage ? "📷 Photo" : "Message") : text,
+              text.isEmpty ? (hasImage ? "📷 Photo" : (hasVoice ? "🎙️ Voice message" : "Message")) : text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
