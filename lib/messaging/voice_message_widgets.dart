@@ -248,7 +248,8 @@ class VoiceMessageBubble extends StatefulWidget {
   final int durationMs;
   final int listenCount;
   final int listenLimit;
-  const VoiceMessageBubble({super.key, required this.messageId, required this.room, required this.isMe, required this.durationMs, required this.listenCount, required this.listenLimit});
+  final DateTime? createdAt;
+  const VoiceMessageBubble({super.key, required this.messageId, required this.room, required this.isMe, required this.durationMs, required this.listenCount, required this.listenLimit, this.createdAt});
   @override
   State<VoiceMessageBubble> createState() => _VoiceMessageBubbleState();
 }
@@ -290,8 +291,10 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> with SingleTick
     } catch (_) {}
   }
 
+  bool get _expired => widget.createdAt != null && DateTime.now().isAfter(widget.createdAt!.toLocal().add(const Duration(hours: 24)));
+
   Future<void> _play() async {
-    if (_loading || _playing || _listenCount >= _listenLimit) return;
+    if (_loading || _playing || _listenCount >= _listenLimit || _expired) return;
     setState(() => _loading = true);
     try {
       final response = await Supabase.instance.client.functions.invoke('voice-message',
@@ -323,17 +326,25 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> with SingleTick
 
   @override
   Widget build(BuildContext context) {
-    final disabled = _listenCount >= _listenLimit;
+    final expired = _expired;
+    final disabled = expired || _listenCount >= _listenLimit;
     final maxMs = _duration.inMilliseconds;
     return Container(
       width: 230,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-      decoration: BoxDecoration(color: widget.isMe ? AppColors.accent.withOpacity(.22) : AppColors.surface, borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(
+        color: widget.isMe ? AppColors.accent.withOpacity(.18) : Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
       child: Row(children: [
         IconButton(
           visualDensity: VisualDensity.compact,
           onPressed: disabled ? null : _play,
-          icon: _loading ? const SizedBox(width: 22,height:22,child:CircularProgressIndicator(strokeWidth:2)) : Icon(disabled ? Icons.volume_off : (_playing ? Icons.pause_circle_filled : Icons.play_circle_fill)),
+          icon: _loading ? const SizedBox(width: 22,height:22,child:CircularProgressIndicator(strokeWidth:2)) : Icon(
+            disabled ? Icons.volume_off : (_playing ? Icons.pause_circle_filled : Icons.play_circle_fill),
+            color: widget.isMe ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface,
+          ),
         ),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           SizedBox(height: 24, child: AnimatedBuilder(
@@ -356,8 +367,13 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> with SingleTick
               );
             })),
           )),
-          Text(disabled ? 'Voice expired' : '${_fmt(_position)} / ${_fmt(_duration)} • $_listenCount/$_listenLimit',
-            style: TextStyle(fontSize: 10, color: widget.isMe ? AppColors.textOnAccent.withOpacity(.8) : AppColors.textTertiary)),
+          Text(
+            expired ? 'Voice expired after 24 hours' : '${_fmt(_position)} / ${_fmt(_duration)} • $_listenCount/$_listenLimit',
+            style: TextStyle(
+              fontSize: 10,
+              color: widget.isMe ? Theme.of(context).colorScheme.onSurfaceVariant : Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
         ])),
       ]),
     );
