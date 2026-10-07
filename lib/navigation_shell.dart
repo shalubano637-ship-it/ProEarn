@@ -21,6 +21,7 @@ import 'rewards/signup_rewards_popup.dart';
 import 'messaging/room_hub_page.dart';
 import 'app_update_service.dart';
 import 'app_update_page.dart';
+import 'coin_shop_page.dart';
 
     
  
@@ -426,22 +427,41 @@ class _CoinBalanceIndicatorState extends State<_CoinBalanceIndicator> {
             ? ((userSnapshot.data!.first['mainCoins'] ?? 0) as num).toDouble()
             : 0.0;
 
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceElevated,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text("🪙", style: TextStyle(fontSize: 13)),
-              const SizedBox(width: 3),
-              Text(
-                mainCoins.toStringAsFixed(2),
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-              ),
-            ],
+        return InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CoinShopPage()),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text("🪙", style: TextStyle(fontSize: 13)),
+                const SizedBox(width: 3),
+                Text(
+                  mainCoins.toStringAsFixed(2),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Icon(
+                  Icons.add_circle_outline,
+                  size: 15,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ],
+            ),
           ),
         );
       },
