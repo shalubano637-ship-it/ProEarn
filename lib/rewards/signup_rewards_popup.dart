@@ -1,13 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/theme.dart';
 
 class SignupRewardsPopup extends StatefulWidget {
+  static const _hiddenDateKey = 'signup_rewards_popup_hidden_date';
+
+  static String _dateKey(DateTime date) {
+    return date.year.toString().padLeft(4, '0') +
+        '-' +
+        date.month.toString().padLeft(2, '0') +
+        '-' +
+        date.day.toString().padLeft(2, '0');
+  }
+
+  static bool _isHiddenForToday() {
+    try {
+      final saved = Hive.box('app_settings').get(_hiddenDateKey)?.toString();
+      return saved == _dateKey(DateTime.now());
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<void> _hideForToday() async {
+    try {
+      await Hive.box('app_settings').put(_hiddenDateKey, _dateKey(DateTime.now()));
+    } catch (_) {}
+  }
+
+
   const SignupRewardsPopup({super.key});
 
   static Future<void> showIfEligible(BuildContext context) async {
+    if (_isHiddenForToday()) return;
+
     try {
       final status = await Supabase.instance.client.rpc('get_signup_reward_status');
       final data = Map<String, dynamic>.from(status as Map);
@@ -183,7 +212,20 @@ class _SignupRewardsPopupState extends State<SignupRewardsPopup> {
                 ),
               ),
       ),
-      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Later'))],
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Later'),
+        ),
+        TextButton.icon(
+          onPressed: () async {
+            await SignupRewardsPopup._hideForToday();
+            if (context.mounted) Navigator.pop(context);
+          },
+          icon: const Icon(Icons.notifications_off_outlined, size: 18),
+          label: const Text('Turn off for today'),
+        ),
+      ],
     );
   }
 }
