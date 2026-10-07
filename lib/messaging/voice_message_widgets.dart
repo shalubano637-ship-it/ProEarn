@@ -61,7 +61,7 @@ class _VoiceRecorderButtonState extends State<VoiceRecorderButton> {
     if (path == null) return;
     final file = File(path);
     if (!await file.exists() || duration < 300) {
-      await file.delete().catchError((_) {});
+      try { await file.delete(); } catch (_) {}
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Voice message is too short.')));
       return;
     }
@@ -72,7 +72,7 @@ class _VoiceRecorderButtonState extends State<VoiceRecorderButton> {
       builder: (_) => _VoicePreviewSheet(path: path, durationMs: duration),
     );
     if (result == null) {
-      await file.delete().catchError((_) {});
+      try { await file.delete(); } catch (_) {}
       return;
     }
     try {
