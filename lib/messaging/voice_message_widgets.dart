@@ -339,9 +339,21 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> with SingleTick
           SizedBox(height: 24, child: AnimatedBuilder(
             animation: _wave,
             builder: (_, __) => Row(crossAxisAlignment: CrossAxisAlignment.center, children: List.generate(20, (i) {
-              final h = _playing ? 5 + ((i * 7 + (_wave.value * 20)) % 16) : 6;
-              return Expanded(child: Container(height: h, margin: const EdgeInsets.symmetric(horizontal: 1),
-                decoration: BoxDecoration(color: widget.isMe ? AppColors.textOnAccent.withOpacity(.75) : AppColors.accent.withOpacity(.75), borderRadius: BorderRadius.circular(2)));
+              final h = _playing
+                  ? (5.0 + ((i * 7 + (_wave.value * 20)) % 16))
+                  : 6.0;
+              return Expanded(
+                child: Container(
+                  height: h,
+                  margin: const EdgeInsets.symmetric(horizontal: 1),
+                  decoration: BoxDecoration(
+                    color: widget.isMe
+                        ? AppColors.textOnAccent.withOpacity(.75)
+                        : AppColors.accent.withOpacity(.75),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              );
             })),
           )),
           Text(disabled ? 'Voice expired' : '${_fmt(_position)} / ${_fmt(_duration)} • $_listenCount/$_listenLimit',
