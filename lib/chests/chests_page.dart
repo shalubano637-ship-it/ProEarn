@@ -98,6 +98,10 @@ class _ChestsPageState extends State<ChestsPage> {
         return;
       }
 
+      // Hide the Open button immediately after the reward callback.
+      service.isUnlocked = false;
+      service.notifyListeners();
+
       final result = await Supabase.instance.client.rpc(
         'claim_chest_reward',
         params: {'p_chest_index': chestIndexBeingClaimed},
@@ -113,6 +117,10 @@ class _ChestsPageState extends State<ChestsPage> {
       }
       await service.advanceToNextChest();
     } catch (e) {
+      // Restore the authoritative server state if the claim itself fails.
+      try {
+        await service.initialize();
+      } catch (_) {}
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Couldn't claim chest — please try again."), backgroundColor: AppColors.error),
