@@ -112,6 +112,23 @@ class _ProfilePageState extends State<ProfilePage> {
     return profile;
   }
 
+  Future<void> _refreshProfile() async {
+    final targetUid = _loadedTargetUid;
+    if (targetUid == null || targetUid.isEmpty) return;
+    final profileFuture = _loadProfileData(targetUid);
+    final postsStream = Supabase.instance.client
+        .from(kPostsCollection)
+        .stream(primaryKey: ['id'])
+        .eq(kPostOwnerUidField, targetUid);
+    if (mounted) {
+      setState(() {
+        _profileFuture = profileFuture;
+        _postsStream = postsStream;
+      });
+    }
+    await profileFuture;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -252,8 +269,11 @@ class _ProfilePageState extends State<ProfilePage> {
           final bool viewerIsFollowing = currentUser != null && userFollowersList.contains(currentUser.id);
           final bool canSeePrivateProfile = widget.isOwnProfile || !isPrivateAccount || viewerIsFollowing;
 
-          return SingleChildScrollView(
-            child: Column(
+          return RefreshIndicator(
+            onRefresh: _refreshProfile,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
               children: [
                 const SizedBox(height: 20),
                 Padding(
@@ -545,7 +565,8 @@ class _ProfilePageState extends State<ProfilePage> {
                     );
                   },
                 )
-              ],
+                ],
+              ),
             ),
           );
         },
