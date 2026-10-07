@@ -1,17 +1,20 @@
 {
   "published": false,
   "status": "testing",
-  "versionCode": 9,
-  "versionName": "1.0.8",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.8/proearn.apk",
+  "versionCode": 10,
+  "versionName": "1.0.9",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.9/proearn.apk",
   "title": "New Update Available",
   "message": "Admin test build. This update is visible only to the Admin account.",
   "newFeatures": [],
   "fixes": [
-    "Fixed profile repeated reloads",
-    "Improved banner ad placement",
-    "Added rewarded ad before opening chest",
-    "Improved image upload flow"
+    "Fixed profile picture upload failure",
+    "Added pull-to-refresh on profiles",
+    "Fixed chest reopening after rewarded ad",
+    "Added Light and Dark themes with Light as default",
+    "Added compressed voice messages with one- or two-listen limit",
+    "Voice files are removed from Supabase Storage after final playback",
+    "Room owner profile picture now appears by default"
   ],
   "forceUpdate": false
 }
