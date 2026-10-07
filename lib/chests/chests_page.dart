@@ -111,7 +111,7 @@ class _ChestsPageState extends State<ChestsPage> {
           SnackBar(content: Text(message), duration: const Duration(seconds: 4)),
         );
       }
-      service.advanceToNextChest();
+      await service.advanceToNextChest();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
