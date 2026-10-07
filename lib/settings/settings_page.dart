@@ -8,6 +8,7 @@ import 'privacy_page.dart';
 import '../models.dart';
 import '../admin/admin_reports_page.dart';
 import '../app_update_page.dart';
+import 'theme_settings_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -60,6 +61,12 @@ class SettingsPage extends StatelessWidget {
             icon: Icons.help_outline,
             title: "Help",
             page: const HelpPage(),
+          ),
+          buildTile(
+            context: context,
+            icon: Icons.palette_outlined,
+            title: "Themes",
+            page: const ThemeSettingsPage(),
           ),
           if (isAdmin) ...[
             buildTile(
