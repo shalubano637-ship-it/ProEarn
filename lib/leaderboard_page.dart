@@ -467,7 +467,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
     final hasUser = Supabase.instance.client.auth.currentUser != null;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text("Leaderboard"),
         actions: [
@@ -483,7 +483,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
           ),
           const SizedBox(width: 6),
         ],
-        backgroundColor: AppColors.background,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       ),
       body: Column(
         children: [
@@ -543,7 +543,7 @@ class _MetricToggle extends StatelessWidget {
               decoration: BoxDecoration(
                 color: isSelected ? AppColors.accent : AppColors.surface,
                 borderRadius: AppRadius.pillRadius,
-                border: Border.all(color: isSelected ? AppColors.accent : AppColors.border),
+                border: Border.all(color: isSelected ? AppColors.accent : Theme.of(context).colorScheme.outline),
               ),
               child: Text(
                 switch (m) {
@@ -554,7 +554,7 @@ class _MetricToggle extends StatelessWidget {
                 },
                 style: AppTextStyles.labelMedium.copyWith(
                   fontSize: 10,
-                  color: isSelected ? AppColors.textOnAccent : AppColors.textSecondary,
+                  color: isSelected ? AppColors.textOnAccent : Theme.of(context).colorScheme.onSurface.withOpacity(0.70),
                 ),
               ),
             ),
@@ -578,7 +578,7 @@ class _PeriodToggle extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: AppRadius.pillRadius,
         border: Border.all(color: AppColors.border),
       ),
@@ -832,7 +832,7 @@ class _RankRow extends StatelessWidget {
                     user.isRoom ? user.userName : "@${user.userName}",
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+                    style: AppTextStyles.bodyMedium.copyWith(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600),
                   ),
                   if (_hasSubtitle)
                     Text(
@@ -878,7 +878,7 @@ class _RankDelta extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.remove, size: 12, color: AppColors.textTertiary),
-          Text(" 0", style: TextStyle(color: AppColors.textTertiary, fontSize: 11)),
+          Text(" 0", style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55), fontSize: 11)),
         ],
       );
     }
@@ -926,7 +926,7 @@ class _OwnRankCard extends StatelessWidget {
             margin: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: AppRadius.lgRadius,
             ),
             child: Text(
@@ -938,7 +938,7 @@ class _OwnRankCard extends StatelessWidget {
                       ? "You're not ranked yet — start earning gets to appear here."
                       : "You're not ranked for this day yet.",
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textSecondaryLight, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.70), fontSize: 13),
             ),
           );
         }
@@ -975,7 +975,7 @@ class _OwnRankCard extends StatelessWidget {
                             : "You (@$currentUserName)",
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimaryLight, fontWeight: FontWeight.w700),
+                        style: AppTextStyles.bodyMedium.copyWith(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w700),
                       ),
                       Container(
                         margin: const EdgeInsets.only(top: 2),
