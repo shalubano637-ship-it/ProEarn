@@ -76,10 +76,8 @@ class _SignupRewardsPopupState extends State<SignupRewardsPopup> {
     try {
       final first = await Supabase.instance.client.rpc('claim_first_login_reward');
       final firstMap = Map<String, dynamic>.from(first as Map);
-      if (firstMap['eligible'] == false) {
-        if (mounted) Navigator.of(context).pop();
-        return;
-      }
+      // The first-login reward is claimed only once. If it was already claimed,
+      // keep the popup open so the user can still see the 7-day reward calendar.
       final status = await Supabase.instance.client.rpc('get_signup_reward_status');
       if (!mounted) return;
       setState(() {
