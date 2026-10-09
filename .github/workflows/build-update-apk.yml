@@ -6,6 +6,10 @@ on:
       - main
     paths:
       - update.json
+      - pubspec.yaml
+      - pubspec.lock
+      - lib/**
+      - assets/**
       - android/build.gradle.kts
       - android/gradle.properties
       - android/app/build.gradle.kts
