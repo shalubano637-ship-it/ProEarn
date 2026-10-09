@@ -39,6 +39,7 @@ class AppTheme {
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
         scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         centerTitle: false,
         titleTextStyle: TextStyle(
           color: AppColors.textPrimary,
@@ -72,10 +73,12 @@ class AppTheme {
 
       cardTheme: CardThemeData(
         color: AppColors.surface,
-        elevation: 0,
+        elevation: 3,
+        shadowColor: AppColors.shadow,
+        surfaceTintColor: Colors.transparent,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: AppRadius.mdRadius,
+          borderRadius: AppRadius.xlRadius,
           side: const BorderSide(color: AppColors.border, width: 1),
         ),
       ),
@@ -114,7 +117,7 @@ class AppTheme {
         labelStyle: AppTextStyles.bodyRegular.copyWith(color: AppColors.textSecondary),
         errorStyle: AppTextStyles.caption.copyWith(color: AppColors.error),
         border: OutlineInputBorder(
-          borderRadius: AppRadius.mdRadius,
+          borderRadius: AppRadius.lgRadius,
           borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
@@ -141,10 +144,11 @@ class AppTheme {
           foregroundColor: AppColors.textOnAccent,
           disabledBackgroundColor: AppColors.accentMuted.withOpacity(0.4),
           disabledForegroundColor: AppColors.textDisabled,
-          elevation: 0,
+          elevation: 2,
+          shadowColor: AppColors.shadow,
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.md),
           textStyle: AppTextStyles.labelLarge,
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.mdRadius),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.lgRadius),
         ),
       ),
 
@@ -290,7 +294,7 @@ class AppTheme {
         contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
         hintStyle: AppTextStyles.bodyRegular.copyWith(color: AppColors.textTertiaryLight),
         border: OutlineInputBorder(
-          borderRadius: AppRadius.mdRadius,
+          borderRadius: AppRadius.lgRadius,
           borderSide: const BorderSide(color: AppColors.borderLight),
         ),
         enabledBorder: OutlineInputBorder(
