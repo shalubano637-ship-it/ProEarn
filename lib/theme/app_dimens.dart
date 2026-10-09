@@ -18,10 +18,10 @@ class AppSpacing {
 class AppRadius {
   AppRadius._();
 
-  static const double sm = 8; // chips, small buttons, inputs
-  static const double md = 12; // cards, tiles
-  static const double lg = 16; // sheets, dialogs, larger cards
-  static const double xl = 20; // hero cards, modals
+  static const double sm = 12; // chips and compact controls
+  static const double md = 20; // cards and tiles
+  static const double lg = 24; // sheets and dialogs, larger cards
+  static const double xl = 28; // hero cards and modals
   static const double pill = 999; // fully rounded (avatars fallback, tags)
 
   static const BorderRadius smRadius = BorderRadius.all(Radius.circular(sm));
@@ -45,11 +45,13 @@ class AppElevation {
   AppElevation._();
 
   static const List<BoxShadow> card = [
-    BoxShadow(color: AppColors.shadow, blurRadius: 12, offset: Offset(0, 4)),
+    BoxShadow(color: Color(0x55FFFFFF), blurRadius: 8, offset: Offset(-3, -3)),
+    BoxShadow(color: AppColors.shadow, blurRadius: 14, offset: Offset(5, 6)),
   ];
 
   static const List<BoxShadow> raised = [
-    BoxShadow(color: AppColors.shadow, blurRadius: 20, offset: Offset(0, 8)),
+    BoxShadow(color: Color(0x66FFFFFF), blurRadius: 10, offset: Offset(-4, -4)),
+    BoxShadow(color: AppColors.shadow, blurRadius: 22, offset: Offset(7, 8)),
   ];
 
   static const List<BoxShadow> accentGlow = [
