@@ -158,7 +158,7 @@ class AppTheme {
           side: const BorderSide(color: AppColors.border),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.md),
           textStyle: AppTextStyles.labelLarge,
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.mdRadius),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.lgRadius),
         ),
       ),
 
@@ -280,10 +280,12 @@ class AppTheme {
 
       cardTheme: CardThemeData(
         color: AppColors.surfaceLight,
-        elevation: 0,
+        elevation: 3,
+        shadowColor: AppColors.shadow,
+        surfaceTintColor: Colors.transparent,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: AppRadius.mdRadius,
+          borderRadius: AppRadius.xlRadius,
           side: const BorderSide(color: AppColors.borderLight, width: 1),
         ),
       ),
@@ -311,7 +313,8 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.accentMuted,
           foregroundColor: Colors.white,
-          elevation: 0,
+          elevation: 2,
+          shadowColor: AppColors.shadow,
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.md),
           textStyle: AppTextStyles.labelLarge,
           shape: RoundedRectangleBorder(borderRadius: AppRadius.mdRadius),
