@@ -1,23 +1,19 @@
 {
   "published": false,
   "status": "testing",
-  "versionCode": 14,
-  "versionName": "1.0.13",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.13/proearn.apk",
+  "versionCode": 15,
+  "versionName": "1.0.14",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.14/proearn.apk",
   "title": "New Update Available",
-  "message": "Admin test build. Build 14 with obfuscated release code and Claymorphism UI, chest, signup, coin shop, profile and voice-message fixes.",
+  "message": "Admin test build. Version 1.0.14 fixes image sending, chest ad claim timing, and signup reward popup eligibility.",
   "newFeatures": [],
   "fixes": [
-    "Fixed profile picture upload failure",
-    "Added pull-to-refresh on profiles",
-    "Fixed chest reopening after rewarded ad",
-    "Added Light and Dark themes with Light as default",
-    "Fixed Light theme colors on Leaderboard and Reels",
-    "Added compressed voice messages with one- or two-listen limit",
-    "Voice files are removed from Supabase Storage after final playback",
-    "Room owner profile picture now appears by default",
-    "Signup reward popup now appears on app open with a one-day Turn off option"
+    "Restored comment, direct chat, and room image uploads",
+    "Kept server-side moderation mandatory for public feed posts",
+    "Fixed rewarded chest waiting for the ad reward callback before claiming",
+    "Fixed eligible new accounts being blocked from opening the signup reward popup",
+    "Kept existing accounts excluded from signup rewards unless explicitly eligible"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1791367625686"
+  "buildTrigger": "1791623000000"
 }
