@@ -13,6 +13,7 @@ on:
       - android/build.gradle.kts
       - android/gradle.properties
       - android/app/build.gradle.kts
+      - android/app/proguard-rules.pro
       - .github/workflows/build-update-apk.yml
   workflow_dispatch:
 
@@ -93,7 +94,7 @@ jobs:
           set -euo pipefail
           for attempt in 1 2 3; do
             echo "APK build attempt $attempt/3"
-            if flutter build apk --release --build-name=${{ steps.metadata.outputs.version_name }} --build-number=${{ steps.metadata.outputs.version_code }}; then
+            if flutter build apk --release --obfuscate --split-debug-info=build/symbols --build-name=${{ steps.metadata.outputs.version_name }} --build-number=${{ steps.metadata.outputs.version_code }}; then
               exit 0
             fi
             if [ "$attempt" -lt 3 ]; then

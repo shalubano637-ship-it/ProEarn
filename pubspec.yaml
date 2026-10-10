@@ -2,7 +2,7 @@ name: proearn
 description: Pro Earn — AI content social platform with reels feed and an in-app coin/gift economy.
 publish_to: 'none'
 
-version: 1.0.12+13
+version: 1.0.13+14
 
 environment:
   sdk: ^3.0.0
