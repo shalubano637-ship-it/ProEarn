@@ -1,3 +1,4 @@
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -81,15 +82,33 @@ class _ChestsPageState extends State<ChestsPage> {
       }
 
       var rewardEarned = false;
-      await rewardedAd.show(
-        onUserEarnedReward: (ad, reward) {
-          rewardEarned = true;
+      final adClosed = Completer<void>();
+      rewardedAd.fullScreenContentCallback = FullScreenContentCallback(
+        onAdDismissedFullScreenContent: (_) {
+          if (!adClosed.isCompleted) adClosed.complete();
+        },
+        onAdFailedToShowFullScreenContent: (_, error) {
+          if (!adClosed.isCompleted) adClosed.completeError(error);
         },
       );
-      rewardedAd.dispose();
 
+      try {
+        // Wait for the ad lifecycle callback as well as the show future.
+        // This avoids checking rewardEarned before the reward callback fires.
+        await rewardedAd.show(
+          onUserEarnedReward: (_, __) {
+            rewardEarned = true;
+          },
+        );
+        if (!adClosed.isCompleted) {
+          await adClosed.future.timeout(const Duration(minutes: 3));
+        }
+      } finally {
+        rewardedAd.dispose();
+      }
+
+      RewardedAdPreloader.preload();
       if (!rewardEarned) {
-        RewardedAdPreloader.preload();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Watch the reward ad completely to open the chest.")),
@@ -98,30 +117,29 @@ class _ChestsPageState extends State<ChestsPage> {
         return;
       }
 
-      // Hide the Open button immediately after the reward callback.
-      service.isUnlocked = false;
-      service.notifyListeners();
-
       final result = await Supabase.instance.client.rpc(
         'claim_chest_reward',
         params: {'p_chest_index': chestIndexBeingClaimed},
       );
+
+      // Server state is authoritative; refresh only after a successful claim.
+      await service.initialize();
       if (mounted) {
-        final giftName = result['giftName'] as String?;
-        final message = giftName != null
+        final giftName = result is Map ? result['giftName']?.toString() : null;
+        final message = giftName != null && giftName.isNotEmpty
             ? "Chest opened! You got a $giftName! Check your Bag."
             : "Chest opened!";
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message), duration: const Duration(seconds: 4)),
         );
       }
-      // The claim RPC advances the server to the next chest. Reload that authoritative state.
-      await service.initialize();
     } catch (e) {
-      // Restore the authoritative server state if the claim itself fails.
+      debugPrint('Chest ad/claim failed: $e');
       try {
         await service.initialize();
-      } catch (_) {}
+      } catch (refreshError) {
+        debugPrint('Chest state refresh failed: $refreshError');
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Couldn't claim chest — please try again."), backgroundColor: AppColors.error),
