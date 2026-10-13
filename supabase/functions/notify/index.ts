@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
         senderName: sender?.userName ?? "User",
         senderProfile: sender?.profileUrl ?? "",
         message: message || (type === "chest_ready" ? "Your chest is ready to open! 🎁" : ""),
-        targetPostId: targetPostId || null,
+        targetPostId: targetPostId || "",
       });
       if (notificationError) {
         console.error("notification row insert failed", notificationError);
