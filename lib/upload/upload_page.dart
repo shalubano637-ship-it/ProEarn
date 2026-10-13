@@ -207,6 +207,7 @@ class _UploadPageState extends State<UploadPage> {
       final isModerationRejection = e is PostgrestException &&
           (e.message.contains('Content rejected') || e.code == 'P0001');
       debugPrint("Upload failed: $e");
+      debugPrintStack(stackTrace: StackTrace.current);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
