@@ -1,17 +1,17 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 16,
-  "versionName": "1.0.15",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.15/proearn.apk",
-  "title": "Image Upload Fix",
-  "message": "Image upload error reporting improvements for posts, chats, and rooms.",
+  "versionCode": 17,
+  "versionName": "1.0.16",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.16/proearn.apk",
+  "title": "Sequential Gift Rewards",
+  "message": "Signup rewards now give gifts in order. Missed days do not skip ahead; claim each gift one by one.",
   "newFeatures": [],
   "fixes": [
-    "Improved chat image upload diagnostics",
-    "Added upload-page error logging",
-    "Preserved working comment and profile image upload flows"
+    "Gift-based seven-step reward cards",
+    "Rewards unlock strictly in sequence",
+    "No calendar-day skip to the final gift"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1791892198044"
+  "buildTrigger": "1791892670445"
 }
