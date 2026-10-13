@@ -92,12 +92,13 @@ class _ChatMultiImagePreviewPageState extends State<_ChatMultiImagePreviewPage> 
         final url = await CloudflareMediaService.uploadImage(item.compressed!, folder: 'chat');
         if (url != null) urls.add(url);
       }
-      if (mounted) Navigator.pop(context, urls);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint("Chat multi-image upload failed: $e");
+      debugPrintStack(stackTrace: st);
       if (mounted) {
         setState(() { _isSending = false; });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Some images failed to send (${urls.length}/${_sendableItems.length} sent)."), backgroundColor: AppColors.error),
+          SnackBar(content: Text("Image upload failed (${urls.length}/${_sendableItems.length} sent): $e"), backgroundColor: AppColors.error, duration: const Duration(seconds: 8)),
         );
         if (urls.isNotEmpty) Navigator.pop(context, urls); // still deliver whatever did make it
       }
