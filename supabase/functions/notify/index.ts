@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
     }
 
     const { data: targetPrefs } = await admin.from("users")
-      .select('"pushNotificationsEnabled", "notifyLikes", "notifyComments", "notifyFollow", "notifyMessages", "notifyChestReady", "mutedUsers"')
+      .select('pushNotificationsEnabled,notifyLikes,notifyComments,notifyFollow,notifyMessages,notifyChestReady,mutedUsers')
       .eq("uid", targetOwnerId).maybeSingle();
     if (!targetPrefs) return json({ success: true });
 
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
       return json({ success: true });
     }
 
-    const { data: sender } = await admin.from("users").select('"userName", "profileUrl"')
+    const { data: sender } = await admin.from("users").select('userName,profileUrl')
       .eq("uid", senderId).maybeSingle();
 
     if (type !== "message") {
@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
         senderName: sender?.userName ?? "User",
         senderProfile: sender?.profileUrl ?? "",
         message: message || (type === "chest_ready" ? "Your chest is ready to open! 🎁" : ""),
-        targetPostId,
+        targetPostId: targetPostId || null,
       });
       if (notificationError) {
         console.error("notification row insert failed", notificationError);
@@ -186,7 +186,9 @@ Deno.serve(async (req) => {
       }),
     });
     if (!pushResponse.ok) {
-      console.error("OneSignal push failed:", pushResponse.status, await pushResponse.text());
+      const errorBody = await pushResponse.text();
+      console.error("OneSignal push failed:", pushResponse.status, errorBody);
+      return json({ success: false, pushError: "OneSignal delivery failed" }, 502);
     }
     return json({ success: true });
   } catch (error) {
