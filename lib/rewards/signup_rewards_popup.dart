@@ -169,26 +169,80 @@ class _SignupRewardsPopupState extends State<SignupRewardsPopup> {
                       const SizedBox(height: 14),
                     ],
                     if (enabled) ...[
-                      const Text('7-Day Gift Calendar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      const SizedBox(height: 8),
-                      ...days.map((day) {
-                        final n = (day['day'] as num).toInt();
-                        final tier = day['tier'].toString();
-                        final claimed = day['claimed'] == true;
-                        final available = day['available'] == true;
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 7),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-                          decoration: BoxDecoration(color: AppColors.surfaceElevated, borderRadius: BorderRadius.circular(10)),
-                          child: Row(children: [
-                            SizedBox(width: 82, child: Text(_weekdayLabel(n), style: const TextStyle(fontWeight: FontWeight.bold))),
-                            Expanded(child: Text(_tierLabel(tier))),
-                            if (claimed) const Icon(Icons.check_circle, color: AppColors.accent)
-                            else if (available) SizedBox(height: 34, child: FilledButton(onPressed: _claimingDay ? null : () => _claimDay(n), child: const Text('Claim')))
-                            else const Icon(Icons.lock_outline, size: 20),
-                          ]),
-                        );
-                      }),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [Color(0xFFFFC83D), Color(0xFFFF8A00)]),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: const Column(children: [
+                          Icon(Icons.card_giftcard_rounded, size: 38, color: Colors.white),
+                          SizedBox(height: 5),
+                          Text('7-Day Gift Rewards', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900, color: Colors.white)),
+                          SizedBox(height: 3),
+                          Text('Claim gifts in order — no calendar-day deadline', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Colors.white)),
+                        ]),
+                      ),
+                      const SizedBox(height: 12),
+                      GridView.count(
+                        crossAxisCount: 4,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        mainAxisSpacing: 8,
+                        crossAxisSpacing: 7,
+                        childAspectRatio: 0.62,
+                        children: days.map((day) {
+                          final n = (day['day'] as num).toInt();
+                          final tier = day['tier'].toString();
+                          final claimed = day['claimed'] == true;
+                          final available = day['available'] == true;
+                          final cardColor = claimed
+                              ? const Color(0xFFE4F6E8)
+                              : available
+                                  ? const Color(0xFFFFE1A6)
+                                  : const Color(0xFFF0F1F6);
+                          return Container(
+                            padding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
+                            decoration: BoxDecoration(
+                              color: cardColor,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: available ? const Color(0xFFFF8A00) : claimed ? const Color(0xFF39B866) : const Color(0xFFD7D9E2),
+                                width: available ? 2 : 1,
+                              ),
+                            ),
+                            child: Column(children: [
+                              Text('DAY $n', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF34384A))),
+                              const SizedBox(height: 7),
+                              Icon(Icons.card_giftcard_rounded, size: 31, color: claimed ? const Color(0xFF26994A) : const Color(0xFFFF8500)),
+                              const SizedBox(height: 5),
+                              Expanded(child: Center(child: Text(_tierLabel(tier), textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF34384A))))),
+                              if (claimed)
+                                const Icon(Icons.check_circle, color: Color(0xFF28A745), size: 20)
+                              else if (available)
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: FilledButton(
+                                    style: FilledButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
+                                      minimumSize: const Size(0, 27),
+                                      backgroundColor: const Color(0xFFFF8500),
+                                      foregroundColor: Colors.white,
+                                      textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                                    ),
+                                    onPressed: _claimingDay ? null : () => _claimDay(n),
+                                    child: const Text('CLAIM'),
+                                  ),
+                                )
+                              else
+                                const Icon(Icons.lock_outline_rounded, size: 18, color: Color(0xFF8A8D9A)),
+                            ]),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 5),
+                      const Text('Missed a day? No problem. Your next gift stays available until you claim it.', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Colors.black54)),
                     ],
                     if (code.isNotEmpty) ...[
                       const SizedBox(height: 12),
