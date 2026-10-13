@@ -154,6 +154,8 @@ Future<void> sendNotification({
     );
   } catch (e) {
     debugPrint("Notification send error: $e");
+    // Let the chest timer know that delivery failed so it can retry.
+    if (type == 'chest_ready') rethrow;
   }
 }
 

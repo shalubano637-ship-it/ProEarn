@@ -103,6 +103,8 @@ class ChestTimerService extends ChangeNotifier {
   DateTime? _unlockAt;
 
   bool _notifiedThisUnlock = false; // avoid duplicate chest_ready notifications for the same unlock
+  bool _sendingReadyNotification = false;
+  Timer? _notificationRetryTimer;
 
   @visibleForTesting
   bool get notifiedThisUnlockForTest => _notifiedThisUnlock;
@@ -137,7 +139,9 @@ class ChestTimerService extends ChangeNotifier {
 
       isLoaded = true;
       loadError = null;
-      _notifiedThisUnlock = isUnlocked && _unlockAt == null;
+      // Always validate notification state against the database after loading.
+      // A null unlockAt must not silently suppress the first notification.
+      _notifiedThisUnlock = false;
       notifyListeners();
 
       if (isUnlocked && _unlockAt != null) {
@@ -176,28 +180,47 @@ class ChestTimerService extends ChangeNotifier {
     }
   }
 
-  Future<void> _sendReadyNotificationOnce({bool checkDatabase = false}) async {
-    if (_notifiedThisUnlock) return;
-    final uid = _repo.currentUserId;
-    if (uid == null) return;
-
-    if (checkDatabase && _unlockAt != null) {
-      try {
-        final alreadySent = await _repo.hasChestReadyNotificationSince(uid, _unlockAt!);
-        if (alreadySent) {
-          _notifiedThisUnlock = true;
-          return;
-        }
-      } catch (e) {
-        debugPrint('chest ready notification lookup failed: $e');
+  void _scheduleNotificationRetry() {
+    if (_notifiedThisUnlock || _notificationRetryTimer?.isActive == true) return;
+    _notificationRetryTimer = Timer(const Duration(seconds: 30), () {
+      _notificationRetryTimer = null;
+      if (isUnlocked && !_notifiedThisUnlock) {
+        unawaited(_sendReadyNotificationOnce(checkDatabase: true));
       }
+    });
+  }
+
+  Future<void> _sendReadyNotificationOnce({bool checkDatabase = false}) async {
+    if (_notifiedThisUnlock || _sendingReadyNotification) return;
+    final uid = _repo.currentUserId;
+    if (uid == null) {
+      _scheduleNotificationRetry();
+      return;
     }
 
+    _sendingReadyNotification = true;
     try {
+      if (checkDatabase && _unlockAt != null) {
+        try {
+          final alreadySent = await _repo.hasChestReadyNotificationSince(uid, _unlockAt!);
+          if (alreadySent) {
+            _notifiedThisUnlock = true;
+            return;
+          }
+        } catch (e) {
+          debugPrint('chest ready notification lookup failed: $e');
+        }
+      }
+
       await _repo.sendChestReadyNotification(uid);
       _notifiedThisUnlock = true;
+      _notificationRetryTimer?.cancel();
+      _notificationRetryTimer = null;
     } catch (e) {
-      debugPrint('chest ready notification send failed: $e');
+      debugPrint('chest ready notification send failed; will retry: $e');
+    } finally {
+      _sendingReadyNotification = false;
+      if (isUnlocked && !_notifiedThisUnlock) _scheduleNotificationRetry();
     }
   }
 
@@ -223,6 +246,7 @@ class ChestTimerService extends ChangeNotifier {
   @override
   void dispose() {
     _localTicker?.cancel();
+    _notificationRetryTimer?.cancel();
     super.dispose();
   }
 }
