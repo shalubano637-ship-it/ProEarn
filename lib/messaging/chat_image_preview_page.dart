@@ -74,11 +74,13 @@ class _ChatImagePreviewPageState extends State<_ChatImagePreviewPage> {
       final url = await CloudflareMediaService.uploadImage(_compressedFile!, folder: 'chat');
       if (url == null) throw Exception("Upload failed");
       if (mounted) Navigator.pop(context, url);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint("Chat image upload failed: $e");
+      debugPrintStack(stackTrace: st);
       if (mounted) {
         setState(() { _isSending = false; });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Couldn't send image — please try again."), backgroundColor: AppColors.error),
+          SnackBar(content: Text("Image upload failed: $e"), backgroundColor: AppColors.error, duration: const Duration(seconds: 8)),
         );
       }
     }
