@@ -92,6 +92,7 @@ class _ChatMultiImagePreviewPageState extends State<_ChatMultiImagePreviewPage> 
         final url = await CloudflareMediaService.uploadImage(item.compressed!, folder: 'chat');
         if (url != null) urls.add(url);
       }
+      if (mounted) Navigator.pop(context, urls);
     } catch (e, st) {
       debugPrint("Chat multi-image upload failed: $e");
       debugPrintStack(stackTrace: st);
