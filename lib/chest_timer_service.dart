@@ -25,6 +25,7 @@ abstract class ChestRepository {
   Future<ChestProgress?> fetchProgress(String uid);
 
   Future<void> syncRemaining(int remainingSeconds);
+  Future<void> startTimer();
 
   Future<void> sendChestReadyNotification(String uid);
   Future<bool> hasChestReadyNotificationSince(String uid, DateTime unlockAt);
@@ -59,6 +60,12 @@ class _SupabaseChestRepository implements ChestRepository {
   @override
   Future<void> syncRemaining(int remainingSeconds) async {
     await _client.rpc(syncRpcName, params: {'p_remaining_seconds': remainingSeconds});
+  }
+
+  @override
+  Future<void> startTimer() async {
+    if (tableName != 'chest_progress') throw StateError('Only gift chest timers can be started here');
+    await _client.rpc('start_chest_timer');
   }
 
   @override
@@ -98,6 +105,7 @@ class ChestTimerService extends ChangeNotifier {
   int currentChestIndex = 0;
   int remainingSeconds = 60;
   bool isUnlocked = false;
+  bool isStarted = false;
   bool isLoaded = false;
   String? loadError;
   DateTime? _unlockAt;
@@ -118,13 +126,15 @@ class ChestTimerService extends ChangeNotifier {
       final existing = await _repo.fetchProgress(uid);
 
       if (existing == null) {
-        await _repo.syncRemaining(60);
         currentChestIndex = 0;
-        remainingSeconds = 60;
+        remainingSeconds = 0;
         isUnlocked = false;
+        isStarted = false;
+        _unlockAt = null;
       } else {
         currentChestIndex = existing.currentChestIndex;
         _unlockAt = existing.unlockAt;
+        isStarted = existing.unlockAt != null || existing.isUnlocked;
         if (_unlockAt != null) {
           final serverRemaining = _unlockAt!.difference(DateTime.now()).inSeconds;
           remainingSeconds = math.max(0, serverRemaining);
@@ -137,12 +147,12 @@ class ChestTimerService extends ChangeNotifier {
 
       isLoaded = true;
       loadError = null;
-      _notifiedThisUnlock = isUnlocked && _unlockAt == null;
+      _notifiedThisUnlock = false;
       notifyListeners();
 
       if (isUnlocked && _unlockAt != null) {
         await _sendReadyNotificationOnce(checkDatabase: true);
-      } else if (!isUnlocked) {
+      } else if (!isUnlocked && isStarted) {
         _startTicking();
       }
     } catch (e) {
@@ -153,8 +163,15 @@ class ChestTimerService extends ChangeNotifier {
     }
   }
 
+  Future<void> startTimer() async {
+    if (isStarted || isUnlocked) return;
+    await _repo.startTimer();
+    await initialize();
+  }
+
   void _startTicking() {
     _localTicker?.cancel();
+    if (!isStarted || isUnlocked) return;
     _localTicker = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (remainingSeconds <= 0) {
         timer.cancel();
@@ -215,6 +232,9 @@ class ChestTimerService extends ChangeNotifier {
   Future<void> advanceToNextChest() async {
     _localTicker?.cancel();
     isUnlocked = false;
+    isStarted = false;
+    _unlockAt = null;
+    remainingSeconds = 0;
     _notifiedThisUnlock = false;
     notifyListeners();
     await initialize();
