@@ -171,10 +171,12 @@ class _RoomChatPageState extends State<RoomChatPage> {
       _controller.clear();
       if (mounted) setState(() => _replyingTo = null);
       await _loadMessages(silent: true);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('send_room_message failed: $e');
+      debugPrintStack(stackTrace: st);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Message could not be sent.'), backgroundColor: AppColors.error),
+          SnackBar(content: Text('Message could not be sent: $e'), backgroundColor: AppColors.error, duration: const Duration(seconds: 8)),
         );
       }
     } finally {
