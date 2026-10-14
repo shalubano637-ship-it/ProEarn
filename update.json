@@ -1,17 +1,18 @@
 {
   "published": true,
   "status": "testing",
-  "versionCode": 17,
-  "versionName": "1.0.16",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.16/proearn.apk",
-  "title": "Sequential Gift Rewards",
-  "message": "Signup rewards now give gifts in order. Missed days do not skip ahead; claim each gift one by one.",
+  "versionCode": 18,
+  "versionName": "1.0.17",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.17/proearn.apk",
+  "title": "Chest Timer and Ready Notifications",
+  "message": "Chest timers now start after completing the Start rewarded ad. Open requires a second rewarded ad.",
   "newFeatures": [],
   "fixes": [
-    "Gift-based seven-step reward cards",
-    "Rewards unlock strictly in sequence",
-    "No calendar-day skip to the final gift"
+    "Explicit Start button for gift chest timer",
+    "Timer begins only after Start rewarded ad is completed",
+    "Next chest waits for a new Start",
+    "Scheduled in-app Chest Ready notification"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1791892670445"
+  "buildTrigger": "1791964754546"
 }
