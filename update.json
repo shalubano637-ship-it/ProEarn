@@ -1,18 +1,17 @@
 {
   "published": true,
-  "status": "testing",
-  "versionCode": 18,
-  "versionName": "1.0.17",
+  "status": "published",
+  "versionCode": 19,
+  "versionName": "1.0.18",
   "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.17/proearn.apk",
-  "title": "Chest Timer and Ready Notifications",
-  "message": "Chest timers now start after completing the Start rewarded ad. Open requires a second rewarded ad.",
+  "title": "Image Upload, Room Chat and Gift Reward Fixes",
+  "message": "Fixes for image-only room messages and duplicate gift inventory rewards. Image uploads require the server moderation gateway to be healthy.",
   "newFeatures": [],
   "fixes": [
-    "Explicit Start button for gift chest timer",
-    "Timer begins only after Start rewarded ad is completed",
-    "Next chest waits for a new Start",
-    "Scheduled in-app Chest Ready notification"
+    "Allow image-only Room messages without null text errors",
+    "Prevent duplicate gift inventory conflicts when claiming signup gifts",
+    "Version bumped so the update checker can offer this release"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1791964754546"
+  "buildTrigger": "1791979102327"
 }
