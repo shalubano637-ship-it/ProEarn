@@ -213,7 +213,7 @@ class _UploadPageState extends State<UploadPage> {
           content: Text(
             isModerationRejection
                 ? "Post not allowed: caption or prompt contains blocked content."
-                : "Upload failed — please try again.",
+                : "Upload failed: $e",
           ),
           backgroundColor: AppColors.error,
         ),
