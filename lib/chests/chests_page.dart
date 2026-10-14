@@ -63,6 +63,52 @@ class _ChestsPageState extends State<ChestsPage> {
     await Share.share('Join me on Pro Earn. Use my referral code: $code');
   }
 
+  Future<void> _startChestTimer() async {
+    final service = chestTimerService;
+    if (service.isStarted || _isClaiming) return;
+    setState(() => _isClaiming = true);
+    try {
+      final ad = RewardedAdPreloader.takeReadyAd();
+      if (ad == null) {
+        RewardedAdPreloader.preload();
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Reward ad is loading. Please try again in a moment.')),
+        );
+        return;
+      }
+      var rewardEarned = false;
+      final closed = Completer<void>();
+      ad.fullScreenContentCallback = FullScreenContentCallback(
+        onAdDismissedFullScreenContent: (_) { if (!closed.isCompleted) closed.complete(); },
+        onAdFailedToShowFullScreenContent: (_, error) { if (!closed.isCompleted) closed.completeError(error); },
+      );
+      try {
+        await ad.show(onUserEarnedReward: (_, __) { rewardEarned = true; });
+        if (!closed.isCompleted) await closed.future.timeout(const Duration(minutes: 3));
+      } finally {
+        ad.dispose();
+      }
+      RewardedAdPreloader.preload();
+      if (!rewardEarned) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Watch the reward ad completely to start the chest timer.')),
+        );
+        return;
+      }
+      await service.startTimer();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chest timer started! 🎁')),
+      );
+    } catch (e) {
+      debugPrint('Start chest timer failed: $e');
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not start chest timer: $e'), backgroundColor: AppColors.error),
+      );
+    } finally {
+      if (mounted) setState(() => _isClaiming = false);
+    }
+  }
+
   Future<void> _openChest() async {
     final service = chestTimerService;
     if (!service.isUnlocked || _isClaiming) return;
@@ -200,6 +246,8 @@ class _ChestsPageState extends State<ChestsPage> {
                             isActive: isActive,
                             isFuture: isFuture,
                             isUnlocked: isUnlockedHere,
+                            isStarted: chestTimerService.isStarted,
+                            onStart: isActive && !chestTimerService.isStarted && !isUnlockedHere ? _startChestTimer : null,
                             timeLabel: isActive ? _formatTime(chestTimerService.remainingSeconds) : null,
                             isClaiming: isActive && _isClaiming,
                             onOpen: isUnlockedHere ? _openChest : null,
@@ -428,6 +476,8 @@ class _ChestSlot extends StatelessWidget {
   final bool isActive;
   final bool isFuture;
   final bool isUnlocked;
+  final bool isStarted;
+  final VoidCallback? onStart;
   final String? timeLabel;
   final bool isClaiming;
   final VoidCallback? onOpen;
@@ -440,6 +490,8 @@ class _ChestSlot extends StatelessWidget {
     required this.isActive,
     required this.isFuture,
     required this.isUnlocked,
+    required this.isStarted,
+    required this.onStart,
     required this.timeLabel,
     required this.isClaiming,
     required this.onOpen,
@@ -487,7 +539,13 @@ class _ChestSlot extends StatelessWidget {
                           : const Text("Open", style: TextStyle(fontSize: 12)),
                     ),
                   )
-                : Text(timeLabel ?? '', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                : isStarted
+                    ? Text(timeLabel ?? '', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold))
+                    : SizedBox(height: 32, child: ElevatedButton(
+                        onPressed: isClaiming ? null : onStart,
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent, foregroundColor: AppColors.textOnAccent, padding: const EdgeInsets.symmetric(horizontal: 8)),
+                        child: isClaiming ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textOnAccent)) : const Text('Start', style: TextStyle(fontSize: 12)),
+                      )),
         ],
       ),
     );
