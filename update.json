@@ -3,7 +3,7 @@
   "status": "published",
   "versionCode": 19,
   "versionName": "1.0.18",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.17/proearn.apk",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.18/proearn.apk",
   "title": "Image Upload, Room Chat and Gift Reward Fixes",
   "message": "Fixes for image-only room messages and duplicate gift inventory rewards. Image uploads require the server moderation gateway to be healthy.",
   "newFeatures": [],
@@ -13,5 +13,5 @@
     "Version bumped so the update checker can offer this release"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1791979102327"
+  "buildTrigger": "1792035934495"
 }
