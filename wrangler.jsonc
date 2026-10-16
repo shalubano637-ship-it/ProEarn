@@ -1,9 +1,0 @@
-{
-  "$schema": "https://developers.cloudflare.com/workers/wrangler/config-schema.json",
-  "name": "proearn",
-  "compatibility_date": "2026-09-26",
-  "assets": {
-    "directory": "./build/web",
-    "not_found_handling": "single-page-application"
-  }
-}
