@@ -1,0 +1,139 @@
+name: Build and Publish Android Update
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - update.json
+      - pubspec.yaml
+      - pubspec.lock
+      - lib/**
+      - assets/**
+      - android/build.gradle.kts
+      - android/gradle.properties
+      - android/app/build.gradle.kts
+      - android/app/proguard-rules.pro
+      - .github/workflows/build-update-apk.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read update metadata
+        id: metadata
+        shell: bash
+        run: |
+          VERSION_NAME="$(jq -r '.versionName' update.json)"
+          VERSION_CODE="$(jq -r '.versionCode' update.json)"
+          STATUS="$(jq -r '.status // "published"' update.json)"
+
+          if [ "$STATUS" != "testing" ] && [ "$STATUS" != "published" ]; then
+            echo "No build requested (status=$STATUS)."
+            exit 0
+          fi
+
+          if ! [[ "$VERSION_CODE" =~ ^[0-9]+$ ]] || [ "$VERSION_CODE" -le 0 ]; then
+            echo "Invalid versionCode: $VERSION_CODE"
+            exit 1
+          fi
+
+          if [ -z "$VERSION_NAME" ] || [ "$VERSION_NAME" = "null" ]; then
+            echo "Invalid versionName"
+            exit 1
+          fi
+
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Configure release signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "Required release signing secrets are missing."
+            exit 1
+          fi
+
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/proearn-release.jks
+
+          cat > android/key.properties <<EOF
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=proearn-release.jks
+          EOF
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "APK build attempt $attempt/3"
+            if flutter build apk --release --obfuscate --split-debug-info=build/symbols --build-name=${{ steps.metadata.outputs.version_name }} --build-number=${{ steps.metadata.outputs.version_code }}; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "Build failed; retrying after a short Gradle dependency/network cooldown..."
+              sleep 20
+            fi
+          done
+          exit 1
+
+      - name: Prepare APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk proearn.apk
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION_NAME: ${{ steps.metadata.outputs.version_name }}
+          STATUS: ${{ steps.metadata.outputs.status }}
+        run: |
+          TAG="v$VERSION_NAME"
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          if [ "$STATUS" = "testing" ]; then
+            NOTES="Admin test build. This update is NOT visible to normal users until the admin publishes it."
+          else
+            NOTES="Published from the Pro Earn Admin Update Manager."
+          fi
+          gh release create "$TAG" proearn.apk \
+            --title "$TAG" \
+            --notes "$NOTES" \
+            --latest
+
+      - name: Verify release asset
+        env:
+          VERSION_NAME: ${{ steps.metadata.outputs.version_name }}
+        run: |
+          curl -fL -o /dev/null "https://github.com/${{ github.repository }}/releases/download/v$VERSION_NAME/proearn.apk"
+
+      - name: Clean signing files
+        if: always()
+        run: |
+          rm -f android/proearn-release.jks android/key.properties
+
+# Rebuild trigger after final voice-message compile fix.

@@ -1,0 +1,10 @@
+name = "proearn-media-gateway"
+main = "worker.ts"
+compatibility_date = "2026-09-27"
+
+[vars]
+SUPABASE_URL = "https://mltvpfqfhbhgkejcjpmq.supabase.co"
+SUPABASE_ANON_KEY = ""
+
+[ai]
+binding = "AI"
