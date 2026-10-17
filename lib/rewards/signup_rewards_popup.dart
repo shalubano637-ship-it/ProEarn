@@ -196,7 +196,14 @@ class _SignupRewardsPopupState extends State<SignupRewardsPopup> {
                           final n = (day['day'] as num).toInt();
                           final tier = day['tier'].toString();
                           final claimed = day['claimed'] == true;
-                          final available = day['available'] == true;
+                          final firstUnclaimed = days
+                              .where((d) => d['claimed'] != true)
+                              .map((d) => (d['day'] as num).toInt())
+                              .fold<int?>(null, (prev, value) =>
+                                  prev == null || value < prev ? value : prev);
+                          final available = day['available'] == true &&
+                              day['claimed'] != true &&
+                              n == firstUnclaimed;
                           final cardColor = claimed
                               ? const Color(0xFFE4F6E8)
                               : available
