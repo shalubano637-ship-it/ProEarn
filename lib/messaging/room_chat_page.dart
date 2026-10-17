@@ -507,7 +507,7 @@ class _RoomChatPageState extends State<RoomChatPage> {
                       child: GestureDetector(
                         onLongPress: () => _showMessageOptions(m, mine),
                         child: Container(
-                          key: _messageKeys.putIfAbsent(messageId, () => GlobalKey()),
+                          key: groupEnd > index ? null : _messageKeys.putIfAbsent(messageId, () => GlobalKey()),
                           constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * .78),
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: EdgeInsets.all(imageUrl.isNotEmpty && text.isEmpty ? 5 : 10),
