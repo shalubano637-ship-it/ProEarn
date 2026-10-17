@@ -155,6 +155,17 @@ Deno.serve(async (req) => {
       });
       if (notificationError) {
         console.error("notification row insert failed", notificationError);
+        // Release the dedup reservation when the in-app notification was not
+        // saved, so a client retry can attempt the event again.
+        const { error: releaseError } = await admin.from("notification_delivery_dedup")
+          .delete()
+          .eq("senderId", senderId)
+          .eq("targetOwnerId", targetOwnerId)
+          .eq("type", type)
+          .eq("eventKey", eventKey);
+        if (releaseError) {
+          console.error("notification dedup release failed", releaseError);
+        }
         return json({ error: "Could not save notification" }, 503);
       }
     }
