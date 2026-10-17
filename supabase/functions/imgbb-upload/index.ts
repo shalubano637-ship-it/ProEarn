@@ -28,7 +28,7 @@ Deno.serve(async req=>{
    try{mr=await fetch(GATEWAY+"/v1/moderate-image",{method:"POST",headers:{Authorization:auth,"Content-Type":"application/json"},body:JSON.stringify({imageBase64:image,contentType:type})})}
    catch(e){console.error("moderation gateway request failed",String(e));return json({error:"Server moderation unavailable"},503)}
    const m=await mr.json().catch(()=>({}));
-   if(!mr.ok||m?.safe!==true||typeof m?.approvalToken!=="string"){
+   if(!mr.ok||m?.safe!==true){
     console.error("server moderation rejected/unavailable",mr.status);
     return json({error:mr.status===422?"Image rejected by server moderation":"Server moderation unavailable"},mr.status===422?422:mr.status===401?401:503);
    }
