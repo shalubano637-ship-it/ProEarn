@@ -59,8 +59,6 @@ class AppUpdateService {
   }
 
   static Future<AppUpdateInfo?> checkForUpdate() async {
-    if (!isAdmin) return null;
-
     try {
       final response = await http
           .get(Uri.parse(_metadataUrl + '?t=' + DateTime.now().millisecondsSinceEpoch.toString()))
@@ -71,7 +69,7 @@ class AppUpdateService {
         jsonDecode(response.body) as Map<String, dynamic>,
       );
 
-      if (info.status != 'testing') return null;
+      if (!info.published || !['testing', 'published'].contains(info.status)) return null;
       if (info.versionCode <= 0 || info.apkUrl.isEmpty) return null;
 
       final package = await PackageInfo.fromPlatform();
