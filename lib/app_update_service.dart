@@ -63,20 +63,28 @@ class AppUpdateService {
       final response = await http
           .get(Uri.parse(_metadataUrl + '?t=' + DateTime.now().millisecondsSinceEpoch.toString()))
           .timeout(const Duration(seconds: 8));
-      if (response.statusCode != 200) return null;
+      if (response.statusCode != 200) {
+        throw Exception('Update server returned HTTP ${response.statusCode}');
+      }
 
       final info = AppUpdateInfo.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>,
       );
 
-      if (!info.published || !['testing', 'published'].contains(info.status)) return null;
-      if (info.versionCode <= 0 || info.apkUrl.isEmpty) return null;
+      if (!info.published || !['testing', 'published'].contains(info.status)) {
+        return null;
+      }
+      if (info.versionCode <= 0 || info.apkUrl.isEmpty) {
+        throw const FormatException('Update metadata is missing a valid version or APK URL');
+      }
 
       final package = await PackageInfo.fromPlatform();
       final currentCode = int.tryParse(package.buildNumber) ?? 0;
       return info.versionCode > currentCode ? info : null;
-    } catch (_) {
-      return null;
+    } catch (e) {
+      // Keep network/metadata failures distinct from "already up to date".
+      if (e is Exception || e is FormatException) rethrow;
+      throw Exception('Could not check for updates: $e');
     }
   }
 

@@ -17,6 +17,8 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
   AppUpdateInfo? _info;
   bool _checking = true;
   bool _downloading = false;
+  bool _checkFailed = false;
+  String? _checkError;
   double _progress = 0;
 
   @override
@@ -31,12 +33,24 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
   }
 
   Future<void> _load() async {
-    final info = await AppUpdateService.checkForUpdate();
-    if (!mounted) return;
-    setState(() {
-      _info = info;
-      _checking = false;
-    });
+    try {
+      final info = await AppUpdateService.checkForUpdate();
+      if (!mounted) return;
+      setState(() {
+        _info = info;
+        _checking = false;
+        _checkFailed = false;
+        _checkError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _info = null;
+        _checking = false;
+        _checkFailed = true;
+        _checkError = e.toString();
+      });
+    }
   }
 
   Future<void> _downloadAndInstall() async {
@@ -120,10 +134,47 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
       body: _checking
           ? const Center(child: CircularProgressIndicator())
           : info == null
-              ? const Center(
+              ? Center(
                   child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text('You are using the latest version.', textAlign: TextAlign.center),
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _checkFailed ? Icons.cloud_off : Icons.check_circle_outline,
+                          size: 44,
+                          color: _checkFailed ? AppColors.error : null,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _checkFailed
+                              ? 'Could not check for updates.'
+                              : 'You are using the latest version.',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                        ),
+                        if (_checkFailed) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            _checkError ?? 'Check your internet connection and try again.',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _checking = true;
+                                _checkFailed = false;
+                                _checkError = null;
+                              });
+                              _load();
+                            },
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Retry'),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 )
               : ListView(

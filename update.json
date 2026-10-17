@@ -1,17 +1,17 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 19,
-  "versionName": "1.0.18",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.18/proearn.apk",
-  "title": "Image Upload, Room Chat and Gift Reward Fixes",
-  "message": "Fixes for image-only room messages and duplicate gift inventory rewards. Image uploads require the server moderation gateway to be healthy.",
+  "versionCode": 20,
+  "versionName": "1.0.19",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.19/proearn.apk",
+  "title": "Update Checker Reliability Fix",
+  "message": "The update page now distinguishes update-check failures from being up to date. Retry checking if the server or network is unavailable.",
   "newFeatures": [],
   "fixes": [
-    "Allow image-only Room messages without null text errors",
-    "Prevent duplicate gift inventory conflicts when claiming signup gifts",
-    "Version bumped so the update checker can offer this release"
+    "Show a clear error and Retry action when update metadata cannot be fetched",
+    "Do not incorrectly report the app is up to date after network or metadata errors",
+    "Bump version code so existing installs can detect the new release"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1792035934495"
+  "buildTrigger": "1792223922203"
 }
