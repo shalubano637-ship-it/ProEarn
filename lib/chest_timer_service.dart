@@ -70,11 +70,23 @@ class _SupabaseChestRepository implements ChestRepository {
 
   @override
   Future<void> sendChestReadyNotification(String uid) async {
-    await sendNotification(
-      targetOwnerId: uid,
-      type: 'chest_ready',
-      message: 'Your chest is ready to open! 🎁',
+    // Do not use the shared sendNotification helper here: it catches errors
+    // internally, which made the timer mark a failed notification as sent.
+    final response = await _client.functions.invoke(
+      'notify',
+      body: {
+        'targetOwnerId': uid,
+        'type': 'chest_ready',
+        'message': 'Your chest is ready to open! 🎁',
+      },
     );
+    if (response.status < 200 || response.status >= 300) {
+      throw StateError('Chest notification failed with HTTP ${response.status}');
+    }
+    final data = response.data;
+    if (data is Map && data['success'] == false) {
+      throw StateError('Chest notification was not accepted');
+    }
   }
 
   @override
