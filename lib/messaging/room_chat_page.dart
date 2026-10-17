@@ -138,6 +138,44 @@ class _RoomChatPageState extends State<RoomChatPage> {
     });
   }
 
+  bool _isGroupableImage(Map<String, dynamic> m) {
+    return (m['image_url']?.toString().isNotEmpty ?? false) &&
+        (m['text']?.toString().isEmpty ?? true) &&
+        (m['reply_to_message_id'] == null) &&
+        (m['voice_path']?.toString().isNotEmpty != true);
+  }
+
+  bool _imagesCloseTogether(Map<String, dynamic> a, Map<String, dynamic> b) {
+    if (!_isGroupableImage(a) || !_isGroupableImage(b) ||
+        a['sender_id']?.toString() != b['sender_id']?.toString()) {
+      return false;
+    }
+    final first = DateTime.tryParse(a['created_at']?.toString() ?? '');
+    final next = DateTime.tryParse(b['created_at']?.toString() ?? '');
+    if (first == null || next == null) return false;
+    final gap = next.difference(first).inSeconds;
+    return gap >= 0 && gap <= 10;
+  }
+
+  int _imageGroupStart(int index) {
+    var start = index;
+    while (start > 0 && _imagesCloseTogether(_messages[start - 1], _messages[start])) {
+      start--;
+    }
+    return start;
+  }
+
+  int _imageGroupEnd(int start) {
+    if (start < 0 || start >= _messages.length || !_isGroupableImage(_messages[start])) {
+      return start;
+    }
+    var end = start;
+    while (end + 1 < _messages.length && _imagesCloseTogether(_messages[end], _messages[end + 1])) {
+      end++;
+    }
+    return end;
+  }
+
   Future<void> _loadMessages({bool silent = false}) async {
     try {
       final result = await Supabase.instance.client.rpc('get_room_messages', params: {
@@ -450,6 +488,11 @@ class _RoomChatPageState extends State<RoomChatPage> {
                   padding: const EdgeInsets.all(12),
                   itemCount: _messages.length,
                   itemBuilder: (context, index) {
+                    final groupStart = _imageGroupStart(index);
+                    final groupEnd = _imageGroupEnd(groupStart);
+                    if (groupStart < index && groupEnd >= index) {
+                      return const SizedBox.shrink();
+                    }
                     final m = _messages[index];
                     final mine = m['sender_id']?.toString() == _myUid;
                     final name = m['sender_name']?.toString() ?? 'User';
@@ -535,10 +578,55 @@ class _RoomChatPageState extends State<RoomChatPage> {
                                   listenLimit: (m['voice_listen_limit'] as num?)?.toInt() ?? 1,
                                 ),
                               ),
-                            if (imageUrl.isNotEmpty) GestureDetector(
-                              onTap: () => _openImage(imageUrl),
-                              child: ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.network(imageUrl, width: 220, height: 220, fit: BoxFit.cover)),
-                            ),
+                            if (imageUrl.isNotEmpty && groupEnd > index)
+                              SizedBox(
+                                width: 220,
+                                child: Wrap(
+                                  spacing: 4,
+                                  runSpacing: 4,
+                                  children: [
+                                    for (var photoIndex = index; photoIndex <= groupEnd; photoIndex++)
+                                      Builder(builder: (context) {
+                                        final photo = _messages[photoIndex];
+                                        final photoId = photo['id']?.toString() ?? '$photoIndex';
+                                        final photoUrl = photo['image_url']?.toString() ?? '';
+                                        final highlighted = _highlightedMessageId == photoId;
+                                        return GestureDetector(
+                                          key: _messageKeys.putIfAbsent(photoId, () => GlobalKey()),
+                                          onTap: () => _openImage(photoUrl),
+                                          onLongPress: () => _showMessageOptions(
+                                            photo,
+                                            photo['sender_id']?.toString() == _myUid,
+                                          ),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(9),
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                border: highlighted ? Border.all(color: AppColors.accent, width: 2) : null,
+                                                borderRadius: BorderRadius.circular(9),
+                                              ),
+                                              child: Image.network(
+                                                photoUrl,
+                                                width: 106,
+                                                height: 106,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) => const SizedBox(
+                                                  width: 106, height: 106,
+                                                  child: Center(child: Icon(Icons.broken_image_outlined)),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }),
+                                  ],
+                                ),
+                              )
+                            else if (imageUrl.isNotEmpty)
+                              GestureDetector(
+                                onTap: () => _openImage(imageUrl),
+                                child: ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.network(imageUrl, width: 220, height: 220, fit: BoxFit.cover)),
+                              ),
                             if (imageUrl.isNotEmpty && text.isNotEmpty) const SizedBox(height: 6),
                             if (text.isNotEmpty) Text(text, style: TextStyle(color: mine ? AppColors.textOnAccent : AppColors.textPrimary)),
                           ]),
