@@ -805,6 +805,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                         child: _ImageGroupTile(
                                           imageUrls: imageUrls,
                                           onOpen: (startIndex) => _viewImageGroupFullscreen(group, startIndex),
+                                          onMenu: () => _showAlbumOptions(group, isMe),
                                         ),
                                       ),
                                     ),
@@ -879,17 +880,38 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                                       ),
                                                     ),
                                                   if (msg['imageUrl'] != null)
-                                                    GestureDetector(
-                                                      onTap: isGift ? null : () => _viewImageFullscreen(msg['imageUrl'] as String),
-                                                      child: ClipRRect(
-                                                        borderRadius: BorderRadius.circular(12),
-                                                        child: GlobalCachedImage(
-                                                          imageUrl: msg['imageUrl'] as String,
-                                                          width: isGift ? 72 : 160,
-                                                          height: isGift ? 72 : 160,
-                                                          fit: isGift ? BoxFit.contain : BoxFit.cover,
+                                                    Stack(
+                                                      children: [
+                                                        GestureDetector(
+                                                          onTap: isGift ? null : () => _viewImageFullscreen(msg['imageUrl'] as String),
+                                                          child: ClipRRect(
+                                                            borderRadius: BorderRadius.circular(12),
+                                                            child: GlobalCachedImage(
+                                                              imageUrl: msg['imageUrl'] as String,
+                                                              width: isGift ? 72 : 160,
+                                                              height: isGift ? 72 : 160,
+                                                              fit: isGift ? BoxFit.contain : BoxFit.cover,
+                                                            ),
+                                                          ),
                                                         ),
-                                                      ),
+                                                        if (!isGift)
+                                                          Positioned(
+                                                            top: 4,
+                                                            right: 4,
+                                                            child: Material(
+                                                              color: Colors.black54,
+                                                              shape: const CircleBorder(),
+                                                              child: InkWell(
+                                                                customBorder: const CircleBorder(),
+                                                                onTap: () => _showMessageOptions(msg, isMe, isGift: isGift),
+                                                                child: const Padding(
+                                                                  padding: EdgeInsets.all(5),
+                                                                  child: Icon(Icons.more_vert, color: Colors.white, size: 18),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                      ],
                                                     ),
                                                   if (((msg['text'] ?? '') as String).isNotEmpty)
                                                     Padding(
@@ -1178,7 +1200,8 @@ class _BlockedBanner extends StatelessWidget {
 class _ImageGroupTile extends StatelessWidget {
   final List<String> imageUrls;
   final void Function(int startIndex) onOpen;
-  const _ImageGroupTile({required this.imageUrls, required this.onOpen});
+  final VoidCallback onMenu;
+  const _ImageGroupTile({required this.imageUrls, required this.onOpen, required this.onMenu});
 
   @override
   Widget build(BuildContext context) {
@@ -1188,33 +1211,53 @@ class _ImageGroupTile extends StatelessWidget {
     return Container(
       width: 160,
       margin: const EdgeInsets.symmetric(vertical: 4),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 2, mainAxisSpacing: 2),
-          itemCount: visible.length,
-          itemBuilder: (context, i) {
-            final isLastWithMore = remaining > 0 && i == visible.length - 1;
-            return GestureDetector(
-              onTap: () => onOpen(i),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  GlobalCachedImage(imageUrl: visible[i], fit: BoxFit.cover),
-                  if (isLastWithMore)
-                    Container(
-                      color: Colors.black54,
-                      child: Center(
-                        child: Text("+$remaining", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                ],
+      child: Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 2, mainAxisSpacing: 2),
+              itemCount: visible.length,
+              itemBuilder: (context, i) {
+                final isLastWithMore = remaining > 0 && i == visible.length - 1;
+                return GestureDetector(
+                  onTap: () => onOpen(i),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      GlobalCachedImage(imageUrl: visible[i], fit: BoxFit.cover),
+                      if (isLastWithMore)
+                        Container(
+                          color: Colors.black54,
+                          child: Center(
+                            child: Text("+$remaining", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          Positioned(
+            top: 4,
+            right: 4,
+            child: Material(
+              color: Colors.black54,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: onMenu,
+                child: const Padding(
+                  padding: EdgeInsets.all(5),
+                  child: Icon(Icons.more_vert, color: Colors.white, size: 18),
+                ),
               ),
-            );
-          },
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }
