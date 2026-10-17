@@ -493,14 +493,33 @@ class _RoomChatPageState extends State<RoomChatPage> {
                                   borderRadius: BorderRadius.circular(9),
                                   border: isHighlighted ? Border.all(color: AppColors.accent) : null,
                                 ),
-                                child: Text(
-                                  replyText,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: mine ? AppColors.textOnAccent : AppColors.textSecondary,
-                                  ),
+                                child: Row(
+                                  children: [
+                                    if ((m['reply_image_url']?.toString().isNotEmpty ?? false)) ...[
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(5),
+                                        child: Image.network(
+                                          m['reply_image_url'].toString(),
+                                          width: 34,
+                                          height: 34,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => const Icon(Icons.image_not_supported_outlined, size: 24),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 7),
+                                    ],
+                                    Expanded(
+                                      child: Text(
+                                        replyText.isNotEmpty ? replyText : ((m['reply_image_url']?.toString().isNotEmpty ?? false) ? 'Photo' : 'Message'),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: mine ? AppColors.textOnAccent : AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
