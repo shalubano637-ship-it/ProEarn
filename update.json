@@ -1,17 +1,19 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 20,
-  "versionName": "1.0.19",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.19/proearn.apk",
-  "title": "Update Checker Reliability Fix",
-  "message": "The update page now distinguishes update-check failures from being up to date. Retry checking if the server or network is unavailable.",
-  "newFeatures": [],
+  "versionCode": 21,
+  "versionName": "1.0.20",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.20/proearn.apk",
+  "title": "Chat and Notification Reliability Fixes",
+  "message": "Improves room photo grouping and retries failed in-app notification saves.",
+  "newFeatures": [
+    "Group consecutive room chat photos into a compact grid"
+  ],
   "fixes": [
-    "Show a clear error and Retry action when update metadata cannot be fetched",
-    "Do not incorrectly report the app is up to date after network or metadata errors",
-    "Bump version code so existing installs can detect the new release"
+    "Preserve chest-ready notification retry when saving the in-app notification fails",
+    "Group consecutive image-only Room messages from the same sender when sent within 10 seconds",
+    "Keep individual photo tap, long-press options, and message navigation keys"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1792223922203"
+  "buildTrigger": "1792226669403"
 }
