@@ -1,15 +1,15 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 23,
-  "versionName": "1.0.22",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.22/proearn.apk",
-  "title": "Google Sign-In",
-  "message": "Adds Google sign-in to login and signup screens.",
-  "newFeatures": [
-    "Google OAuth sign-in on login and signup screens"
+  "versionCode": 24,
+  "versionName": "1.0.23",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.23/proearn.apk",
+  "title": "Temporary Google Sign-In Removal",
+  "message": "Removes Google sign-in while keeping email/password authentication.",
+  "newFeatures": [],
+  "fixes": [
+    "Temporarily remove Google sign-in option"
   ],
-  "fixes": [],
   "forceUpdate": false,
-  "buildTrigger": "1792311730001"
+  "buildTrigger": "1792313547280"
 }
