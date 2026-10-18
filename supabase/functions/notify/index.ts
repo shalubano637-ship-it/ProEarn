@@ -120,9 +120,13 @@ Deno.serve(async (req) => {
       eventKey,
     });
     if (dedupError) {
-      if (dedupError.code === "23505") return json({ success: true });
-      console.error("notification dedup insert failed", dedupError);
-      return json({ error: "Unavailable" }, 503);
+      // The chest cron may have reserved this event while only writing the
+      // in-app notification. That reservation must not suppress OneSignal push.
+      if (dedupError.code === "23505" && type !== "chest_ready") return json({ success: true });
+      if (dedupError.code !== "23505") {
+        console.error("notification dedup insert failed", dedupError);
+        return json({ error: "Unavailable" }, 503);
+      }
     }
 
     const { data: targetPrefs } = await admin.from("users")
