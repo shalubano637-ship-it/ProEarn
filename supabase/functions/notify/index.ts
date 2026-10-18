@@ -110,6 +110,8 @@ Deno.serve(async (req) => {
       );
       const readyChest = isDue(coinChest) ? coinChest : isDue(giftChest) ? giftChest : null;
       if (!readyChest) return json({ error: "Chest not ready" }, 403);
+      chestProgressTable = isDue(coinChest) ? "coin_chest_progress" : "chest_progress";
+      if (readyChest.pushSentAt != null) return json({ success: true, alreadyPushed: true });
 
       eventKey = String(readyChest.currentChestIndex) + ":" + String(readyChest.unlockAt);
     }
