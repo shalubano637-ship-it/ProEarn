@@ -122,23 +122,30 @@ async function moderateBytes(env: Env, bytes: Uint8Array, contentType: string, u
       temperature: 0,
     });
 
-    const raw = typeof response === "string" ? response : response?.response ?? "";
-    const cleaned = String(raw).replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\`\`\`\s*$/i, "").trim();
+    const payload: unknown = response && typeof response === "object" && "response" in response
+      ? (response as { response: unknown }).response
+      : response;
     let parsed: { safe?: boolean; reason?: string };
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch {
-      const start = cleaned.indexOf("{");
-      const end = cleaned.lastIndexOf("}");
-      if (start < 0 || end <= start) {
-        console.error("moderation model returned non-JSON", cleaned.slice(0, 300));
-        return { safe: false, reason: "Moderation model returned invalid output" };
-      }
+    if (payload && typeof payload === "object" && "safe" in payload && typeof (payload as { safe?: unknown }).safe === "boolean") {
+      parsed = payload as { safe?: boolean; reason?: string };
+    } else {
+      const raw = typeof payload === "string" ? payload : JSON.stringify(payload ?? "");
+      const cleaned = String(raw).replace(/^\\s*\\x60\\x60\\x60(?:json)?\\s*/i, "").replace(/\\s*\\x60\\x60\\x60\\s*$/, "").trim();
       try {
-        parsed = JSON.parse(cleaned.slice(start, end + 1));
+        parsed = JSON.parse(cleaned);
       } catch {
-        console.error("moderation model returned invalid JSON", cleaned.slice(0, 300));
-        return { safe: false, reason: "Moderation model returned invalid output" };
+        const start = cleaned.indexOf("{");
+        const end = cleaned.lastIndexOf("}");
+        if (start < 0 || end <= start) {
+          console.error("moderation model returned non-JSON", cleaned.slice(0, 300));
+          return { safe: false, reason: "Moderation model returned invalid output" };
+        }
+        try {
+          parsed = JSON.parse(cleaned.slice(start, end + 1));
+        } catch {
+          console.error("moderation model returned invalid JSON", cleaned.slice(0, 300));
+          return { safe: false, reason: "Moderation model returned invalid output" };
+        }
       }
     }
     if (typeof parsed.safe !== "boolean") {
