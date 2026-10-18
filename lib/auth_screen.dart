@@ -208,9 +208,17 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController referralCodeController = TextEditingController();
 
+  StreamSubscription<AuthState>? _googleAuthSubscription;
+  bool _googleSignInInProgress = false;
+
   @override
   void initState() {
     super.initState();
+    _googleAuthSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((state) {
+      if (_googleSignInInProgress && state.event == AuthChangeEvent.signedIn && state.session?.user != null) {
+        _finishGoogleSignIn(state.session!.user);
+      }
+    });
     if (widget.bannedMessage) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -223,6 +231,89 @@ class _LoginPageState extends State<LoginPage> {
         );
       });
     }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    if (!acceptTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Accept Terms & Privacy Policy")),
+      );
+      return;
+    }
+
+    setState(() => _googleSignInInProgress = true);
+    try {
+      await Supabase.instance.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'io.supabase.proearn://login-callback/',
+        authScreenLaunchMode: LaunchMode.externalApplication,
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _googleSignInInProgress = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Google sign-in failed: $e"), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  Future<void> _finishGoogleSignIn(User user) async {
+    try {
+      // Record the Terms acceptance the user confirmed on this screen.
+      await Supabase.instance.client.from(kUsersCollection).update({
+        'termsAcceptedAt': DateTime.now().toUtc().toIso8601String(),
+        'termsVersion': kCurrentTermsVersion,
+      }).eq('uid', user.id);
+
+      await ensureUserDocumentExists();
+      final banned = await isCurrentUserBanned();
+      if (!mounted) return;
+      if (banned) {
+        await Supabase.instance.client.auth.signOut();
+        setState(() => _googleSignInInProgress = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Your account has been suspended by admin."), backgroundColor: AppColors.error),
+        );
+        return;
+      }
+
+      currentUserEmail = user.email ?? '';
+      currentUserName = user.userMetadata?['userName']?.toString()
+          ?? (user.email?.split('@').first ?? 'user');
+      currentUserId = user.id;
+      OneSignal.login(user.id);
+      chestTimerService.initialize();
+      coinChestTimerService.initialize();
+      loadUserDataOnStartup();
+      await PushService.togglePushNotificationStatus(true);
+      if (!mounted) return;
+      setState(() => _googleSignInInProgress = false);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _googleSignInInProgress = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Could not finish Google sign-in: $e"), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _googleAuthSubscription?.cancel();
+    resetEmailController.dispose();
+    signupUsername.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    usernameController.dispose();
+    referralCodeController.dispose();
+    super.dispose();
   }
 
   Future<void> sendResetLink() async {
@@ -632,6 +723,25 @@ if (showTerms)
                     style: ElevatedButton.styleFrom(backgroundColor: theme.colorScheme.primary, foregroundColor: theme.colorScheme.onPrimary),
                     onPressed: handleAuth,
                     child: Text(isLogin ? "LOGIN" : "SIGN UP", style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(children: [
+                  Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text("OR", style: AppTextStyles.bodyMedium.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  ),
+                  Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
+                ]),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: OutlinedButton.icon(
+                    onPressed: _googleSignInInProgress ? null : _signInWithGoogle,
+                    icon: const Icon(Icons.g_mobiledata, size: 30),
+                    label: Text(_googleSignInInProgress ? "CONNECTING TO GOOGLE..." : "CONTINUE WITH GOOGLE"),
                   ),
                 ),
                 const SizedBox(height: 20),
