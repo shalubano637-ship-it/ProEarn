@@ -17,7 +17,6 @@ import 'auth_screen.dart';
 import 'service.dart';
 import 'theme/theme.dart';
 import 'theme/theme_controller.dart';
-import 'moderation/moderation_config.dart';
 import 'chest_timer_service.dart';
 import 'ad_preloader.dart';
 import 'messaging/chat_page.dart';
@@ -152,13 +151,6 @@ Future<void> _initializeDeferredServices() async {
     });
   } catch (e, st) {
     debugPrint("OneSignal Init Error: $e");
-    Sentry.captureException(e, stackTrace: st);
-  }
-
-  try {
-    await moderationPipeline.initialize();
-  } catch (e, st) {
-    debugPrint("Moderation Pipeline Init Error: $e");
     Sentry.captureException(e, stackTrace: st);
   }
 
