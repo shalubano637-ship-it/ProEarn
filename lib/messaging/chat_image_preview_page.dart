@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart';
 import '../theme/theme.dart';
-import '../service.dart';
 import '../cloudflare_media_service.dart';
 
 Future<String?> showChatImagePreview(BuildContext context, File imageFile) {
@@ -22,10 +21,10 @@ class _ChatImagePreviewPage extends StatefulWidget {
   State<_ChatImagePreviewPage> createState() => _ChatImagePreviewPageState();
 }
 
-enum _CheckState { preparing, ready, failed }
+enum _PrepareState { preparing, ready, failed }
 
 class _ChatImagePreviewPageState extends State<_ChatImagePreviewPage> {
-  _CheckState _checkState = _CheckState.preparing;
+  _PrepareState _state = _PrepareState.preparing;
   File? _compressedFile;
   bool _isSending = false;
 
@@ -38,53 +37,52 @@ class _ChatImagePreviewPageState extends State<_ChatImagePreviewPage> {
   Future<void> _prepareImage() async {
     try {
       final dir = await getTemporaryDirectory();
-      final targetPath = "${dir.absolute.path}/chat_send_${DateTime.now().millisecondsSinceEpoch}.jpg";
-
-      final compressedXFile = await FlutterImageCompress.compressAndGetFile(
+      final targetPath = "${dir.path}/chat_send_${DateTime.now().millisecondsSinceEpoch}.jpg";
+      final compressed = await FlutterImageCompress.compressAndGetFile(
         widget.imageFile.absolute.path,
         targetPath,
         quality: 70,
         minWidth: 1080,
         format: CompressFormat.jpeg,
       );
-
-      if (compressedXFile == null) throw Exception("Compression failed");
-      final compressed = File(compressedXFile.path);
-
+      if (compressed == null) throw StateError("Image compression failed");
       if (!mounted) return;
       setState(() {
-        _compressedFile = compressed;
-        _checkState = _CheckState.ready;
+        _compressedFile = File(compressed.path);
+        _state = _PrepareState.ready;
       });
     } catch (e) {
-      if (mounted) setState(() { _checkState = _CheckState.failed; });
+      debugPrint("Chat image preparation failed: $e");
+      if (mounted) setState(() => _state = _PrepareState.failed);
     }
   }
 
   Future<void> _send() async {
-    if (_checkState != _CheckState.ready || _compressedFile == null || _isSending) return;
-    setState(() { _isSending = true; });
-
+    final file = _compressedFile;
+    if (_state != _PrepareState.ready || file == null || _isSending) return;
+    setState(() => _isSending = true);
     try {
-      final url = await CloudflareMediaService.uploadImage(_compressedFile!, folder: 'chat');
-      if (url == null) throw Exception("Upload failed");
-      if (mounted) Navigator.pop(context, url);
+      final url = await CloudflareMediaService.uploadImage(file, folder: 'chat');
+      if (!mounted) return;
+      Navigator.pop(context, url);
     } catch (e, st) {
       debugPrint("Chat image upload failed: $e");
       debugPrintStack(stackTrace: st);
-      if (mounted) {
-        setState(() { _isSending = false; });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Image upload failed: $e"), backgroundColor: AppColors.error, duration: const Duration(seconds: 8)),
-        );
-      }
+      if (!mounted) return;
+      setState(() => _isSending = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Image upload failed: $e"),
+          backgroundColor: AppColors.error,
+          duration: const Duration(seconds: 8),
+        ),
+      );
     }
   }
 
-  bool get _canSend => _checkState == _CheckState.safe && !_isSending;
-
   @override
   Widget build(BuildContext context) {
+    final ready = _state == _PrepareState.ready && !_isSending;
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -99,22 +97,56 @@ class _ChatImagePreviewPageState extends State<_ChatImagePreviewPage> {
       body: Column(
         children: [
           Expanded(
-            child: Center(
-              child: Image.file(widget.imageFile, fit: BoxFit.contain),
-            ),
+            child: Center(child: Image.file(widget.imageFile, fit: BoxFit.contain)),
           ),
-          if (_checkState == _CheckState.preparing)
+          if (_state == _PrepareState.preparing)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textTertiary)),
+                  SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
                   SizedBox(width: AppSpacing.sm),
                   Text("Preparing image...", style: TextStyle(color: AppColors.textTertiary, fontSize: 13)),
                 ],
               ),
             ),
+          if (_state == _PrepareState.failed)
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Row(
+                children: [
+                  const Expanded(child: Text("Couldn't prepare this image. Please retry.")),
+                  TextButton(
+                    onPressed: () {
+                      setState(() => _state = _PrepareState.preparing);
+                      _prepareImage();
+                    },
+                    child: const Text("Retry"),
+                  ),
+                ],
+              ),
+            ),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: ready ? _send : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    disabledBackgroundColor: AppColors.textTertiary,
+                  ),
+                  child: _isSending
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text("Send", style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
