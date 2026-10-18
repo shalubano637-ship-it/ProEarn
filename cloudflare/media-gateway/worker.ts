@@ -101,10 +101,12 @@ async function moderateBytes(env: Env, bytes: Uint8Array, contentType: string, u
         },
         {
           role: "user",
-          content: `Classify this uploaded image for userId ${userId}.`,
+          content: [
+            { type: "text", text: `Classify this uploaded image for userId ${userId}. Apply the safety rules in the system message and return the required JSON object.` },
+            { type: "image_url", image_url: { url: dataUrl } },
+          ],
         },
       ],
-      image: dataUrl,
       guided_json: {
         schema: {
           type: "object",
