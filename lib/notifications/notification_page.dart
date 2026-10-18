@@ -155,7 +155,9 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
                     final timestamp = data['timestamp'];
                     if (timestamp == null) continue; // Skip docs without valid timestamp
 
-                    final DateTime date = DateTime.parse(timestamp.toString());
+                    // Supabase/Postgres timestamps are typically returned in UTC. Convert to the
+                    // device's local timezone before grouping into Today/Yesterday/date.
+                    final DateTime date = DateTime.parse(timestamp.toString()).toLocal();
                     final String label = _getGroupLabel(date);
 
                     if (groupedNotifications[label] == null) {
@@ -185,7 +187,10 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
                         final String notificationCommentId = data['commentId'] ?? data['id'].toString();
 
                         final timestamp = data['timestamp'];
-                        final String timeText = timestamp != null ? _formatTime(DateTime.parse(timestamp.toString())) : '';
+                        // Always display the timestamp in the user's local timezone, not UTC.
+                        final String timeText = timestamp != null
+                            ? _formatTime(DateTime.parse(timestamp.toString()).toLocal())
+                            : '';
 
                         String rawMessage = data['message'] ?? '';
                         if (rawMessage.trim().isEmpty) {
