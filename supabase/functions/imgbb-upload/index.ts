@@ -20,17 +20,41 @@ Deno.serve(async req=>{
   if(!["image/jpeg","image/png","image/webp"].includes(type))return json({error:"Unsupported image type"},415);
   if(!/^[A-Za-z0-9+/]*={0,2}$/.test(image))return json({error:"Invalid base64 image"},400);
 
-  // Public feed posts must pass server moderation. Private chat/comment/room images
-  // already pass the app's on-device moderation; do not make those uploads depend
-  // on the external AI gateway being available.
+  // Public feed posts must pass server moderation. Retry transient gateway/network
+  // failures, but never upload a post when moderation cannot confirm it is safe.
   if(folder==="posts"){
-   let mr:Response;
-   try{mr=await fetch(GATEWAY+"/v1/moderate-image",{method:"POST",headers:{Authorization:auth,"Content-Type":"application/json"},body:JSON.stringify({imageBase64:image,contentType:type})})}
-   catch(e){console.error("moderation gateway request failed",String(e));return json({error:"Server moderation unavailable"},503)}
+   let mr:Response|undefined;
+   let lastNetworkError:unknown;
+   for(let attempt=1;attempt<=3;attempt++){
+    try{
+     mr=await fetch(GATEWAY+"/v1/moderate-image",{
+      method:"POST",
+      headers:{Authorization:auth,"Content-Type":"application/json"},
+      body:JSON.stringify({imageBase64:image,contentType:type}),
+     });
+     if(mr.status>=500&&attempt<3){
+      console.error("moderation gateway returned transient server error",mr.status,"attempt",attempt);
+      await mr.body?.cancel();
+      await new Promise(resolve=>setTimeout(resolve,400*attempt));
+      continue;
+     }
+     break;
+    }catch(e){
+     lastNetworkError=e;
+     console.error("moderation gateway request failed","attempt",attempt,String(e));
+     if(attempt<3) await new Promise(resolve=>setTimeout(resolve,400*attempt));
+    }
+   }
+   if(!mr){
+    console.error("moderation gateway unreachable after retries",String(lastNetworkError));
+    return json({error:"Server moderation unavailable",details:"Moderation gateway could not be reached after 3 attempts"},503);
+   }
    const m=await mr.json().catch(()=>({}));
    if(!mr.ok||m?.safe!==true){
-    console.error("server moderation rejected/unavailable",mr.status);
-    return json({error:mr.status===422?"Image rejected by server moderation":"Server moderation unavailable"},mr.status===422?422:mr.status===401?401:503);
+    console.error("server moderation rejected/unavailable",mr.status,m?.reason??m?.error??"no reason");
+    if(mr.status===422)return json({error:m?.reason==="Server moderation unavailable"?"Server moderation temporarily unavailable":"Image rejected by server moderation",reason:m?.reason??"Content rejected"},422);
+    if(mr.status===401)return json({error:"Moderation authorization failed"},401);
+    return json({error:"Server moderation unavailable",details:String(m?.reason??m?.error??("Gateway HTTP "+mr.status))},503);
    }
   }
 
