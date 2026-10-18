@@ -48,6 +48,7 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     let eventKey = "";
+    let chestProgressTable: "chest_progress" | "coin_chest_progress" | null = null;
 
     if (["like", "comment", "get"].includes(type)) {
       if (!/^[0-9a-f-]{36}$/i.test(targetPostId)) return json({ error: "Invalid post" }, 400);
@@ -99,7 +100,7 @@ Deno.serve(async (req) => {
       // persisted isUnlocked flag. unlockAt is authoritative for due chests.
       const now = Date.now();
       const { data: coinChest } = await admin.from("coin_chest_progress")
-        .select("currentChestIndex,unlockAt,isUnlocked").eq("uid", senderId).maybeSingle();
+        .select("currentChestIndex,unlockAt,isUnlocked,pushSentAt").eq("uid", senderId).maybeSingle();
       const { data: giftChest } = await admin.from("chest_progress")
         .select("currentChestIndex,unlockAt,isUnlocked").eq("uid", senderId).maybeSingle();
 
