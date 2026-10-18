@@ -54,7 +54,7 @@ Deno.serve(async req=>{
     console.error("server moderation rejected/unavailable",mr.status,m?.reason??m?.error??"no reason");
     if(mr.status===422)return json({error:m?.reason==="Server moderation unavailable"?"Server moderation temporarily unavailable":"Image rejected by server moderation",reason:m?.reason??"Content rejected"},422);
     if(mr.status===401)return json({error:"Moderation authorization failed"},401);
-    return json({error:"Server moderation unavailable",details:String(m?.reason??m?.error??("Gateway HTTP "+mr.status))},503);
+    return json({error:"Server moderation unavailable",details:String(m?.reason??m?.detail??m?.error??("Gateway HTTP "+mr.status))},503);
    }
   }
 
