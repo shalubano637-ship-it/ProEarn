@@ -34,6 +34,7 @@ class _MessagesListPageState extends State<MessagesListPage> {
   bool _isBannerLoaded = false;
 
   Future<List<Map<String, dynamic>>>? _conversationsFuture;
+  RealtimeChannel? _chatUpdatesChannel;
 
   Future<List<Map<String, dynamic>>> _fetchConversations() async {
     final currentUid = Supabase.instance.client.auth.currentUser?.id ?? '';
@@ -90,6 +91,23 @@ class _MessagesListPageState extends State<MessagesListPage> {
   void initState() {
     super.initState();
     _conversationsFuture = _fetchConversations();
+    final client = Supabase.instance.client;
+    // Refresh the inbox whenever a conversation or message changes so the most
+    // recently active chat moves to the top without reopening the page.
+    _chatUpdatesChannel = client.channel('messages-list-${client.auth.currentUser?.id ?? 'user'}')
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'conversations',
+        callback: (_) => _refreshConversations(),
+      )
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.insert,
+        schema: 'public',
+        table: 'messages',
+        callback: (_) => _refreshConversations(),
+      )
+      ..subscribe();
     _loadBannerAd();
     _searchController.addListener(() {
       _searchDebounce?.cancel();
@@ -116,6 +134,8 @@ class _MessagesListPageState extends State<MessagesListPage> {
     _searchDebounce?.cancel();
     _searchController.dispose();
     _bannerAd?.dispose();
+    final channel = _chatUpdatesChannel;
+    if (channel != null) Supabase.instance.client.removeChannel(channel);
     super.dispose();
   }
 
@@ -326,6 +346,24 @@ class _ConversationsListState extends State<_ConversationsList> {
     _profilesFuture = _fetchOtherParticipantProfiles();
   }
 
+  Future<int> _fetchUnreadCount(String conversationId, String? lastReadAt) async {
+    try {
+      var query = Supabase.instance.client
+          .from('messages')
+          .select('id')
+          .eq('conversationId', conversationId)
+          .neq('senderId', widget.currentUid);
+      if (lastReadAt != null && lastReadAt.isNotEmpty) {
+        query = query.gt('createdAt', lastReadAt);
+      }
+      final rows = await query;
+      return rows.length;
+    } catch (e) {
+      debugPrint('Could not load unread message count: $e');
+      return 0;
+    }
+  }
+
   Future<Map<String, Map<String, dynamic>>> _fetchOtherParticipantProfiles() async {
     final otherUids = widget.conversations.map((conv) {
       final bool iAmA = conv['participantA'] == widget.currentUid;
@@ -360,12 +398,11 @@ class _ConversationsListState extends State<_ConversationsList> {
             final userName = profile?['userName'] ?? 'User';
             final profileUrl = profile?['profileUrl'] ?? '';
 
-            final lastMessageAtRaw = conv['lastMessageAt'];
             final lastReadAtRaw = iAmA ? conv['lastReadAtA'] : conv['lastReadAtB'];
-            final bool hasUnread = lastMessageAtRaw != null &&
-                (lastReadAtRaw == null ||
-                    DateTime.parse(lastMessageAtRaw.toString())
-                        .isAfter(DateTime.parse(lastReadAtRaw.toString())));
+            final unreadCountFuture = _fetchUnreadCount(
+              conv['id'].toString(),
+              lastReadAtRaw?.toString(),
+            );
 
             if (widget.query.isNotEmpty && !userName.toString().toLowerCase().contains(widget.query)) {
               return const SizedBox.shrink();
@@ -399,17 +436,30 @@ class _ConversationsListState extends State<_ConversationsList> {
                   ),
                 ),
                 title: Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Flexible(child: Text(userName, overflow: TextOverflow.ellipsis)),
-                    if (hasUnread) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        width: 9,
-                        height: 9,
-                        decoration: const BoxDecoration(color: Colors.amber, shape: BoxShape.circle),
+                    Expanded(child: Text(userName, overflow: TextOverflow.ellipsis)),
+                    if (!widget.isForwardMode)
+                      FutureBuilder<int>(
+                        future: unreadCountFuture,
+                        builder: (context, unreadSnapshot) {
+                          final count = unreadSnapshot.data ?? 0;
+                          if (count <= 0) return const SizedBox.shrink();
+                          return Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            constraints: const BoxConstraints(minWidth: 22, minHeight: 22),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                            decoration: const BoxDecoration(
+                              color: AppColors.accent,
+                              shape: BoxShape.circle,
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              count > 99 ? '99+' : count.toString(),
+                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                          );
+                        },
                       ),
-                    ],
                   ],
                 ),
             );
