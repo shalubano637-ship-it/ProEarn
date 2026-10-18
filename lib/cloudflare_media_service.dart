@@ -1,8 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:universal_io/universal_io.dart';
-import 'package:flutter/foundation.dart';
-import 'moderation/moderation_config.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -88,9 +86,8 @@ class CloudflareMediaService {
     );
   }
 
-  /// Kept with the existing call sites so chat/comments/profile/room uploads
-  /// automatically use the new pipeline:
-  /// device moderation -> Cloudflare moderation -> ImgBB storage.
+  /// Uploads through the authenticated Supabase Edge Function. The server
+  /// checks post images with Cloudflare before storing approved images in ImgBB.
   static Future<String> uploadImageBytes(
     Uint8List bytes, {
     String folder = 'posts',
@@ -105,16 +102,6 @@ class CloudflareMediaService {
       throw StateError('Image is too large');
     }
 
-    // Web must pass the browser-side classifier before any network upload.
-    if (kIsWeb) {
-      final verdict = await moderationPipeline.checkBytes(bytes);
-      if (!verdict.isSafe) {
-        throw StateError(
-          'Device moderation rejected image: ' +
-              (verdict.rejectionReason ?? 'content policy violation'),
-        );
-      }
-    }
 
     final response = await Supabase.instance.client.functions.invoke(
       'imgbb-upload',
