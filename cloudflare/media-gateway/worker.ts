@@ -105,13 +105,44 @@ async function moderateBytes(env: Env, bytes: Uint8Array, contentType: string, u
         },
       ],
       image: dataUrl,
-      max_tokens: 80,
+      guided_json: {
+        schema: {
+          type: "object",
+          properties: {
+            safe: { type: "boolean" },
+            reason: { type: "string" },
+          },
+          required: ["safe", "reason"],
+          additionalProperties: false,
+        },
+      },
+      max_tokens: 100,
       temperature: 0,
     });
 
-    const raw = typeof response === "string" ? response : response?.response ?? JSON.stringify(response);
-    const cleaned = String(raw).replace(/^\`\`\`json\s*/i, "").replace(/\`\`\`$/i, "").trim();
-    const parsed = JSON.parse(cleaned) as { safe?: boolean; reason?: string };
+    const raw = typeof response === "string" ? response : response?.response ?? "";
+    const cleaned = String(raw).replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\`\`\`\s*$/i, "").trim();
+    let parsed: { safe?: boolean; reason?: string };
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      const start = cleaned.indexOf("{");
+      const end = cleaned.lastIndexOf("}");
+      if (start < 0 || end <= start) {
+        console.error("moderation model returned non-JSON", cleaned.slice(0, 300));
+        return { safe: false, reason: "Moderation model returned invalid output" };
+      }
+      try {
+        parsed = JSON.parse(cleaned.slice(start, end + 1));
+      } catch {
+        console.error("moderation model returned invalid JSON", cleaned.slice(0, 300));
+        return { safe: false, reason: "Moderation model returned invalid output" };
+      }
+    }
+    if (typeof parsed.safe !== "boolean") {
+      console.error("moderation model missing boolean safe field", cleaned.slice(0, 300));
+      return { safe: false, reason: "Moderation model returned invalid output" };
+    }
     return {
       safe: parsed.safe === true,
       reason: parsed.reason ?? (parsed.safe ? undefined : "Server moderation rejected the image"),
