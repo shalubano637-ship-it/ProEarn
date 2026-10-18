@@ -208,6 +208,13 @@ Deno.serve(async (req) => {
       console.error("OneSignal push failed:", pushResponse.status, errorBody);
       return json({ success: false, pushError: "OneSignal delivery failed" }, 502);
     }
+    if (type === "chest_ready" && chestProgressTable != null) {
+      const { error: markPushError } = await admin.from(chestProgressTable)
+        .update({ pushSentAt: new Date().toISOString() })
+        .eq("uid", senderId)
+        .is("pushSentAt", null);
+      if (markPushError) console.error("Could not persist chest push delivery marker:", markPushError);
+    }
     return json({ success: true });
   } catch (error) {
     console.error("notify error:", error);
