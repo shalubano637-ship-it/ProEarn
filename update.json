@@ -1,15 +1,18 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 24,
-  "versionName": "1.0.23",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.23/proearn.apk",
-  "title": "Temporary Google Sign-In Removal",
-  "message": "Removes Google sign-in while keeping email/password authentication.",
-  "newFeatures": [],
+  "versionCode": 25,
+  "versionName": "1.0.24",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.24/proearn.apk",
+  "title": "Messaging List Fix",
+  "message": "Move active chats to the top and show unread message counts.",
+  "newFeatures": [
+    "Unread message count badges in inbox",
+    "Move conversations to top after new messages"
+  ],
   "fixes": [
-    "Temporarily remove Google sign-in option"
+    "Update conversation lastMessageAt on each inserted message"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1792313547280"
+  "buildTrigger": "1792315291072"
 }
