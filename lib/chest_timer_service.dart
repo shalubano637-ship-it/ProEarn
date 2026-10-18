@@ -212,11 +212,8 @@ class ChestTimerService extends ChangeNotifier {
 
     if (checkDatabase && _unlockAt != null) {
       try {
-        final alreadySent = await _repo.hasChestReadyNotificationSince(uid, _unlockAt!);
-        if (alreadySent) {
-          _notifiedThisUnlock = true;
-          return;
-        }
+        // Inbox notification rows do not confirm OneSignal push delivery.
+        // Keep trying the push endpoint; server-side delivery is deduplicated.
       } catch (e) {
         debugPrint('chest ready notification lookup failed: $e');
       }
