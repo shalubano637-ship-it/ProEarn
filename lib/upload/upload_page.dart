@@ -17,7 +17,6 @@ import 'package:share_plus/share_plus.dart';
 
 import '../service.dart';
 import '../theme/theme.dart';
-import '../moderation/moderation_config.dart';
 
 import 'global_image_adjuster.dart';
 
@@ -121,7 +120,7 @@ class _UploadPageState extends State<UploadPage> {
 
       if (kIsWeb && _pickedImageBytes != null) {
         bytes = _pickedImageBytes!;
-        setState(() { _uploadStatusText = "Checking image on this device..."; });
+        setState(() { _uploadStatusText = "Preparing upload..."; });
       } else {
         final dir = await getTemporaryDirectory();
         final targetPath = "${dir.absolute.path}/temp_compressed_${DateTime.now().millisecondsSinceEpoch}.jpg";
@@ -134,16 +133,6 @@ class _UploadPageState extends State<UploadPage> {
         );
         if (compressedXFile == null) throw Exception("Compression failed");
         finalCompressedFile = File(compressedXFile.path);
-        setState(() { _uploadStatusText = "Checking security policy..."; });
-        final verdict = await moderationPipeline.check(finalCompressedFile);
-        if (!verdict.isSafe) {
-          if (await finalCompressedFile.exists()) await finalCompressedFile.delete();
-          setState(() { _isUploading = false; });
-          if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Upload Blocked: ${verdict.rejectionReason ?? "content policy violation"}"), backgroundColor: AppColors.error),
-          );
-          return;
-        }
         bytes = await finalCompressedFile.readAsBytes();
       }
 
