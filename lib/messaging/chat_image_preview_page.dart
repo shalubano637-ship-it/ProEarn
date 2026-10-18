@@ -5,7 +5,6 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart';
 import '../theme/theme.dart';
 import '../service.dart';
-import '../moderation/moderation_config.dart';
 import '../cloudflare_media_service.dart';
 
 Future<String?> showChatImagePreview(BuildContext context, File imageFile) {
@@ -23,21 +22,20 @@ class _ChatImagePreviewPage extends StatefulWidget {
   State<_ChatImagePreviewPage> createState() => _ChatImagePreviewPageState();
 }
 
-enum _CheckState { checking, safe, unsafe, failed }
+enum _CheckState { preparing, ready, failed }
 
 class _ChatImagePreviewPageState extends State<_ChatImagePreviewPage> {
-  _CheckState _checkState = _CheckState.checking;
-  String? _rejectionReason;
+  _CheckState _checkState = _CheckState.preparing;
   File? _compressedFile;
   bool _isSending = false;
 
   @override
   void initState() {
     super.initState();
-    _runChecks();
+    _prepareImage();
   }
 
-  Future<void> _runChecks() async {
+  Future<void> _prepareImage() async {
     try {
       final dir = await getTemporaryDirectory();
       final targetPath = "${dir.absolute.path}/chat_send_${DateTime.now().millisecondsSinceEpoch}.jpg";
@@ -53,13 +51,10 @@ class _ChatImagePreviewPageState extends State<_ChatImagePreviewPage> {
       if (compressedXFile == null) throw Exception("Compression failed");
       final compressed = File(compressedXFile.path);
 
-      final verdict = await moderationPipeline.check(compressed);
-
       if (!mounted) return;
       setState(() {
         _compressedFile = compressed;
-        _checkState = verdict.isSafe ? _CheckState.safe : _CheckState.unsafe;
-        _rejectionReason = verdict.rejectionReason;
+        _checkState = _CheckState.ready;
       });
     } catch (e) {
       if (mounted) setState(() { _checkState = _CheckState.failed; });
@@ -67,7 +62,7 @@ class _ChatImagePreviewPageState extends State<_ChatImagePreviewPage> {
   }
 
   Future<void> _send() async {
-    if (_checkState != _CheckState.safe || _compressedFile == null || _isSending) return;
+    if (_checkState != _CheckState.ready || _compressedFile == null || _isSending) return;
     setState(() { _isSending = true; });
 
     try {
@@ -108,7 +103,7 @@ class _ChatImagePreviewPageState extends State<_ChatImagePreviewPage> {
               child: Image.file(widget.imageFile, fit: BoxFit.contain),
             ),
           ),
-          if (_checkState == _CheckState.checking)
+          if (_checkState == _CheckState.preparing)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
               child: Row(
@@ -116,73 +111,10 @@ class _ChatImagePreviewPageState extends State<_ChatImagePreviewPage> {
                 children: [
                   SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textTertiary)),
                   SizedBox(width: AppSpacing.sm),
-                  Text("Checking image...", style: TextStyle(color: AppColors.textTertiary, fontSize: 13)),
+                  Text("Preparing image...", style: TextStyle(color: AppColors.textTertiary, fontSize: 13)),
                 ],
               ),
             ),
-          if (_checkState == _CheckState.unsafe)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.all(AppSpacing.md),
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.error.withOpacity(0.15),
-                borderRadius: AppRadius.mdRadius,
-                border: Border.all(color: AppColors.error),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.warning_amber_rounded, color: AppColors.error),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      _rejectionReason ?? "This image can't be sent — it may contain content that isn't allowed.",
-                      style: const TextStyle(color: AppColors.error, fontSize: 13, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          if (_checkState == _CheckState.failed)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.all(AppSpacing.md),
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(color: AppColors.surfaceElevated, borderRadius: AppRadius.mdRadius),
-              child: Row(
-                children: [
-                  const Icon(Icons.error_outline, color: AppColors.textTertiary),
-                  const SizedBox(width: AppSpacing.sm),
-                  const Expanded(
-                    child: Text("Couldn't check this image — try again.", style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                  ),
-                  TextButton(
-                    onPressed: () => setState(() { _checkState = _CheckState.checking; _runChecks(); }),
-                    child: const Text("Retry"),
-                  ),
-                ],
-              ),
-            ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _canSend ? _send : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    disabledBackgroundColor: AppColors.textTertiary,
-                  ),
-                  child: _isSending
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text("Send", style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
