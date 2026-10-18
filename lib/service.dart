@@ -160,7 +160,6 @@ Future<void> sendNotification({
 Future<String?> uploadImageBytesToMediaGateway(
   Uint8List bytes, {
   String folder = 'posts',
-  bool clientModerated = false,
 }) async {
   try {
     return await CloudflareMediaService.uploadImageBytes(
