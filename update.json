@@ -1,16 +1,15 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 22,
-  "versionName": "1.0.21",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.21/proearn.apk",
-  "title": "Chest Push Notification Fix",
-  "message": "Fixes chest-ready push notification delivery and retries.",
-  "newFeatures": [],
-  "fixes": [
-    "Retry chest-ready push notifications even when an in-app notification already exists",
-    "Track successful chest push delivery separately from inbox notification records"
+  "versionCode": 23,
+  "versionName": "1.0.22",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.22/proearn.apk",
+  "title": "Google Sign-In",
+  "message": "Adds Google sign-in to login and signup screens.",
+  "newFeatures": [
+    "Google OAuth sign-in on login and signup screens"
   ],
+  "fixes": [],
   "forceUpdate": false,
-  "buildTrigger": "1792310027039"
+  "buildTrigger": "1792311730001"
 }
