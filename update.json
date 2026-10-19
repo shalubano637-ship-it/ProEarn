@@ -2,8 +2,8 @@
   "published": true,
   "status": "published",
   "versionCode": 25,
-  "versionName": "1.0.24",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.24/proearn.apk",
+  "versionName": "1.0.25",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.25/proearn.apk",
   "title": "Messaging List Fix",
   "message": "Move active chats to the top and show unread message counts.",
   "newFeatures": [
