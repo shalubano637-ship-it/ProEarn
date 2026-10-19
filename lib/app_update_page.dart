@@ -24,12 +24,10 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
   @override
   void initState() {
     super.initState();
-    _info = widget.updateInfo;
-    if (_info != null) {
-      _checking = false;
-    } else {
-      _load();
-    }
+    // Always verify against the installed build number. A passed updateInfo
+    // can be stale after the user has already installed this version.
+    _info = null;
+    _load();
   }
 
   Future<void> _load() async {
