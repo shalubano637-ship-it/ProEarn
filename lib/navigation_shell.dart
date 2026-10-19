@@ -409,6 +409,7 @@ class _MessagesUnreadNavIconState extends State<_MessagesUnreadNavIcon> {
   int _unreadCount = 0;
   bool _loaded = false;
   bool _fetching = false;
+  bool _refreshRequested = false;
 
   @override
   void initState() {
@@ -434,7 +435,10 @@ class _MessagesUnreadNavIconState extends State<_MessagesUnreadNavIcon> {
   }
 
   Future<void> _loadUnreadCount() async {
-    if (_fetching) return;
+    if (_fetching) {
+      _refreshRequested = true;
+      return;
+    }
     final uid = _client.auth.currentUser?.id;
     if (uid == null) return;
     _fetching = true;
@@ -470,6 +474,10 @@ class _MessagesUnreadNavIconState extends State<_MessagesUnreadNavIcon> {
       if (mounted) setState(() => _loaded = true);
     } finally {
       _fetching = false;
+      if (_refreshRequested && mounted) {
+        _refreshRequested = false;
+        _loadUnreadCount();
+      }
     }
   }
 
