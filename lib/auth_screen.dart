@@ -748,6 +748,27 @@ if (showTerms)
                     ),
                   ),
                 ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text("OR", style: AppTextStyles.bodyMedium.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                    ),
+                    Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: OutlinedButton.icon(
+                    onPressed: handleGoogleAuth,
+                    icon: const Icon(Icons.g_mobiledata, size: 30),
+                    label: Text(isLogin ? "CONTINUE WITH GOOGLE" : "SIGN UP WITH GOOGLE"),
+                  ),
+                ),
                 const SizedBox(height: 20),
                 GestureDetector(
                   onTap: () { setState(() { isLogin = !isLogin; }); },
