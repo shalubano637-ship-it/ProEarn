@@ -500,6 +500,9 @@ class _ConversationsListState extends State<_ConversationsList> {
                       FutureBuilder<int?>(
                         future: unreadCountFuture,
                         builder: (context, unreadSnapshot) {
+                          if (unreadSnapshot.connectionState == ConnectionState.waiting) {
+                            return const SizedBox.shrink();
+                          }
                           if (unreadSnapshot.hasError || unreadSnapshot.data == null) {
                             return const Tooltip(
                               message: 'Unread count could not be loaded',
