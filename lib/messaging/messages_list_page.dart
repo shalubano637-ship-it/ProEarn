@@ -495,7 +495,10 @@ class _ConversationsListState extends State<_ConversationsList> {
                 ),
                 title: Row(
                   children: [
-                    Expanded(child: Text(userName, overflow: TextOverflow.ellipsis)),
+                    Flexible(
+                      fit: FlexFit.loose,
+                      child: Text(userName, overflow: TextOverflow.ellipsis),
+                    ),
                     if (!widget.isForwardMode)
                       FutureBuilder<int?>(
                         future: unreadCountFuture,
