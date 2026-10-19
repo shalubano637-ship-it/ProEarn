@@ -1392,14 +1392,12 @@ class _ImageGroupViewerPageState extends State<_ImageGroupViewerPage> {
                 ),
               ),
               Positioned(
-                top: 8,
+                top: 0,
                 right: 8,
-                child: SafeArea(
-                  child: IconButton(
-                    icon: const Icon(Icons.more_vert, color: Colors.white),
-                    tooltip: "Reply / Forward / Remove",
-                    onPressed: () => _showPhotoMenu(msg),
-                  ),
+                child: IconButton(
+                  icon: const Icon(Icons.more_vert, color: Colors.white),
+                  tooltip: "Reply / Forward / Remove",
+                  onPressed: () => _showPhotoMenu(msg),
                 ),
               ),
             ],
