@@ -1,7 +1,7 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 25,
+  "versionCode": 26,
   "versionName": "1.0.25",
   "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.25/proearn.apk",
   "title": "Messaging List Fix",
@@ -14,5 +14,5 @@
     "Update conversation lastMessageAt on each inserted message"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1792315291072"
+  "buildTrigger": "1792397956305"
 }
