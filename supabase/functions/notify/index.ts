@@ -141,7 +141,6 @@ Deno.serve(async (req) => {
         (type === "comment" && targetPrefs.notifyComments === false) ||
         (type === "follow" && targetPrefs.notifyFollow === false) ||
         (type === "message" && targetPrefs.notifyMessages === false) ||
-        (type === "chest_ready" && targetPrefs.notifyChestReady === false) ||
         (type === "message" && Array.isArray(targetPrefs.mutedUsers) &&
           targetPrefs.mutedUsers.map(String).includes(senderId))) {
       return json({ success: true });
@@ -177,7 +176,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (targetPrefs.pushNotificationsEnabled !== true) return json({ success: true });
+    // Keep the in-app chest notification even when chest push notifications are disabled.
+    // This preference controls OneSignal delivery, not the Notifications inbox.
+    if (targetPrefs.pushNotificationsEnabled !== true ||
+        (type === "chest_ready" && targetPrefs.notifyChestReady === false)) {
+      return json({ success: true });
+    }
 
     const pushTitle = type === "chest_ready" ? "Chest Ready" : "You have a new notification";
     const pushBody = type === "like" ? "Someone liked your post" :
