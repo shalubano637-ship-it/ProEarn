@@ -380,7 +380,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           items: [
             const BottomNavigationBarItem(icon: Icon(Icons.video_library_outlined), label: "Reels"),
             const BottomNavigationBarItem(icon: Icon(Icons.leaderboard_outlined), label: "Rank"),
-            const BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: "Messages"),
+            BottomNavigationBarItem(icon: const _MessagesUnreadNavIcon(), label: "Messages"),
             const BottomNavigationBarItem(icon: Icon(Icons.add_box_outlined), label: "Upload"),
             BottomNavigationBarItem(
               icon: const Icon(Icons.forum_outlined),
@@ -390,6 +390,129 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             const BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
           ],
         ),
+      ),
+    );
+  }
+}
+
+
+class _MessagesUnreadNavIcon extends StatefulWidget {
+  const _MessagesUnreadNavIcon();
+
+  @override
+  State<_MessagesUnreadNavIcon> createState() => _MessagesUnreadNavIconState();
+}
+
+class _MessagesUnreadNavIconState extends State<_MessagesUnreadNavIcon> {
+  final SupabaseClient _client = Supabase.instance.client;
+  RealtimeChannel? _channel;
+  int _unreadCount = 0;
+  bool _loaded = false;
+  bool _fetching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnreadCount();
+    final uid = _client.auth.currentUser?.id;
+    if (uid != null) {
+      _channel = _client.channel('messages-nav-unread-$uid')
+        ..onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'messages',
+          callback: (_) => _loadUnreadCount(),
+        )
+        ..onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'conversations',
+          callback: (_) => _loadUnreadCount(),
+        )
+        ..subscribe();
+    }
+  }
+
+  Future<void> _loadUnreadCount() async {
+    if (_fetching) return;
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return;
+    _fetching = true;
+    try {
+      final rows = await _client
+          .from('conversations')
+          .select('id,participantA,participantB,lastReadAtA,lastReadAtB')
+          .or('participantA.eq.$uid,participantB.eq.$uid');
+      var total = 0;
+      for (final conv in rows) {
+        final isA = conv['participantA'] == uid;
+        final lastReadAt = (isA ? conv['lastReadAtA'] : conv['lastReadAtB'])?.toString();
+        var query = _client
+            .from('messages')
+            .select('id')
+            .eq('conversationId', conv['id'].toString())
+            .neq('senderId', uid);
+        if (lastReadAt != null && lastReadAt.isNotEmpty) {
+          query = query.gt('createdAt', lastReadAt);
+        }
+        final unreadRows = await query;
+        total += unreadRows.length;
+      }
+      if (mounted) {
+        setState(() {
+          _unreadCount = total;
+          _loaded = true;
+        });
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Could not load total unread message badge: $e');
+      debugPrintStack(stackTrace: stackTrace);
+      if (mounted) setState(() => _loaded = true);
+    } finally {
+      _fetching = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    final channel = _channel;
+    if (channel != null) _client.removeChannel(channel);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 34,
+      height: 30,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          const Icon(Icons.chat_bubble_outline),
+          if (_loaded && _unreadCount > 0)
+            Positioned(
+              right: -7,
+              top: -6,
+              child: Container(
+                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: const BoxDecoration(
+                  color: AppColors.error,
+                  borderRadius: BorderRadius.all(Radius.circular(10)),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _unreadCount > 99 ? '99+' : _unreadCount.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
