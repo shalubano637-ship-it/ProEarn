@@ -339,14 +339,42 @@ class _ConversationsList extends StatefulWidget {
 
 class _ConversationsListState extends State<_ConversationsList> {
   late Future<Map<String, Map<String, dynamic>>> _profilesFuture;
+  final Map<String, Future<int?>> _unreadCountFutures = {};
+  RealtimeChannel? _unreadUpdatesChannel;
 
   @override
   void initState() {
     super.initState();
     _profilesFuture = _fetchOtherParticipantProfiles();
+
+    // Refresh unread counts independently of the parent inbox refresh.
+    // A new message or a read-marker update must invalidate cached counts.
+    final client = Supabase.instance.client;
+    _unreadUpdatesChannel = client
+        .channel('unread-counts-${widget.currentUid}')
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.insert,
+        schema: 'public',
+        table: 'messages',
+        callback: (_) => _refreshUnreadCounts(),
+      )
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.update,
+        schema: 'public',
+        table: 'conversations',
+        callback: (_) => _refreshUnreadCounts(),
+      )
+      ..subscribe();
   }
 
-  Future<int> _fetchUnreadCount(String conversationId, String? lastReadAt) async {
+  void _refreshUnreadCounts() {
+    if (!mounted) return;
+    setState(() {
+      _unreadCountFutures.clear();
+    });
+  }
+
+  Future<int?> _fetchUnreadCount(String conversationId, String? lastReadAt) async {
     try {
       var query = Supabase.instance.client
           .from('messages')
@@ -358,10 +386,40 @@ class _ConversationsListState extends State<_ConversationsList> {
       }
       final rows = await query;
       return rows.length;
-    } catch (e) {
-      debugPrint('Could not load unread message count: $e');
-      return 0;
+    } catch (e, stackTrace) {
+      // Keep query failures visible in logs instead of silently treating them
+      // as a genuine zero-unread state.
+      debugPrint('Could not load unread count for conversation $conversationId: $e');
+      debugPrintStack(stackTrace: stackTrace);
+      return null;
     }
+  }
+
+  Future<int?> _unreadCountFuture(String conversationId, String? lastReadAt) {
+    final cacheKey = '$conversationId|${lastReadAt ?? ''}';
+    return _unreadCountFutures.putIfAbsent(
+      cacheKey,
+      () => _fetchUnreadCount(conversationId, lastReadAt),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _ConversationsList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.conversations != widget.conversations ||
+        oldWidget.currentUid != widget.currentUid) {
+      _unreadCountFutures.clear();
+      _profilesFuture = _fetchOtherParticipantProfiles();
+    }
+  }
+
+  @override
+  void dispose() {
+    final channel = _unreadUpdatesChannel;
+    if (channel != null) {
+      Supabase.instance.client.removeChannel(channel);
+    }
+    super.dispose();
   }
 
   Future<Map<String, Map<String, dynamic>>> _fetchOtherParticipantProfiles() async {
@@ -399,7 +457,7 @@ class _ConversationsListState extends State<_ConversationsList> {
             final profileUrl = profile?['profileUrl'] ?? '';
 
             final lastReadAtRaw = iAmA ? conv['lastReadAtA'] : conv['lastReadAtB'];
-            final unreadCountFuture = _fetchUnreadCount(
+            final unreadCountFuture = _unreadCountFuture(
               conv['id'].toString(),
               lastReadAtRaw?.toString(),
             );
@@ -439,10 +497,16 @@ class _ConversationsListState extends State<_ConversationsList> {
                   children: [
                     Expanded(child: Text(userName, overflow: TextOverflow.ellipsis)),
                     if (!widget.isForwardMode)
-                      FutureBuilder<int>(
+                      FutureBuilder<int?>(
                         future: unreadCountFuture,
                         builder: (context, unreadSnapshot) {
-                          final count = unreadSnapshot.data ?? 0;
+                          if (unreadSnapshot.hasError || unreadSnapshot.data == null) {
+                            return const Tooltip(
+                              message: 'Unread count could not be loaded',
+                              child: Icon(Icons.error_outline, size: 16, color: AppColors.error),
+                            );
+                          }
+                          final count = unreadSnapshot.data!;
                           if (count <= 0) return const SizedBox.shrink();
                           return Container(
                             margin: const EdgeInsets.only(left: 8),
