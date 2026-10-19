@@ -1,18 +1,17 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 26,
-  "versionName": "1.0.25",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.25/proearn.apk",
-  "title": "Messaging List Fix",
-  "message": "Move active chats to the top and show unread message counts.",
+  "versionCode": 27,
+  "versionName": "1.0.26",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.26/proearn.apk",
+  "title": "Update Checker Fix",
+  "message": "Fix repeated update prompts after installing the current version.",
   "newFeatures": [
-    "Unread message count badges in inbox",
-    "Move conversations to top after new messages"
+    "Verify installed build before showing update details"
   ],
   "fixes": [
-    "Update conversation lastMessageAt on each inserted message"
+    "Prevent stale update information from appearing after an update is installed"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1792397956305"
+  "buildTrigger": "1792410000000"
 }
