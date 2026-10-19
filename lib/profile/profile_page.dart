@@ -105,11 +105,19 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<Map<String, dynamic>?> _loadProfileData(String uid) async {
     final profile = await Supabase.instance.client.from('public_profiles').select().eq('uid', uid).maybeSingle();
     if (profile == null) return null;
-    if (widget.isOwnProfile) {
-      final own = await Supabase.instance.client.from('users').select('followers,following').eq('uid', uid).maybeSingle();
-      return {...profile, 'followers': own?['followers'] ?? const [], 'following': own?['following'] ?? const []};
-    }
-    return profile;
+    // The public_profiles view intentionally contains profile-safe fields only.
+    // Follow relationships live on users, so load those arrays for both own and
+    // other profiles; otherwise the follow button and lists always appear empty.
+    final relationshipData = await Supabase.instance.client
+        .from('users')
+        .select('followers,following')
+        .eq('uid', uid)
+        .maybeSingle();
+    return {
+      ...profile,
+      'followers': relationshipData?['followers'] ?? const [],
+      'following': relationshipData?['following'] ?? const [],
+    };
   }
 
   Future<void> _refreshProfile() async {
@@ -400,6 +408,9 @@ class _ProfilePageState extends State<ProfilePage> {
                                               message: 'started following you.',
                                             );
                                           }
+                                          // Reload the relationship arrays so the button,
+                                          // counts, and follow lists reflect the database.
+                                          await _refreshProfile();
                                         } catch (e) {
                                           debugPrint("toggle_follow failed: $e");
                                           if (context.mounted) {
