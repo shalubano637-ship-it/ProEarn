@@ -200,6 +200,8 @@ class _LoginPageState extends State<LoginPage> {
   bool showResetFields = false;
   bool isSendingReset = false;
   bool resetLinkSent = false;
+  bool isGoogleAuthStarting = false;
+  StreamSubscription<AuthState>? _authSubscription;
   final TextEditingController resetEmailController = TextEditingController();
   final TextEditingController signupUsername = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -211,6 +213,17 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((state) {
+      if (state.event == AuthChangeEvent.signedIn &&
+          isGoogleAuthStarting &&
+          mounted) {
+        isGoogleAuthStarting = false;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const SplashPage()),
+          (route) => false,
+        );
+      }
+    });
     if (widget.bannedMessage) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -227,6 +240,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
+    _authSubscription?.cancel();
     resetEmailController.dispose();
     signupUsername.dispose();
     emailController.dispose();
@@ -258,6 +272,41 @@ class _LoginPageState extends State<LoginPage> {
       isSendingReset = false;
       resetLinkSent = true;
     });
+  }
+
+  Future<void> handleGoogleAuth() async {
+    if (!acceptTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Accept Terms & Privacy Policy")),
+      );
+      return;
+    }
+
+    setState(() => isGoogleAuthStarting = true);
+    try {
+      final started = await Supabase.instance.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'io.supabase.proearn://login-callback/',
+      );
+      if (!started && mounted) {
+        setState(() => isGoogleAuthStarting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Could not start Google sign-in. Please try again.")),
+        );
+      }
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() => isGoogleAuthStarting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Google sign-in failed: ${e.message}")),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => isGoogleAuthStarting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Google sign-in failed: $e")),
+      );
+    }
   }
 
   Future<void> handleAuth() async {
@@ -644,6 +693,38 @@ if (showTerms)
                     style: ElevatedButton.styleFrom(backgroundColor: theme.colorScheme.primary, foregroundColor: theme.colorScheme.onPrimary),
                     onPressed: handleAuth,
                     child: Text(isLogin ? "LOGIN" : "SIGN UP", style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text("OR", style: AppTextStyles.bodyMedium.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                    ),
+                    Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: OutlinedButton.icon(
+                    onPressed: isGoogleAuthStarting ? null : handleGoogleAuth,
+                    icon: isGoogleAuthStarting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.g_mobiledata, size: 30),
+                    label: Text(
+                      isGoogleAuthStarting
+                          ? "CONNECTING TO GOOGLE..."
+                          : (isLogin ? "CONTINUE WITH GOOGLE" : "SIGN UP WITH GOOGLE"),
+                      style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
