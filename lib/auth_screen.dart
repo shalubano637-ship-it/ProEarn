@@ -309,27 +309,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  Future<void> handleGoogleAuth() async {
-    if (!acceptTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Accept Terms & Privacy Policy")),
-      );
-      return;
-    }
-    try {
-      await Supabase.instance.client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: 'io.supabase.proearn://login-callback/',
-      );
-    } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Google sign-in failed: ${e.message}")),
-        );
-      }
-    }
-  }
-
   Future<void> handleAuth() async {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
