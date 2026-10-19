@@ -1,17 +1,18 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 27,
-  "versionName": "1.0.26",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.26/proearn.apk",
-  "title": "Update Checker Fix",
-  "message": "Fix repeated update prompts after installing the current version.",
+  "versionCode": 28,
+  "versionName": "1.0.27",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.27/proearn.apk",
+  "title": "Welcome Rewards Cycle Fix",
+  "message": "Fixes the 7-day gift cycle and prevents multiple daily claims.",
   "newFeatures": [
-    "Verify installed build before showing update details"
+    "7-day gift rewards repeat after Day 7",
+    "One gift claim per India calendar day"
   ],
   "fixes": [
-    "Prevent stale update information from appearing after an update is installed"
+    "Prevent the next day's gift from unlocking immediately after a claim"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1792410000000"
+  "buildTrigger": "1792405433868"
 }

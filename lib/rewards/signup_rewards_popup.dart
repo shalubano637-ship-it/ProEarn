@@ -181,7 +181,7 @@ class _SignupRewardsPopupState extends State<SignupRewardsPopup> {
                           SizedBox(height: 5),
                           Text('7-Day Gift Rewards', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900, color: Colors.white)),
                           SizedBox(height: 3),
-                          Text('Claim gifts in order — no calendar-day deadline', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Colors.white)),
+                          Text('One gift per day • the 7-day cycle repeats', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Colors.white)),
                         ]),
                       ),
                       const SizedBox(height: 12),
@@ -249,7 +249,13 @@ class _SignupRewardsPopupState extends State<SignupRewardsPopup> {
                         }).toList(),
                       ),
                       const SizedBox(height: 5),
-                      const Text('Missed a day? No problem. Your next gift stays available until you claim it.', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Colors.black54)),
+                      Text(
+                        _status?['canClaimToday'] == false
+                            ? 'You have already claimed today’s gift. Your next gift unlocks tomorrow.'
+                            : 'Claim one gift each day. After Day 7, the next cycle starts again at Day 1.',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 11, color: Colors.black54),
+                      ),
                     ],
                     if (code.isNotEmpty) ...[
                       const SizedBox(height: 12),
