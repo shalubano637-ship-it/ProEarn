@@ -48,7 +48,7 @@ class CoinShopPage extends StatelessWidget {
                 Row(children: [
                   Container(width: 54, height: 54, decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.accent,
                     boxShadow: [BoxShadow(color: AppColors.accent.withOpacity(.25), blurRadius: 18)]),
-                    child: const Center(child: Text('✦', style: TextStyle(fontSize: 30, color: Color(0xFF171717), fontWeight: FontWeight.w900)))),
+                    child: const Center(child: _CoinMark(size: 30))),
                   const SizedBox(width: 12),
                   const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('PRO EARN VAULT', style: TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 1.8, fontWeight: FontWeight.w700)),
@@ -92,7 +92,7 @@ class CoinShopPage extends StatelessWidget {
                     Expanded(child: Padding(padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                         Container(width: 48, height: 48, decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.accent.withOpacity(.16)),
-                          child: const Center(child: Text('✦', style: TextStyle(fontSize: 27, color: AppColors.accent, fontWeight: FontWeight.w900)))),
+                          child: const Center(child: _CoinMark(size: 27, background: AppColors.accent, foreground: Colors.black))),
                         const SizedBox(height: 7),
                         Text('${pack.coins + pack.bonus}', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
                         Text('coins total', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
@@ -132,4 +132,18 @@ class CoinShopPage extends StatelessWidget {
       ),
     );
   }
+}
+
+class _CoinMark extends StatelessWidget {
+  final double size;
+  final Color background;
+  final Color foreground;
+  const _CoinMark({required this.size, this.background = AppColors.accent, this.foreground = Colors.black});
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size, height: size,
+    decoration: BoxDecoration(color: background, shape: BoxShape.circle),
+    alignment: Alignment.center,
+    child: Text('✦', style: TextStyle(fontSize: size * .66, height: 1, color: foreground, fontWeight: FontWeight.w900)),
+  );
 }
