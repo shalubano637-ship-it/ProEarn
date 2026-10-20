@@ -4,13 +4,13 @@ import 'theme/theme.dart';
 class CoinShopPage extends StatelessWidget {
   const CoinShopPage({super.key});
 
-  static const _packs = <({int coins, int bonus, int price, String gift, String tag})>[
-    (coins: 100, bonus: 0, price: 9, gift: 'Mini Gift', tag: 'FIRST BUY'),
-    (coins: 250, bonus: 25, price: 19, gift: 'Love Gift', tag: ''),
-    (coins: 600, bonus: 100, price: 39, gift: 'Star Gift', tag: 'POPULAR'),
-    (coins: 1400, bonus: 300, price: 79, gift: 'Super Gift', tag: ''),
-    (coins: 3000, bonus: 800, price: 149, gift: 'Royal Gift', tag: 'BEST VALUE'),
-    (coins: 7000, bonus: 2200, price: 299, gift: 'Mega Gift', tag: ''),
+  static const _packs = <({int coins, int bonus, int originalPrice, int offerPrice, String gift, String tag})>[
+    (coins: 100, bonus: 0, originalPrice: 29, offerPrice: 9, gift: 'Mini Gift', tag: 'FIRST BUY'),
+    (coins: 250, bonus: 25, originalPrice: 49, offerPrice: 19, gift: 'Love Gift', tag: ''),
+    (coins: 600, bonus: 100, originalPrice: 99, offerPrice: 39, gift: 'Star Gift', tag: 'POPULAR'),
+    (coins: 1400, bonus: 300, originalPrice: 199, offerPrice: 79, gift: 'Super Gift', tag: ''),
+    (coins: 3000, bonus: 800, originalPrice: 399, offerPrice: 149, gift: 'Royal Gift', tag: 'BEST VALUE'),
+    (coins: 7000, bonus: 2200, originalPrice: 799, offerPrice: 299, gift: 'Mega Gift', tag: ''),
   ];
 
   void _paymentNotice(BuildContext context) {
@@ -64,9 +64,9 @@ class CoinShopPage extends StatelessWidget {
                     Expanded(child: Text('Every pack comes with a bonus gift', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
                   ])),
                 const SizedBox(height: 12),
-                const Text('FIRST PURCHASE: 70% OFF', style: TextStyle(color: AppColors.accent, fontSize: 15, fontWeight: FontWeight.w900)),
+                const Text('FIRST PURCHASE DEALS: UP TO 70% OFF', style: TextStyle(color: AppColors.accent, fontSize: 15, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 3),
-                const Text('Small, affordable packs for easy top-ups.', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                const Text('Original prices are crossed out; first-purchase offer prices are shown below.', style: TextStyle(color: Colors.white70, fontSize: 12)),
               ]),
             ),
             const SizedBox(height: 20),
@@ -105,13 +105,17 @@ class CoinShopPage extends StatelessWidget {
                         ]),
                       ]))),
                     Padding(padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-                      child: SizedBox(width: double.infinity, child: FilledButton(
-                        style: FilledButton.styleFrom(backgroundColor: highlighted ? AppColors.accent : colors.primary,
-                          foregroundColor: highlighted ? Colors.black : colors.onPrimary, padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                        onPressed: () => _paymentNotice(context),
-                        child: Text('₹${pack.price}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
-                      ))),
+                      child: Column(children: [
+                        Text('₹${pack.originalPrice}', style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant, decoration: TextDecoration.lineThrough, decorationThickness: 2)),
+                        const SizedBox(height: 2),
+                        SizedBox(width: double.infinity, child: FilledButton(
+                          style: FilledButton.styleFrom(backgroundColor: highlighted ? AppColors.accent : colors.primary,
+                            foregroundColor: highlighted ? Colors.black : colors.onPrimary, padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                          onPressed: () => _paymentNotice(context),
+                          child: Text('₹${pack.offerPrice}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                        )),
+                      ])),
                   ]),
                 );
               },
@@ -120,7 +124,7 @@ class CoinShopPage extends StatelessWidget {
             Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: colors.surfaceContainerHighest.withOpacity(.55), borderRadius: BorderRadius.circular(14)),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Icon(Icons.info_outline, color: colors.onSurfaceVariant, size: 18), const SizedBox(width: 8),
-                Expanded(child: Text('Payment integration is not active yet. Prices and bonuses are proposed shop offers; no purchase will be charged until billing is connected.',
+                Expanded(child: Text('Payment integration is not active yet. Original prices and first-purchase offer prices are currently display-only. Payment and first-purchase eligibility checks are not connected yet; no purchase will be charged.',
                   style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.35))),
               ])),
           ],
