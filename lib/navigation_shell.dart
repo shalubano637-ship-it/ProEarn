@@ -575,7 +575,7 @@ class _CoinBalanceIndicatorState extends State<_CoinBalanceIndicator> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text("🪙", style: TextStyle(fontSize: 13)),
+                const Text('✦', style: TextStyle(fontSize: 15, color: AppColors.accent, fontWeight: FontWeight.w900)),
                 const SizedBox(width: 3),
                 Text(
                   mainCoins.toStringAsFixed(2),
