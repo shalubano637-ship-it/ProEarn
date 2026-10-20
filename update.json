@@ -1,18 +1,18 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 32,
-  "versionName": "1.0.31",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.31/proearn.apk",
-  "title": "Google Sign-In Logo and UI Polish",
-  "message": "Google sign-up button now displays the multicolor Google logo. Includes the latest Coin Vault and gift icon styling.",
+  "versionCode": 33,
+  "versionName": "1.0.32",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.32/proearn.apk",
+  "title": "Coin UI and Google Logo Fix",
+  "message": "Coin Vault and Gift Shop now use a consistent coin mark, and the Google sign-in logo has been refined.",
   "newFeatures": [
-    "Multicolor Google logo on sign-in/sign-up button",
-    "Coin Vault and gift icon styling improvements"
+    "Unified coin mark across Coin Vault and Gift Shop",
+    "Refined multicolour Google G logo"
   ],
   "fixes": [
-    "Updated Android app version to 1.0.31"
+    "Improved consistency of coin prices and icons"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1792489536609"
+  "buildTrigger": "1792491589398"
 }
