@@ -1,19 +1,18 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 30,
-  "versionName": "1.0.29",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.29/proearn.apk",
-  "title": "Coin Vault Redesign",
-  "message": "Redesigned coin shop with affordable packs, a proposed first-purchase offer, bonus coins, gift bonuses, and a consistent ProEarn coin mark.",
+  "versionCode": 31,
+  "versionName": "1.0.30",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.30/proearn.apk",
+  "title": "Coin Shop Discount Pricing",
+  "message": "Coin packs now show the original price crossed out above the proposed first-purchase offer price. Payment and eligibility checks still need integration.",
   "newFeatures": [
-    "Redesigned Coin Vault shop",
-    "Affordable coin pack layout and gift bonus labels",
-    "Consistent ProEarn coin mark in balance and gift shop"
+    "Original prices shown with strikethrough",
+    "First-purchase offer prices shown clearly"
   ],
   "fixes": [
-    "Improved coin shop visual hierarchy"
+    "Improved price visibility in Coin Vault"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1792481175432"
+  "buildTrigger": "1792483002961"
 }
