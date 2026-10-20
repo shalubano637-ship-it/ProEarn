@@ -1,18 +1,19 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 29,
-  "versionName": "1.0.28",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.28/proearn.apk",
-  "title": "Google Sign-In Option",
-  "message": "Adds Google sign-in and sign-up buttons. Google OAuth provider setup is required before Google authentication can be used.",
+  "versionCode": 30,
+  "versionName": "1.0.29",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.29/proearn.apk",
+  "title": "Coin Vault Redesign",
+  "message": "Redesigned coin shop with affordable packs, a proposed first-purchase offer, bonus coins, gift bonuses, and a consistent ProEarn coin mark.",
   "newFeatures": [
-    "Continue with Google from login and sign-up",
-    "Google OAuth callback support on Android"
+    "Redesigned Coin Vault shop",
+    "Affordable coin pack layout and gift bonus labels",
+    "Consistent ProEarn coin mark in balance and gift shop"
   ],
   "fixes": [
-    "Preserves the existing email/password authentication flow"
+    "Improved coin shop visual hierarchy"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1792410000000"
+  "buildTrigger": "1792481175432"
 }
