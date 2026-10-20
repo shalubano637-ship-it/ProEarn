@@ -1,18 +1,18 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 31,
-  "versionName": "1.0.30",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.30/proearn.apk",
-  "title": "Coin Shop Discount Pricing",
-  "message": "Coin packs now show the original price crossed out above the proposed first-purchase offer price. Payment and eligibility checks still need integration.",
+  "versionCode": 32,
+  "versionName": "1.0.31",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.31/proearn.apk",
+  "title": "Google Sign-In Logo and UI Polish",
+  "message": "Google sign-up button now displays the multicolor Google logo. Includes the latest Coin Vault and gift icon styling.",
   "newFeatures": [
-    "Original prices shown with strikethrough",
-    "First-purchase offer prices shown clearly"
+    "Multicolor Google logo on sign-in/sign-up button",
+    "Coin Vault and gift icon styling improvements"
   ],
   "fixes": [
-    "Improved price visibility in Coin Vault"
+    "Updated Android app version to 1.0.31"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1792483002961"
+  "buildTrigger": "1792489536609"
 }
