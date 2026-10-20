@@ -4,112 +4,127 @@ import 'theme/theme.dart';
 class CoinShopPage extends StatelessWidget {
   const CoinShopPage({super.key});
 
-  static const _packs = <({int coins, int price, String bonus})>[
-    (coins: 50, price: 10, bonus: ''),
-    (coins: 250, price: 50, bonus: ''),
-    (coins: 500, price: 100, bonus: ''),
-    (coins: 1250, price: 250, bonus: ''),
-    (coins: 2500, price: 500, bonus: ''),
-    (coins: 5000, price: 1000, bonus: ''),
-    (coins: 25000, price: 5000, bonus: 'Best Value'),
+  static const _packs = <({int coins, int bonus, int price, String gift, String tag})>[
+    (coins: 100, bonus: 0, price: 9, gift: 'Mini Gift', tag: 'FIRST BUY'),
+    (coins: 250, bonus: 25, price: 19, gift: 'Love Gift', tag: ''),
+    (coins: 600, bonus: 100, price: 39, gift: 'Star Gift', tag: 'POPULAR'),
+    (coins: 1400, bonus: 300, price: 79, gift: 'Super Gift', tag: ''),
+    (coins: 3000, bonus: 800, price: 149, gift: 'Royal Gift', tag: 'BEST VALUE'),
+    (coins: 7000, bonus: 2200, price: 299, gift: 'Mega Gift', tag: ''),
   ];
 
-  void _notAvailable(BuildContext context, int coins, int price) {
+  void _paymentNotice(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Purchase of $coins coins for ₹$price will be available soon.')),
+      const SnackBar(content: Text('Payments are not connected yet. No payment has been taken.')),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Coin Shop')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Buy Coins', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
-              const Icon(Icons.monetization_on, color: AppColors.accent, size: 30),
-            ],
+      appBar: AppBar(title: const Text('Coin Vault', style: TextStyle(fontWeight: FontWeight.w800)), centerTitle: true),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter, end: Alignment.bottomCenter,
+            colors: [AppColors.accent.withOpacity(.10), colors.surface, colors.surface],
+            stops: const [0, .28, 1],
           ),
-          const SizedBox(height: 6),
-          Text('Choose a coin pack. Payments will be enabled later.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          const SizedBox(height: 18),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              gradient: LinearGradient(colors: [AppColors.accent.withOpacity(.95), AppColors.accent.withOpacity(.65)]),
+        ),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                  colors: [Color(0xFF33270B), Color(0xFF171A27), Color(0xFF29213D)]),
+                border: Border.all(color: AppColors.accent.withOpacity(.55)),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Container(width: 54, height: 54, decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.accent,
+                    boxShadow: [BoxShadow(color: AppColors.accent.withOpacity(.25), blurRadius: 18)]),
+                    child: const Center(child: Text('✦', style: TextStyle(fontSize: 30, color: Color(0xFF171717), fontWeight: FontWeight.w900)))),
+                  const SizedBox(width: 12),
+                  const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('PRO EARN VAULT', style: TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 1.8, fontWeight: FontWeight.w700)),
+                    SizedBox(height: 4),
+                    Text('More coins. More gifts.', style: TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w900)),
+                  ])),
+                ]),
+                const SizedBox(height: 18),
+                Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(.08), borderRadius: BorderRadius.circular(14)),
+                  child: const Row(children: [
+                    Icon(Icons.card_giftcard_rounded, color: AppColors.accent, size: 22), SizedBox(width: 9),
+                    Expanded(child: Text('Every pack comes with a bonus gift', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+                  ])),
+                const SizedBox(height: 12),
+                const Text('FIRST PURCHASE: 70% OFF', style: TextStyle(color: AppColors.accent, fontSize: 15, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 3),
+                const Text('Small, affordable packs for easy top-ups.', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              ]),
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.monetization_on, color: Colors.white, size: 42),
-                const SizedBox(width: 12),
-                Expanded(child: Text('50 Coins for ₹10',
-                  style: theme.textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w800))),
-              ],
+            const SizedBox(height: 20),
+            Text('Choose your pack', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 12),
+            GridView.builder(
+              shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: _packs.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: .78),
+              itemBuilder: (context, index) {
+                final pack = _packs[index];
+                final first = index == 0;
+                final highlighted = first || pack.tag == 'BEST VALUE';
+                return Container(
+                  decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: highlighted ? AppColors.accent : colors.outlineVariant.withOpacity(.65), width: highlighted ? 1.6 : 1),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 12, offset: const Offset(0, 4))]),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    if (pack.tag.isNotEmpty)
+                      Container(padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                        decoration: BoxDecoration(color: AppColors.accent.withOpacity(.17), borderRadius: const BorderRadius.vertical(top: Radius.circular(18))),
+                        child: Text(pack.tag, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, letterSpacing: .8, fontWeight: FontWeight.w900, color: AppColors.accent)))
+                    else const SizedBox(height: 28),
+                    Expanded(child: Padding(padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Container(width: 48, height: 48, decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.accent.withOpacity(.16)),
+                          child: const Center(child: Text('✦', style: TextStyle(fontSize: 27, color: AppColors.accent, fontWeight: FontWeight.w900)))),
+                        const SizedBox(height: 7),
+                        Text('${pack.coins + pack.bonus}', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
+                        Text('coins total', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
+                        if (pack.bonus > 0) Padding(padding: const EdgeInsets.only(top: 4),
+                          child: Text('+ ${pack.bonus} bonus', style: const TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.w800))),
+                        const SizedBox(height: 7),
+                        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          const Icon(Icons.card_giftcard_rounded, color: AppColors.accent, size: 14), const SizedBox(width: 4),
+                          Flexible(child: Text(pack.gift, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700))),
+                        ]),
+                      ]))),
+                    Padding(padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                      child: SizedBox(width: double.infinity, child: FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: highlighted ? AppColors.accent : colors.primary,
+                          foregroundColor: highlighted ? Colors.black : colors.onPrimary, padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                        onPressed: () => _paymentNotice(context),
+                        child: Text('₹${pack.price}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                      ))),
+                  ]),
+                );
+              },
             ),
-          ),
-          const SizedBox(height: 18),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _packs.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 1.18,
-            ),
-            itemBuilder: (context, index) {
-              final pack = _packs[index];
-              return InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () => _notAvailable(context, pack.coins, pack.price),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: theme.colorScheme.outlineVariant),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (pack.bonus.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.accent.withOpacity(.16),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(pack.bonus, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
-                        )
-                      else const SizedBox(height: 22),
-                      const Spacer(),
-                      Row(children: [
-                        const Icon(Icons.monetization_on, color: AppColors.accent, size: 22),
-                        const SizedBox(width: 6),
-                        Text(pack.coins.toString(), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-                      ]),
-                      const SizedBox(height: 8),
-                      SizedBox(width: double.infinity,
-                        child: FilledButton(
-                          onPressed: () => _notAvailable(context, pack.coins, pack.price),
-                          child: Text('₹${pack.price}'),
-                        )),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 18),
-          Text('Purchases are not connected yet. This page is ready for Play Billing / payment integration later.',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-        ],
+            const SizedBox(height: 14),
+            Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: colors.surfaceContainerHighest.withOpacity(.55), borderRadius: BorderRadius.circular(14)),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Icon(Icons.info_outline, color: colors.onSurfaceVariant, size: 18), const SizedBox(width: 8),
+                Expanded(child: Text('Payment integration is not active yet. Prices and bonuses are proposed shop offers; no purchase will be charged until billing is connected.',
+                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.35))),
+              ])),
+          ],
+        ),
       ),
     );
   }
