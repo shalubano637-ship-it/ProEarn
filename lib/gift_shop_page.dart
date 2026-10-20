@@ -25,7 +25,7 @@ class _GiftShopPageState extends State<GiftShopPage> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text("Price: ${gift['priceCoins']} ✦ each"),
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [const _CoinMark(size: 18), const SizedBox(width: 5), Text("${gift['priceCoins']} each")]),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -43,10 +43,7 @@ class _GiftShopPageState extends State<GiftShopPage> {
                     ),
                   ],
                 ),
-                Text(
-                  "Total: ${((gift['priceCoins'] as num) * qty).toStringAsFixed(2)} ✦",
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [const _CoinMark(size: 18), const SizedBox(width: 5), Text("Total: ${((gift['priceCoins'] as num) * qty).toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold))]),
               ],
             ),
             actions: [
@@ -127,9 +124,7 @@ class _GiftShopPageState extends State<GiftShopPage> {
                       Text(gift['name'] ?? '', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                           maxLines: 1, overflow: TextOverflow.ellipsis),
                       Row(mainAxisSize: MainAxisSize.min, children: [
-                        Container(width: 18, height: 18,
-                          decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
-                          child: const Center(child: Text('✦', style: TextStyle(fontSize: 12, color: Colors.black, fontWeight: FontWeight.w900)))),
+                        const _CoinMark(size: 18),
                         const SizedBox(width: 4),
                         Text("${gift['priceCoins']}", style: const TextStyle(fontSize: 11, color: AppColors.accent, fontWeight: FontWeight.w800)),
                       ]),
@@ -143,4 +138,16 @@ class _GiftShopPageState extends State<GiftShopPage> {
       ),
     );
   }
+}
+
+class _CoinMark extends StatelessWidget {
+  final double size;
+  const _CoinMark({required this.size});
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size, height: size,
+    decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
+    alignment: Alignment.center,
+    child: Text('✦', style: TextStyle(fontSize: size * .66, height: 1, color: Colors.black, fontWeight: FontWeight.w900)),
+  );
 }
