@@ -718,7 +718,11 @@ if (showTerms)
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.g_mobiledata, size: 30),
+                        : const SizedBox(
+                            width: 26,
+                            height: 26,
+                            child: CustomPaint(painter: _GoogleLogoPainter()),
+                          ),
                     label: Text(
                       isGoogleAuthStarting
                           ? "CONNECTING TO GOOGLE..."
@@ -1049,4 +1053,32 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
       ),
     );
   }
+}
+
+class _GoogleLogoPainter extends CustomPainter {
+  const _GoogleLogoPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(1, 1, size.width - 2, size.height - 2);
+    final stroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.0
+      ..strokeCap = StrokeCap.butt;
+
+    stroke.color = const Color(0xFF4285F4);
+    canvas.drawArc(rect, -0.72, 1.35, false, stroke);
+    stroke.color = const Color(0xFF34A853);
+    canvas.drawArc(rect, 0.63, 1.42, false, stroke);
+    stroke.color = const Color(0xFFFBBC05);
+    canvas.drawArc(rect, 2.05, 1.15, false, stroke);
+    stroke.color = const Color(0xFFEA4335);
+    canvas.drawArc(rect, 3.15, 1.43, false, stroke);
+
+    final blue = Paint()..color = const Color(0xFF4285F4);
+    canvas.drawRect(Rect.fromLTWH(size.width * 0.53, size.height * 0.43, size.width * 0.43, size.height * 0.14), blue);
+  }
+
+  @override
+  bool shouldRepaint(covariant _GoogleLogoPainter oldDelegate) => false;
 }
