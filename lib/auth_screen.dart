@@ -1060,23 +1060,34 @@ class _GoogleLogoPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = Rect.fromLTWH(1, 1, size.width - 2, size.height - 2);
+    final inset = size.width * 0.12;
+    final rect = Rect.fromLTWH(inset, inset, size.width - inset * 2, size.height - inset * 2);
     final stroke = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.0
-      ..strokeCap = StrokeCap.butt;
+      ..strokeWidth = size.width * 0.18
+      ..strokeCap = StrokeCap.round
+      ..isAntiAlias = true;
 
+    // Four distinct Google brand-colour arcs with a clear opening on the right.
     stroke.color = const Color(0xFF4285F4);
-    canvas.drawArc(rect, -0.72, 1.35, false, stroke);
+    canvas.drawArc(rect, -0.48, 1.05, false, stroke);
     stroke.color = const Color(0xFF34A853);
-    canvas.drawArc(rect, 0.63, 1.42, false, stroke);
+    canvas.drawArc(rect, 0.58, 1.28, false, stroke);
     stroke.color = const Color(0xFFFBBC05);
-    canvas.drawArc(rect, 2.05, 1.15, false, stroke);
+    canvas.drawArc(rect, 1.86, 1.42, false, stroke);
     stroke.color = const Color(0xFFEA4335);
-    canvas.drawArc(rect, 3.15, 1.43, false, stroke);
+    canvas.drawArc(rect, 3.28, 1.52, false, stroke);
 
-    final blue = Paint()..color = const Color(0xFF4285F4);
-    canvas.drawRect(Rect.fromLTWH(size.width * 0.53, size.height * 0.43, size.width * 0.43, size.height * 0.14), blue);
+    final blue = Paint()
+      ..color = const Color(0xFF4285F4)
+      ..strokeWidth = size.width * 0.18
+      ..strokeCap = StrokeCap.round
+      ..isAntiAlias = true;
+    canvas.drawLine(
+      Offset(size.width * 0.52, size.height * 0.51),
+      Offset(size.width * 0.94, size.height * 0.51),
+      blue,
+    );
   }
 
   @override
