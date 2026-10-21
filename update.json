@@ -1,17 +1,16 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 34,
-  "versionName": "1.0.33",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.33/proearn.apk",
-  "title": "Coin Icon and Google Logo Update",
-  "message": "Gift Shop and Coin Vault now share the same coin icon. Google sign-in logo refined to match the reference.",
+  "versionCode": 35,
+  "versionName": "1.0.34",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.34/proearn.apk",
+  "title": "Unified Coin Icon Update",
+  "message": "Coin icon shape and styling are now shared across navigation, Coin Vault, and Gift Shop.",
   "newFeatures": [
-    "Consistent coin icon in Gift Shop and Coin Vault",
-    "Google G logo refined to match reference"
+    "One consistent gold coin icon across the app"
   ],
   "fixes": [
-    "Unified coin icon rendering"
+    "Unified coin icon shape, color, and detailing"
   ],
   "forceUpdate": false,
   "buildTrigger": "1792572272389"
