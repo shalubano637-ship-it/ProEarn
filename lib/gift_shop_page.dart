@@ -5,6 +5,7 @@ import 'models.dart';
 import 'theme/theme.dart';
 import 'service.dart';
 import 'widgets/coin_balance_indicator.dart';
+import 'widgets/coin_icon.dart';
 
 class GiftShopPage extends StatefulWidget {
   const GiftShopPage({super.key});
@@ -27,7 +28,7 @@ class _GiftShopPageState extends State<GiftShopPage> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [const _CoinMark(size: 18), const SizedBox(width: 5), Text("${gift['priceCoins']} each")]),
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [const CoinIcon(size: 18), const SizedBox(width: 5), Text("${gift['priceCoins']} each")]),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -45,7 +46,7 @@ class _GiftShopPageState extends State<GiftShopPage> {
                     ),
                   ],
                 ),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [const _CoinMark(size: 18), const SizedBox(width: 5), Text("Total: ${((gift['priceCoins'] as num) * qty).toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold))]),
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [const CoinIcon(size: 18), const SizedBox(width: 5), Text("Total: ${((gift['priceCoins'] as num) * qty).toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold))]),
               ],
             ),
             actions: [
@@ -134,7 +135,7 @@ class _GiftShopPageState extends State<GiftShopPage> {
                       Text(gift['name'] ?? '', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                           maxLines: 1, overflow: TextOverflow.ellipsis),
                       Row(mainAxisSize: MainAxisSize.min, children: [
-                        const _CoinMark(size: 18),
+                        const CoinIcon(size: 18),
                         const SizedBox(width: 4),
                         Text("${gift['priceCoins']}", style: const TextStyle(fontSize: 11, color: AppColors.accent, fontWeight: FontWeight.w800)),
                       ]),
@@ -148,42 +149,4 @@ class _GiftShopPageState extends State<GiftShopPage> {
       ),
     );
   }
-}
-
-class _CoinMark extends StatelessWidget {
-  final double size;
-  const _CoinMark({required this.size});
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    width: size,
-    height: size,
-    child: CustomPaint(painter: _CoinMarkPainter()),
-  );
-}
-
-class _CoinMarkPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width * .46;
-    final gold = Paint()..color = const Color(0xFFFFD54F)..isAntiAlias = true;
-    final rim = Paint()..color = const Color(0xFFB8860B)..style = PaintingStyle.stroke..strokeWidth = size.width * .07..isAntiAlias = true;
-    final inner = Paint()..color = const Color(0xFFFFE082)..style = PaintingStyle.stroke..strokeWidth = size.width * .045..isAntiAlias = true;
-    canvas.drawCircle(center, radius, gold);
-    canvas.drawCircle(center, radius * .86, rim);
-    canvas.drawCircle(center, radius * .70, inner);
-    final detail = Paint()..color = const Color(0xFF8A6500)..strokeWidth = size.width * .07..strokeCap = StrokeCap.round..isAntiAlias = true;
-    final path = Path()
-      ..moveTo(size.width * .32, size.height * .35)
-      ..lineTo(size.width * .68, size.height * .35)
-      ..moveTo(size.width * .32, size.height * .50)
-      ..lineTo(size.width * .62, size.height * .50)
-      ..moveTo(size.width * .32, size.height * .65)
-      ..lineTo(size.width * .55, size.height * .65);
-    canvas.drawPath(path, detail);
-  }
-
-  @override
-  bool shouldRepaint(covariant _CoinMarkPainter oldDelegate) => false;
 }
