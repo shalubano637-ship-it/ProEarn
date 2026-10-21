@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'models.dart';
 import 'theme/theme.dart';
 import 'widgets/coin_balance_indicator.dart';
+import 'widgets/coin_icon.dart';
 
 class CoinShopPage extends StatelessWidget {
   const CoinShopPage({super.key});
@@ -60,7 +61,7 @@ class CoinShopPage extends StatelessWidget {
                 Row(children: [
                   Container(width: 54, height: 54, decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.accent,
                     boxShadow: [BoxShadow(color: AppColors.accent.withOpacity(.25), blurRadius: 18)]),
-                    child: const Center(child: _CoinMark(size: 30))),
+                    child: const Center(child: CoinIcon(size: 30))),
                   const SizedBox(width: 12),
                   const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('PRO EARN VAULT', style: TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 1.8, fontWeight: FontWeight.w700)),
@@ -104,7 +105,7 @@ class CoinShopPage extends StatelessWidget {
                     Expanded(child: Padding(padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                         Container(width: 48, height: 48, decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.accent.withOpacity(.16)),
-                          child: const Center(child: _CoinMark(size: 27))),
+                          child: const Center(child: CoinIcon(size: 27))),
                         const SizedBox(height: 7),
                         Text('${pack.coins + pack.bonus}', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
                         Text('coins total', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
@@ -144,42 +145,4 @@ class CoinShopPage extends StatelessWidget {
       ),
     );
   }
-}
-
-class _CoinMark extends StatelessWidget {
-  final double size;
-  const _CoinMark({required this.size});
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    width: size,
-    height: size,
-    child: CustomPaint(painter: _CoinMarkPainter()),
-  );
-}
-
-class _CoinMarkPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width * .46;
-    final gold = Paint()..color = const Color(0xFFFFD54F)..isAntiAlias = true;
-    final rim = Paint()..color = const Color(0xFFB8860B)..style = PaintingStyle.stroke..strokeWidth = size.width * .07..isAntiAlias = true;
-    final inner = Paint()..color = const Color(0xFFFFE082)..style = PaintingStyle.stroke..strokeWidth = size.width * .045..isAntiAlias = true;
-    canvas.drawCircle(center, radius, gold);
-    canvas.drawCircle(center, radius * .86, rim);
-    canvas.drawCircle(center, radius * .70, inner);
-    final detail = Paint()..color = const Color(0xFF8A6500)..strokeWidth = size.width * .07..strokeCap = StrokeCap.round..isAntiAlias = true;
-    final path = Path()
-      ..moveTo(size.width * .32, size.height * .35)
-      ..lineTo(size.width * .68, size.height * .35)
-      ..moveTo(size.width * .32, size.height * .50)
-      ..lineTo(size.width * .62, size.height * .50)
-      ..moveTo(size.width * .32, size.height * .65)
-      ..lineTo(size.width * .55, size.height * .65);
-    canvas.drawPath(path, detail);
-  }
-
-  @override
-  bool shouldRepaint(covariant _CoinMarkPainter oldDelegate) => false;
 }
