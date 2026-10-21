@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models.dart';
 import '../theme/theme.dart';
+import 'coin_icon.dart';
 
 /// Single source and visual style for the user's wallet balance across the app.
 class WalletCoinBalance extends StatelessWidget {
@@ -38,17 +39,7 @@ class WalletCoinBalance extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 18,
-                  height: 18,
-                  decoration: const BoxDecoration(
-                    color: AppColors.accent,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.monetization_on, size: 15, color: Colors.black),
-                  ),
-                ),
+                const CoinIcon(size: 18),
                 const SizedBox(width: 4),
                 Text(
                   coins.toStringAsFixed(2),
