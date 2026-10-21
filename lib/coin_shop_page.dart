@@ -136,14 +136,38 @@ class CoinShopPage extends StatelessWidget {
 
 class _CoinMark extends StatelessWidget {
   final double size;
-  final Color background;
-  final Color foreground;
-  const _CoinMark({required this.size, this.background = AppColors.accent, this.foreground = Colors.black});
+  const _CoinMark({required this.size});
+
   @override
-  Widget build(BuildContext context) => Container(
-    width: size, height: size,
-    decoration: BoxDecoration(color: background, shape: BoxShape.circle),
-    alignment: Alignment.center,
-    child: Text('✦', style: TextStyle(fontSize: size * .66, height: 1, color: foreground, fontWeight: FontWeight.w900)),
+  Widget build(BuildContext context) => SizedBox(
+    width: size,
+    height: size,
+    child: CustomPaint(painter: _CoinMarkPainter()),
   );
+}
+
+class _CoinMarkPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width * .46;
+    final gold = Paint()..color = const Color(0xFFFFD54F)..isAntiAlias = true;
+    final rim = Paint()..color = const Color(0xFFB8860B)..style = PaintingStyle.stroke..strokeWidth = size.width * .07..isAntiAlias = true;
+    final inner = Paint()..color = const Color(0xFFFFE082)..style = PaintingStyle.stroke..strokeWidth = size.width * .045..isAntiAlias = true;
+    canvas.drawCircle(center, radius, gold);
+    canvas.drawCircle(center, radius * .86, rim);
+    canvas.drawCircle(center, radius * .70, inner);
+    final detail = Paint()..color = const Color(0xFF8A6500)..strokeWidth = size.width * .07..strokeCap = StrokeCap.round..isAntiAlias = true;
+    final path = Path()
+      ..moveTo(size.width * .32, size.height * .35)
+      ..lineTo(size.width * .68, size.height * .35)
+      ..moveTo(size.width * .32, size.height * .50)
+      ..lineTo(size.width * .62, size.height * .50)
+      ..moveTo(size.width * .32, size.height * .65)
+      ..lineTo(size.width * .55, size.height * .65);
+    canvas.drawPath(path, detail);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CoinMarkPainter oldDelegate) => false;
 }
