@@ -22,6 +22,7 @@ import 'messaging/room_hub_page.dart';
 import 'app_update_service.dart';
 import 'app_update_page.dart';
 import 'coin_shop_page.dart';
+import 'widgets/coin_balance_indicator.dart';
 
     
  
@@ -278,7 +279,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 ), // Khatam Padding
                 ), // Khatam GestureDetector
               ), // Khatam Semantics
-              if (currentUser != null) const _CoinBalanceIndicator(),
+              if (currentUser != null) WalletCoinBalance(
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CoinShopPage())),
+              ),
             ],
           ),
           actions: [
@@ -526,81 +529,3 @@ class _MessagesUnreadNavIconState extends State<_MessagesUnreadNavIcon> {
   }
 }
 
-class _CoinBalanceIndicator extends StatefulWidget {
-  const _CoinBalanceIndicator();
-
-  @override
-  State<_CoinBalanceIndicator> createState() => _CoinBalanceIndicatorState();
-}
-
-class _CoinBalanceIndicatorState extends State<_CoinBalanceIndicator> {
-  late final String _uid;
-  late final Stream<List<Map<String, dynamic>>> _userStream;
-
-  @override
-  void initState() {
-    super.initState();
-    _uid = Supabase.instance.client.auth.currentUser?.id ?? '';
-    _userStream = Supabase.instance.client
-        .from(kUsersCollection)
-        .stream(primaryKey: ['uid'])
-        .eq('uid', _uid);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_uid.isEmpty) return const SizedBox.shrink();
-
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: _userStream,
-      builder: (context, userSnapshot) {
-        final double mainCoins = (userSnapshot.data != null && userSnapshot.data!.isNotEmpty)
-            ? ((userSnapshot.data!.first['mainCoins'] ?? 0) as num).toDouble()
-            : 0.0;
-
-        return InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const CoinShopPage()),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 18,
-                  height: 18,
-                  decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
-                  child: const Center(child: Text('✦', style: TextStyle(fontSize: 12, color: Colors.black, fontWeight: FontWeight.w900))),
-                ),
-                const SizedBox(width: 3),
-                Text(
-                  mainCoins.toStringAsFixed(2),
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(width: 2),
-                Icon(
-                  Icons.add_circle_outline,
-                  size: 15,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
