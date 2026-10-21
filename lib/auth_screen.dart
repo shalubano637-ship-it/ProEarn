@@ -1060,34 +1060,31 @@ class _GoogleLogoPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final inset = size.width * 0.12;
+    final inset = size.width * .08;
     final rect = Rect.fromLTWH(inset, inset, size.width - inset * 2, size.height - inset * 2);
     final stroke = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * 0.18
-      ..strokeCap = StrokeCap.round
+      ..strokeWidth = size.width * .19
+      ..strokeCap = StrokeCap.butt
       ..isAntiAlias = true;
 
-    // Four distinct Google brand-colour arcs with a clear opening on the right.
-    stroke.color = const Color(0xFF4285F4);
-    canvas.drawArc(rect, -0.48, 1.05, false, stroke);
-    stroke.color = const Color(0xFF34A853);
-    canvas.drawArc(rect, 0.58, 1.28, false, stroke);
-    stroke.color = const Color(0xFFFBBC05);
-    canvas.drawArc(rect, 1.86, 1.42, false, stroke);
+    // Google G mark: four clean colour segments and the blue crossbar.
     stroke.color = const Color(0xFFEA4335);
-    canvas.drawArc(rect, 3.28, 1.52, false, stroke);
+    canvas.drawArc(rect, -2.35, 1.18, false, stroke);
+    stroke.color = const Color(0xFFFBBC05);
+    canvas.drawArc(rect, 2.45, 1.55, false, stroke);
+    stroke.color = const Color(0xFF34A853);
+    canvas.drawArc(rect, 1.00, 1.45, false, stroke);
+    stroke.color = const Color(0xFF4285F4);
+    canvas.drawArc(rect, -0.18, 1.05, false, stroke);
 
     final blue = Paint()
       ..color = const Color(0xFF4285F4)
-      ..strokeWidth = size.width * 0.18
-      ..strokeCap = StrokeCap.round
+      ..strokeWidth = size.width * .19
+      ..strokeCap = StrokeCap.butt
       ..isAntiAlias = true;
-    canvas.drawLine(
-      Offset(size.width * 0.52, size.height * 0.51),
-      Offset(size.width * 0.94, size.height * 0.51),
-      blue,
-    );
+    canvas.drawLine(Offset(size.width * .52, size.height * .51),
+        Offset(size.width * .94, size.height * .51), blue);
   }
 
   @override
