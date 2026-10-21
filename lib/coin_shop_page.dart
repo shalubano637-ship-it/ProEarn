@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'models.dart';
 import 'theme/theme.dart';
 
 class CoinShopPage extends StatelessWidget {
@@ -24,7 +26,16 @@ class CoinShopPage extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Coin Vault', style: TextStyle(fontWeight: FontWeight.w800)), centerTitle: true),
+      appBar: AppBar(
+        title: const Text('Coin Vault', style: TextStyle(fontWeight: FontWeight.w800)),
+        centerTitle: true,
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 16),
+            child: _WalletCoinBalance(),
+          ),
+        ],
+      ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -170,4 +181,44 @@ class _CoinMarkPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _CoinMarkPainter oldDelegate) => false;
+}
+
+
+/// Shows the user's actual wallet balance, sourced from the same mainCoins
+/// field used by the main navigation indicator. Pack quantities remain separate.
+class _WalletCoinBalance extends StatelessWidget {
+  const _WalletCoinBalance();
+
+  @override
+  Widget build(BuildContext context) {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return const SizedBox.shrink();
+
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: Supabase.instance.client
+          .from(kUsersCollection)
+          .stream(primaryKey: ['uid'])
+          .eq('uid', user.id),
+      builder: (context, snapshot) {
+        final rawCoins = snapshot.data != null && snapshot.data!.isNotEmpty
+            ? snapshot.data!.first['mainCoins']
+            : 0;
+        final coins = rawCoins is num ? rawCoins.toDouble() : 0.0;
+
+        return Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.monetization_on, color: AppColors.accent, size: 19),
+              const SizedBox(width: 4),
+              Text(
+                coins.toStringAsFixed(2),
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
