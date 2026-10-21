@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'models.dart';
 import 'theme/theme.dart';
 import 'service.dart';
+import 'widgets/coin_balance_indicator.dart';
 
 class GiftShopPage extends StatefulWidget {
   const GiftShopPage({super.key});
@@ -88,7 +89,7 @@ class _GiftShopPageState extends State<GiftShopPage> {
         actions: const [
           Padding(
             padding: EdgeInsets.only(right: 16),
-            child: _WalletCoinBalance(),
+            child: WalletCoinBalance(),
           ),
         ],
       ),
@@ -185,43 +186,4 @@ class _CoinMarkPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _CoinMarkPainter oldDelegate) => false;
-}
-
-
-/// Uses the same wallet field as the main navigation and Coin Vault.
-class _WalletCoinBalance extends StatelessWidget {
-  const _WalletCoinBalance();
-
-  @override
-  Widget build(BuildContext context) {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return const SizedBox.shrink();
-
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: Supabase.instance.client
-          .from(kUsersCollection)
-          .stream(primaryKey: ['uid'])
-          .eq('uid', user.id),
-      builder: (context, snapshot) {
-        final rawCoins = snapshot.data != null && snapshot.data!.isNotEmpty
-            ? snapshot.data!.first['mainCoins']
-            : 0;
-        final coins = rawCoins is num ? rawCoins.toDouble() : 0.0;
-
-        return Center(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.monetization_on, color: AppColors.accent, size: 19),
-              const SizedBox(width: 4),
-              Text(
-                coins.toStringAsFixed(2),
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
 }
