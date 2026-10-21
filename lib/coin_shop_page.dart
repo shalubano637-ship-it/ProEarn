@@ -92,7 +92,7 @@ class CoinShopPage extends StatelessWidget {
                     Expanded(child: Padding(padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                         Container(width: 48, height: 48, decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.accent.withOpacity(.16)),
-                          child: const Center(child: _CoinMark(size: 27, background: AppColors.accent, foreground: Colors.black))),
+                          child: const Center(child: _CoinMark(size: 27))),
                         const SizedBox(height: 7),
                         Text('${pack.coins + pack.bonus}', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
                         Text('coins total', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
