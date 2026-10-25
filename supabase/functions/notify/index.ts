@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     let eventKey = "";
-    let chestProgressTable: "chest_progress" | "coin_chest_progress" | null = null;
+    let chestProgressTable: "chest_progress" | null = null;
 
     if (["like", "comment", "get"].includes(type)) {
       if (!/^[0-9a-f-]{36}$/i.test(targetPostId)) return json({ error: "Invalid post" }, 400);
