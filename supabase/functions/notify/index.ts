@@ -106,25 +106,17 @@ Deno.serve(async (req) => {
       if (!recentMessage) return json({ error: "Event not verified" }, 403);
       eventKey = String(recentMessage.id);
     } else {
-      // Server-scheduled timer jobs can target either chest system.
-      // unlockAt is authoritative; app state is not required.
-      const now = Date.now();
-      const requestedChestKind = String(body.chestKind ?? "");
-      const { data: coinChest } = await admin.from("coin_chest_progress")
-        .select("currentChestIndex,unlockAt,isUnlocked,pushSentAt").eq("uid", senderId).maybeSingle();
       const { data: giftChest } = await admin.from("chest_progress")
-        .select("currentChestIndex,unlockAt,isUnlocked,pushSentAt").eq("uid", senderId).maybeSingle();
+        .select("currentChestIndex,unlockAt,pushSentAt")
+        .eq("uid", senderId).maybeSingle();
 
-      const isDue = (row: any) => !!row &&
-        row.unlockAt != null && Date.parse(String(row.unlockAt)) <= now;
-      const chosenKind = requestedChestKind === "coin" || requestedChestKind === "gift"
-        ? requestedChestKind
-        : (isDue(giftChest) ? "gift" : "coin");
-      const readyChest = chosenKind === "coin" ? coinChest : giftChest;
-      if (!isDue(readyChest)) return json({ error: "Chest timer not finished" }, 403);
-      chestProgressTable = chosenKind === "coin" ? "coin_chest_progress" : "chest_progress";
-      if (readyChest.pushSentAt != null) return json({ success: true, alreadyPushed: true });
-      eventKey = String(readyChest.currentChestIndex) + ":" + String(readyChest.unlockAt);
+      const giftChestDue = !!giftChest && giftChest.unlockAt != null &&
+        Date.parse(String(giftChest.unlockAt)) <= Date.now();
+      if (!giftChestDue) return json({ error: "Gift chest timer not finished" }, 403);
+      if (giftChest.pushSentAt != null) return json({ success: true, alreadyPushed: true });
+
+      chestProgressTable = "chest_progress";
+      eventKey = String(giftChest.currentChestIndex) + ":" + String(giftChest.unlockAt);
     }
 
     const { error: dedupError } = await admin.from("notification_delivery_dedup").insert({
