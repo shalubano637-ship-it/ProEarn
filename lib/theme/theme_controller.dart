@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class ThemeController extends ChangeNotifier {
-  ThemeMode _mode = ThemeMode.light;
+  ThemeMode _mode = ThemeMode.dark;
   ThemeMode get mode => _mode;
 
   Future<void> load() async {
     try {
       final box = Hive.box('app_settings');
-      final value = box.get('theme_mode', defaultValue: 'light')?.toString();
+      final value = box.get('theme_mode', defaultValue: 'dark')?.toString();
       _mode = value == 'dark' ? ThemeMode.dark : ThemeMode.light;
     } catch (_) {
-      _mode = ThemeMode.light;
+      _mode = ThemeMode.dark;
     }
     notifyListeners();
   }
