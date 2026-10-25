@@ -134,11 +134,7 @@ class _GiftShopPageState extends State<GiftShopPage> {
                       const SizedBox(height: 4),
                       Text(gift['name'] ?? '', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                           maxLines: 1, overflow: TextOverflow.ellipsis),
-                      Row(mainAxisSize: MainAxisSize.min, children: [
-                        const CoinIcon(size: 18),
-                        const SizedBox(width: 4),
-                        Text("${gift['priceCoins']}", style: const TextStyle(fontSize: 11, color: AppColors.accent, fontWeight: FontWeight.w800)),
-                      ]),
+                      Text("${gift['priceCoins']}", style: const TextStyle(fontSize: 11, color: AppColors.accent, fontWeight: FontWeight.w800)),
                     ],
                   ),
                 ),
