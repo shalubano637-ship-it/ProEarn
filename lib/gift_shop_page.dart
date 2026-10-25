@@ -137,7 +137,7 @@ class _GiftShopPageState extends State<GiftShopPage> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const CoinIcon(size: 14),
+                          const CoinIcon(size: 18),
                           const SizedBox(width: 4),
                           Text("${gift['priceCoins']}", style: const TextStyle(fontSize: 11, color: AppColors.accent, fontWeight: FontWeight.w800)),
                         ],
