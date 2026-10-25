@@ -25,6 +25,13 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
 
+  Future<void> _refreshNotifications() async {
+    if (!mounted) return;
+    // Rebuild the stream subscription so the latest notifications are fetched.
+    setState(() {});
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+  }
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +59,7 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
+          if (!mounted) return;
           setState(() {
             _isAdLoaded = true;
           });
@@ -130,20 +138,29 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
                 if (notificationSnapshot.hasError) {
                   return ErrorRetryView(
                     error: notificationSnapshot.error,
-                    onRetry: () => setState(() {}),
+                    onRetry: _refreshNotifications,
                   );
                 }
 
                 final notificationDocs = notificationSnapshot.data ?? [];
 
                 if (notificationDocs.isEmpty) {
-                  return const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.notifications_none, size: 60, color: AppColors.textTertiary),
-                        SizedBox(height: 10),
-                        Text("No notifications yet.", style: TextStyle(color: AppColors.textTertiary)),
+                  return RefreshIndicator(
+                    onRefresh: _refreshNotifications,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        SizedBox(
+                          height: 300,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.notifications_none, size: 60, color: AppColors.textTertiary),
+                              SizedBox(height: 10),
+                              Text("No notifications yet.", style: TextStyle(color: AppColors.textTertiary)),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   );
@@ -169,137 +186,141 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
                   }
                 }
 
-                return ListView(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  children: groupedNotifications.entries.map((entry) {
-                    final String dateHeader = entry.key;
-                    final List<Map<String, dynamic>> docsInGroup = entry.value;
+                return RefreshIndicator(
+                  onRefresh: _refreshNotifications,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    children: groupedNotifications.entries.map((entry) {
+                      final String dateHeader = entry.key;
+                      final List<Map<String, dynamic>> docsInGroup = entry.value;
 
-                    if (docsInGroup.isEmpty) {
-                      return const SizedBox.shrink();
-                    }
+                      if (docsInGroup.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
 
-                    final validWidgets = docsInGroup.map<Widget?>((data) {
-                      try {
-                        final String type = data['type'] ?? '';
-                        final String targetPostId = data['targetPostId'] ?? '';
-                        final String senderId = data['senderId'] ?? '';
-                        final String notificationCommentId = data['commentId'] ?? data['id'].toString();
+                      final validWidgets = docsInGroup.map<Widget?>((data) {
+                        try {
+                          final String type = data['type'] ?? '';
+                          final String targetPostId = data['targetPostId'] ?? '';
+                          final String senderId = data['senderId'] ?? '';
+                          final String notificationCommentId = data['commentId'] ?? data['id'].toString();
 
-                        final timestamp = data['timestamp'];
-                        // Always display the timestamp in the user's local timezone, not UTC.
-                        final String timeText = timestamp != null
-                            ? _formatTime(DateTime.parse(timestamp.toString()).toLocal())
-                            : '';
+                          final timestamp = data['timestamp'];
+                          // Always display the timestamp in the user's local timezone, not UTC.
+                          final String timeText = timestamp != null
+                              ? _formatTime(DateTime.parse(timestamp.toString()).toLocal())
+                              : '';
 
-                        String rawMessage = data['message'] ?? '';
-                        if (rawMessage.trim().isEmpty) {
-                          if (type == 'like') rawMessage = 'liked your post.';
-                          if (type == 'comment') rawMessage = 'commented on your post.';
-                          if (type == 'follow') rawMessage = 'started following you.';
-                          if (type == 'chest_ready') rawMessage = 'Your chest is ready to open! 🎁';
-                        }
+                          String rawMessage = data['message'] ?? '';
+                          if (rawMessage.trim().isEmpty) {
+                            if (type == 'like') rawMessage = 'liked your post.';
+                            if (type == 'comment') rawMessage = 'commented on your post.';
+                            if (type == 'follow') rawMessage = 'started following you.';
+                            if (type == 'chest_ready') rawMessage = 'Your chest is ready to open! 🎁';
+                          }
 
-                        IconData leadingIcon = Icons.notifications;
-                        if (type == 'like') leadingIcon = Icons.favorite;
-                        if (type == 'comment') leadingIcon = Icons.comment;
-                        if (type == 'follow') leadingIcon = Icons.person_add;
+                          IconData leadingIcon = Icons.notifications;
+                          if (type == 'like') leadingIcon = Icons.favorite;
+                          if (type == 'comment') leadingIcon = Icons.comment;
+                          if (type == 'follow') leadingIcon = Icons.person_add;
 
-                        final String dbSenderName = data['senderName'] ?? 'Someone';
-                        final String dbSenderProfile = data['senderProfileUrl'] ?? '';
+                          final String dbSenderName = data['senderName'] ?? 'Someone';
+                          final String dbSenderProfile = data['senderProfileUrl'] ?? '';
 
-                        return FutureBuilder<Map<String, dynamic>?>(
-                          future: Supabase.instance.client
-                              .from('public_profiles')
-                              .select()
-                              .eq('uid', senderId)
-                              .maybeSingle(),
-                          builder: (context, senderSnapshot) {
-                            String realTimeProfileUrl = dbSenderProfile;
-                            String realTimeName = dbSenderName;
+                          return FutureBuilder<Map<String, dynamic>?>(
+                            future: Supabase.instance.client
+                                .from('public_profiles')
+                                .select()
+                                .eq('uid', senderId)
+                                .maybeSingle(),
+                            builder: (context, senderSnapshot) {
+                              String realTimeProfileUrl = dbSenderProfile;
+                              String realTimeName = dbSenderName;
 
-                            if (senderSnapshot.hasData && senderSnapshot.data != null) {
-                              final senderData = senderSnapshot.data!;
-                              realTimeProfileUrl = senderData['profileUrl'] ?? dbSenderProfile;
-                              realTimeName = senderData['userName'] ?? dbSenderName;
-                            }
+                              if (senderSnapshot.hasData && senderSnapshot.data != null) {
+                                final senderData = senderSnapshot.data!;
+                                realTimeProfileUrl = senderData['profileUrl'] ?? dbSenderProfile;
+                                realTimeName = senderData['userName'] ?? dbSenderName;
+                              }
 
-                            return ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 1),
-                              leading: CircleAvatar(
-                                backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                                child: ClipOval(
-                                  child: GlobalCachedImage(
-                                    imageUrl: realTimeProfileUrl,
-                                    width: 40,
-                                    height: 40,
-                                    errorWidget: Icon(leadingIcon, color: theme.colorScheme.primary),
+                              return ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 1),
+                                leading: CircleAvatar(
+                                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                                  child: ClipOval(
+                                    child: GlobalCachedImage(
+                                      imageUrl: realTimeProfileUrl,
+                                      width: 40,
+                                      height: 40,
+                                      errorWidget: Icon(leadingIcon, color: theme.colorScheme.primary),
+                                    ),
                                   ),
                                 ),
-                              ),
-                              title: RichText(
-                                text: TextSpan(
-                                  style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
-                                  children: [
-                                    TextSpan(text: realTimeName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                    TextSpan(text: ' $rawMessage'),
-                                  ],
+                                title: RichText(
+                                  text: TextSpan(
+                                    style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
+                                    children: [
+                                      TextSpan(text: realTimeName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                      TextSpan(text: ' $rawMessage'),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              subtitle: Text(
-                                timeText,
-                                style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6)),
-                              ),
-                              onTap: () {
-                                if (type == 'comment' && targetPostId.trim().isNotEmpty) {
-                                  ReelsAutoTrigger.targetPostId = targetPostId.trim();
-                                  ReelsAutoTrigger.highlightCommentId = notificationCommentId;
-                                  Navigator.pushAndRemoveUntil(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-                                    (route) => false,
-                                  );
-                                } else if ((type == 'follow' || type == 'like') && senderId.isNotEmpty) {
-                                  bool isMe = senderId == currentUser.id;
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => ProfilePage(isOwnProfile: isMe, otherUser: isMe ? null : senderId),
-                                    ),
-                                  );
-                                }
-                              },
-                            );
-                          },
-                        );
-                      } catch (_) {
-                        return null;
+                                subtitle: Text(
+                                  timeText,
+                                  style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6)),
+                                ),
+                                onTap: () {
+                                  if (type == 'comment' && targetPostId.trim().isNotEmpty) {
+                                    ReelsAutoTrigger.targetPostId = targetPostId.trim();
+                                    ReelsAutoTrigger.highlightCommentId = notificationCommentId;
+                                    Navigator.pushAndRemoveUntil(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+                                      (route) => false,
+                                    );
+                                  } else if ((type == 'follow' || type == 'like') && senderId.isNotEmpty) {
+                                    bool isMe = senderId == currentUser.id;
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ProfilePage(isOwnProfile: isMe, otherUser: isMe ? null : senderId),
+                                      ),
+                                    );
+                                  }
+                                },
+                              );
+                            },
+                          );
+                        } catch (_) {
+                          return null;
+                        }
+                      }).whereType<Widget>().toList();
+
+                      if (validWidgets.isEmpty) {
+                        return const SizedBox.shrink();
                       }
-                    }).whereType<Widget>().toList();
 
-                    if (validWidgets.isEmpty) {
-                      return const SizedBox.shrink();
-                    }
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(left: 16.0, top: 14.0, bottom: 6.0),
-                          child: Text(
-                            dateHeader,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.primary,
-                              fontSize: 13,
-                              letterSpacing: 0.5,
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(left: 16.0, top: 14.0, bottom: 6.0),
+                            child: Text(
+                              dateHeader,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.primary,
+                                fontSize: 13,
+                                letterSpacing: 0.5,
+                              ),
                             ),
                           ),
-                        ),
-                        ...validWidgets,
-                      ],
-                    );
-                  }).toList(),
+                          ...validWidgets,
+                        ],
+                      );
+                    }).toList(),
+                  ),
                 );
               },
             ),
