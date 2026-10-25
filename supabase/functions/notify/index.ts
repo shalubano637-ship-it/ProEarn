@@ -26,17 +26,27 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const authed = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: userData, error: authError } = await authed.auth.getUser();
-    if (authError || !userData?.user) return json({ error: "Unauthorized" }, 401);
-
-    const senderId = userData.user.id;
     const body = await req.json().catch(() => ({}));
     const targetOwnerId = String(body.targetOwnerId ?? "");
     const type = String(body.type ?? "");
+    // The scheduled database job may invoke this same function for chest_ready only.
+    // It must present the server-only secret; normal notification types still require a user JWT.
+    const cronSecret = Deno.env.get("CHEST_CRON_SECRET") ?? "";
+    const cronChestCall = type === "chest_ready" && cronSecret.length > 0 &&
+      req.headers.get("x-cron-secret") === cronSecret;
+    let senderId = "";
+    if (cronChestCall) {
+      if (!/^[0-9a-f-]{36}$/i.test(targetOwnerId)) return json({ error: "Invalid target" }, 400);
+      senderId = targetOwnerId;
+    } else {
+      const authHeader = req.headers.get("Authorization") ?? "";
+      const authed = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: userData, error: authError } = await authed.auth.getUser();
+      if (authError || !userData?.user) return json({ error: "Unauthorized" }, 401);
+      senderId = userData.user.id;
+    }
     const message = String(body.message ?? "").slice(0, MAX_MESSAGE_LENGTH);
     const targetPostId = String(body.targetPostId ?? "");
 
@@ -96,23 +106,22 @@ Deno.serve(async (req) => {
       if (!recentMessage) return json({ error: "Event not verified" }, 403);
       eventKey = String(recentMessage.id);
     } else {
-      // Client timers can expire while the app is running without setting the
-      // persisted isUnlocked flag. unlockAt is authoritative for due chests.
+      // Server-scheduled timer jobs can target either chest system.
+      // unlockAt is authoritative; app state is not required.
       const now = Date.now();
       const { data: coinChest } = await admin.from("coin_chest_progress")
         .select("currentChestIndex,unlockAt,isUnlocked,pushSentAt").eq("uid", senderId).maybeSingle();
       const { data: giftChest } = await admin.from("chest_progress")
-        .select("currentChestIndex,unlockAt,isUnlocked").eq("uid", senderId).maybeSingle();
+        .select("currentChestIndex,unlockAt,isUnlocked,pushSentAt").eq("uid", senderId).maybeSingle();
 
       const isDue = (row: any) => !!row && (
         row.isUnlocked === true ||
         (row.unlockAt != null && Date.parse(String(row.unlockAt)) <= now)
       );
       const readyChest = isDue(coinChest) ? coinChest : isDue(giftChest) ? giftChest : null;
-      if (!readyChest) return json({ error: "Chest not ready" }, 403);
+      if (!readyChest) return json({ error: "Chest timer not finished" }, 403);
       chestProgressTable = isDue(coinChest) ? "coin_chest_progress" : "chest_progress";
       if (readyChest.pushSentAt != null) return json({ success: true, alreadyPushed: true });
-
       eventKey = String(readyChest.currentChestIndex) + ":" + String(readyChest.unlockAt);
     }
 
