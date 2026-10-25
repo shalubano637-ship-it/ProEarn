@@ -372,7 +372,6 @@ class _LoginPageState extends State<LoginPage> {
           currentUserName = email.split("@")[0];
           currentUserId = signedInUser!.id;
           chestTimerService.initialize();
-          coinChestTimerService.initialize();
           loadUserDataOnStartup();
 
           if (mounted) {
