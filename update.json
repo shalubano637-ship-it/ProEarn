@@ -1,18 +1,18 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 36,
-  "versionName": "1.0.35",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.35/proearn.apk",
-  "title": "Coin Chest Removal and Gift Chest Update",
-  "message": "Coin Chest has been removed. Gift Chest timer and push scheduling remain.",
+  "versionCode": 37,
+  "versionName": "1.0.36",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.36/proearn.apk",
+  "title": "Gift Shop Coin UI Update",
+  "message": "Restored the coin icon beside gift prices and kept dark theme as default.",
   "newFeatures": [
-    "Coin Chest removed from the app",
-    "Gift Chest retained"
+    "Coin icon restored beside Gift Shop prices",
+    "Dark theme remains the default"
   ],
   "fixes": [
-    "Removed Coin Chest timer lifecycle references"
+    "Gift Shop price display matches coin icon styling"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1792920000000"
+  "buildTrigger": "1792920025965"
 }
