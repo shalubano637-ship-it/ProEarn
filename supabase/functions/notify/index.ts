@@ -114,10 +114,8 @@ Deno.serve(async (req) => {
       const { data: giftChest } = await admin.from("chest_progress")
         .select("currentChestIndex,unlockAt,isUnlocked,pushSentAt").eq("uid", senderId).maybeSingle();
 
-      const isDue = (row: any) => !!row && (
-        row.isUnlocked === true ||
-        (row.unlockAt != null && Date.parse(String(row.unlockAt)) <= now)
-      );
+      const isDue = (row: any) => !!row &&
+        row.unlockAt != null && Date.parse(String(row.unlockAt)) <= now;
       const readyChest = isDue(coinChest) ? coinChest : isDue(giftChest) ? giftChest : null;
       if (!readyChest) return json({ error: "Chest timer not finished" }, 403);
       chestProgressTable = isDue(coinChest) ? "coin_chest_progress" : "chest_progress";
