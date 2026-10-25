@@ -155,7 +155,6 @@ Future<void> _initializeDeferredServices() async {
   }
 
   chestTimerService.initialize();
-  coinChestTimerService.initialize();
   unawaited(loadUserDataOnStartup());
   RewardedAdPreloader.preload();
 }
@@ -184,7 +183,6 @@ class _AppLifecycleObserver extends WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
       chestTimerService.pauseAndPersist();
-      coinChestTimerService.pauseAndPersist();
       if (Supabase.instance.client.auth.currentUser != null) {
         Supabase.instance.client.rpc('clear_my_conversations').catchError((e) {
           debugPrint('clear_my_conversations failed: $e');
@@ -192,7 +190,6 @@ class _AppLifecycleObserver extends WidgetsBindingObserver {
       }
     } else if (state == AppLifecycleState.resumed) {
       chestTimerService.resumeFromForeground();
-      coinChestTimerService.resumeFromForeground();
     }
   }
 }
