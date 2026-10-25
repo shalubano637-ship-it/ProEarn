@@ -32,19 +32,7 @@ class _CoinIconPainter extends CustomPainter {
     canvas.drawCircle(center, radius, gold);
     canvas.drawCircle(center, radius * .86, rim);
     canvas.drawCircle(center, radius * .70, inner);
-    final detail = Paint()
-      ..color = const Color(0xFF8A6500)
-      ..strokeWidth = size.width * .07
-      ..strokeCap = StrokeCap.round
-      ..isAntiAlias = true;
-    final path = Path()
-      ..moveTo(size.width * .32, size.height * .35)
-      ..lineTo(size.width * .68, size.height * .35)
-      ..moveTo(size.width * .32, size.height * .50)
-      ..lineTo(size.width * .62, size.height * .50)
-      ..moveTo(size.width * .32, size.height * .65)
-      ..lineTo(size.width * .55, size.height * .65);
-    canvas.drawPath(path, detail);
+    // Plain embossed gold coin matching the Coin Vault artwork.
   }
 
   @override
