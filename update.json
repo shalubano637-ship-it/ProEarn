@@ -1,17 +1,18 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 35,
-  "versionName": "1.0.34",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.34/proearn.apk",
-  "title": "Unified Coin Icon Update",
-  "message": "Coin icon shape and styling are now shared across navigation, Coin Vault, and Gift Shop.",
+  "versionCode": 36,
+  "versionName": "1.0.35",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.35/proearn.apk",
+  "title": "Coin Chest Removal and Gift Chest Update",
+  "message": "Coin Chest has been removed. Gift Chest timer and push scheduling remain.",
   "newFeatures": [
-    "One consistent gold coin icon across the app"
+    "Coin Chest removed from the app",
+    "Gift Chest retained"
   ],
   "fixes": [
-    "Unified coin icon shape, color, and detailing"
+    "Removed Coin Chest timer lifecycle references"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1792572272389"
+  "buildTrigger": "1792920000000"
 }
