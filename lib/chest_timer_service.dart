@@ -258,7 +258,3 @@ class ChestTimerService extends ChangeNotifier {
 
 final chestTimerService = ChestTimerService();
 
-final coinChestTimerService = ChestTimerService(
-  tableName: 'coin_chest_progress',
-  syncRpcName: 'sync_coin_chest_timer',
-);
