@@ -61,7 +61,7 @@ begin
     perform net.http_post(
       url := 'https://mltvpfqfhbhgkejcjpmq.supabase.co/functions/v1/notify',
       headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', v_secret),
-      body := jsonb_build_object('type', 'chest_ready', 'targetOwnerId', v_uid)
+      body := jsonb_build_object('type', 'chest_ready', 'targetOwnerId', v_uid, 'chestKind', p_kind)
     );
   end if;
 
