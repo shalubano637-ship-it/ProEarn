@@ -140,7 +140,7 @@ class _GiftShopPageState extends State<GiftShopPage> {
                           Container(
                             width: 24,
                             height: 24,
-                            decoration: const BoxDecoration(color: Color(0xFF4A4538), shape: BoxShape.circle),
+                            decoration: BoxDecoration(color: AppColors.accent.withOpacity(.16), shape: BoxShape.circle),
                             alignment: Alignment.center,
                             child: const CoinIcon(size: 16),
                           ),
