@@ -1,18 +1,18 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 38,
-  "versionName": "1.0.37",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.37/proearn.apk",
-  "title": "Gift Shop Coin Icon Match",
-  "message": "Gift Shop coin icon size now matches the Coin Vault balance icon.",
+  "versionCode": 39,
+  "versionName": "1.0.38",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.38/proearn.apk",
+  "title": "Consistent Coin Icon Style",
+  "message": "Coin icon badge styling is now consistent in Gift Shop, Coin Vault and wallet balance.",
   "newFeatures": [
-    "Gift Shop coin icon matches Coin Vault icon sizing",
+    "Consistent coin badge style across Gift Shop, Coin Vault and wallet balance",
     "Dark theme remains default"
   ],
   "fixes": [
-    "Improved visibility and consistency of Gift Shop coin icon"
+    "Matched wallet balance coin backdrop to the Gift Shop and Coin Vault style"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1792926889041"
+  "buildTrigger": "1792997738934"
 }
