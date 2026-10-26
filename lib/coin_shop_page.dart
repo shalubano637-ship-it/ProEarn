@@ -94,8 +94,6 @@ class CoinShopPage extends StatelessWidget {
               duration: '7 days',
               price: '₹99',
               tag: 'WEEKLY',
-              colors: colors,
-              theme: theme,
               benefits: const ['Ad-free app experience', '150 coins every day', 'Up to 1,050 coins over 7 days'],
             ),
             const SizedBox(height: 12),
@@ -179,8 +177,6 @@ Widget _passCard({
   required String duration,
   required String price,
   required String tag,
-  required ColorScheme colors,
-  required ThemeData theme,
   required List<String> benefits,
 }) {
   return Container(
