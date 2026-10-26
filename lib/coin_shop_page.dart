@@ -83,7 +83,34 @@ class CoinShopPage extends StatelessWidget {
               ]),
             ),
             const SizedBox(height: 20),
-            Text('Choose your pack', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+            Text('Ad-Free Passes', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 6),
+            Text('No ads anywhere in Pro Earn + 150 coins every day while your pass is active.',
+              style: theme.textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant)),
+            const SizedBox(height: 12),
+            _passCard(
+              context: context,
+              title: 'Weekly Pass',
+              duration: '7 days',
+              price: '₹99',
+              tag: 'WEEKLY',
+              colors: colors,
+              theme: theme,
+              benefits: const ['Ad-free app experience', '150 coins every day', 'Up to 1,050 coins over 7 days'],
+            ),
+            const SizedBox(height: 12),
+            _passCard(
+              context: context,
+              title: 'Monthly Pass',
+              duration: '30 days',
+              price: '₹299',
+              tag: 'BEST VALUE',
+              colors: colors,
+              theme: theme,
+              benefits: const ['Ad-free app experience', '150 coins every day', 'Up to 4,500 coins over 30 days'],
+            ),
+            const SizedBox(height: 20),
+            Text('Choose your coin pack', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
             const SizedBox(height: 12),
             GridView.builder(
               shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: _packs.length,
@@ -137,7 +164,7 @@ class CoinShopPage extends StatelessWidget {
             Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: colors.surfaceContainerHighest.withOpacity(.55), borderRadius: BorderRadius.circular(14)),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Icon(Icons.info_outline, color: colors.onSurfaceVariant, size: 18), const SizedBox(width: 8),
-                Expanded(child: Text('Payment integration is not active yet. Original prices and first-purchase offer prices are currently display-only. Payment and first-purchase eligibility checks are not connected yet; no purchase will be charged.',
+                Expanded(child: Text('Pass and coin-pack payments are not connected yet. These prices are display-only; tapping a pass or pack will not charge you, activate ad-free access, or grant coins.',
                   style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.35))),
               ])),
           ],
@@ -145,4 +172,97 @@ class CoinShopPage extends StatelessWidget {
       ),
     );
   }
+
+Widget _passCard({
+  required BuildContext context,
+  required String title,
+  required String duration,
+  required String price,
+  required String tag,
+  required ColorScheme colors,
+  required ThemeData theme,
+  required List<String> benefits,
+}) {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF25213A), Color(0xFF171A27)],
+      ),
+      border: Border.all(color: AppColors.accent.withOpacity(.75), width: 1.4),
+      boxShadow: [
+        BoxShadow(color: AppColors.accent.withOpacity(.08), blurRadius: 16, offset: const Offset(0, 5)),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.accent.withOpacity(.16),
+              ),
+              child: const Icon(Icons.workspace_premium_rounded, color: AppColors.accent, size: 25),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 3),
+                  Text(duration, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              decoration: BoxDecoration(color: AppColors.accent.withOpacity(.17), borderRadius: BorderRadius.circular(20)),
+              child: Text(tag, style: const TextStyle(color: AppColors.accent, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: .6)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        ...benefits.map((benefit) => Padding(
+          padding: const EdgeInsets.only(bottom: 7),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.check_circle_rounded, color: AppColors.accent, size: 17),
+              const SizedBox(width: 8),
+              Expanded(child: Text(benefit, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600))),
+            ],
+          ),
+        )),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.accent,
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+            ),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Pass payments are not connected yet. No payment has been taken.')),
+              );
+            },
+            child: Text('Get $title • $price', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 }
