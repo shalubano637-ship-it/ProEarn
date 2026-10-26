@@ -39,7 +39,16 @@ class WalletCoinBalance extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const CoinIcon(size: 18),
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withOpacity(.16),
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: const CoinIcon(size: 16),
+                ),
                 const SizedBox(width: 4),
                 Text(
                   coins.toStringAsFixed(2),
