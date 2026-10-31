@@ -90,7 +90,7 @@ class _AppUpdatePageState extends State<AppUpdatePage> {
       if (!mounted) return;
       setState(() => _downloading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Update failed: $e'), backgroundColor: AppColors.error),
+        const SnackBar(content: Text('The update couldn’t be downloaded. Check your connection and try again.'), backgroundColor: AppColors.error),
       );
     }
   }
