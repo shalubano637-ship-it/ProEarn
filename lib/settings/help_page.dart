@@ -149,7 +149,7 @@ class HelpPage extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('proSN Step-by-Step Guide', style: AppTextStyles.titleLarge.copyWith(color: AppColors.textPrimary)),
+        Text('proSN Step-by-Step Guide', style: AppTextStyles.h2.copyWith(color: AppColors.textPrimary)),
         const SizedBox(height: 8),
         Text('Follow these instructions to learn the main features of the app. Button names may vary slightly by app version.', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
         const SizedBox(height: 16),
