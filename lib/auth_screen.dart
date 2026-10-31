@@ -10,6 +10,7 @@ import 'chest_timer_service.dart';
 import 'dart:async';
 import 'theme/theme.dart';
 import 'legal_text.dart';
+import 'utils/friendly_error.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -298,13 +299,13 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
       setState(() => isGoogleAuthStarting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Google sign-in failed: ${e.message}")),
+        SnackBar(content: Text(friendlyErrorMessage(e, fallback: "We couldn’t sign you in with Google. Please try again."))),
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => isGoogleAuthStarting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Google sign-in failed: $e")),
+        SnackBar(content: Text(friendlyErrorMessage(e, fallback: "We couldn’t sign you in with Google. Please try again."))),
       );
     }
   }
@@ -386,7 +387,7 @@ class _LoginPageState extends State<LoginPage> {
       } on AuthException catch (e) {
         if (mounted) Navigator.pop(context); // Close Loader
 
-        String errorMessage = "Login Failed: ${e.message}";
+        String errorMessage = friendlyErrorMessage(e, fallback: "We couldn’t sign you in. Please check your details and try again.");
 
         if (e.message.toLowerCase().contains('email not confirmed')) {
           if (mounted) {
@@ -399,7 +400,7 @@ class _LoginPageState extends State<LoginPage> {
           }
           return;
         } else if (e.message.toLowerCase().contains('invalid login credentials')) {
-          errorMessage = "Incorrect email or password. Please try again.";
+          errorMessage = "The email or password is incorrect. Check your details and try again.";
         }
 
         if (mounted) {
@@ -411,7 +412,7 @@ class _LoginPageState extends State<LoginPage> {
         if (mounted) Navigator.pop(context); // Close Loader
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Error: ${e.toString()}")),
+            SnackBar(content: Text(friendlyErrorMessage(e, fallback: "We couldn’t sign you in. Please try again."))),
           );
         }
       }
@@ -468,10 +469,10 @@ class _LoginPageState extends State<LoginPage> {
         }
       } on AuthException catch (e) {
         if (mounted) Navigator.pop(context); // Close Loader
-        String errorMessage = "Signup Failed: ${e.message}";
+        String errorMessage = friendlyErrorMessage(e, fallback: "We couldn’t create your account. Please try again.");
         if (e.message.toLowerCase().contains('already registered') ||
             e.message.toLowerCase().contains('user already exists')) {
-          errorMessage = "This email is already registered. Please Login.";
+          errorMessage = "An account with this email already exists. Try signing in instead.";
         }
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -482,7 +483,7 @@ class _LoginPageState extends State<LoginPage> {
         if (mounted) Navigator.pop(context); // Close Loader
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Signup Failed: ${e.toString()}")),
+            SnackBar(content: Text(friendlyErrorMessage(e, fallback: "We couldn’t create your account. Please try again."))),
           );
         }
       }
