@@ -76,7 +76,7 @@ class _ChatGiftSheetState extends State<_ChatGiftSheet> {
       debugPrint("send_gift_to_user failed: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Couldn't send gift: $e"), backgroundColor: AppColors.error),
+          const SnackBar(content: Text("Couldn’t send this gift. Please try again."), backgroundColor: AppColors.error),
         );
       }
     } finally {
