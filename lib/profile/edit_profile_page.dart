@@ -18,6 +18,7 @@ import '../models.dart';
 import '../service.dart';
 import '../cloudflare_media_service.dart';
 import '../theme/theme.dart';
+import '../utils/friendly_error.dart';
 import 'image_crop_page.dart';
 
 class EditProfilePage extends StatefulWidget {
@@ -274,7 +275,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("Profile picture upload failed: $e"), backgroundColor: AppColors.error),
+                          SnackBar(content: Text(friendlyErrorMessage(e, fallback: "Your profile picture could not be uploaded. Check your connection and try again.")), backgroundColor: AppColors.error),
                         );
                       }
                       return;
@@ -306,7 +307,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("Profile picture upload failed: $e"), backgroundColor: AppColors.error),
+                          SnackBar(content: Text(friendlyErrorMessage(e, fallback: "Your profile picture could not be uploaded. Check your connection and try again.")), backgroundColor: AppColors.error),
                         );
                       }
                       return;
