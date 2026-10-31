@@ -11,6 +11,7 @@ import '../auth_screen.dart';
 import '../theme/theme.dart';
 import '../posts/hidden_posts_list_screen.dart';
 import '../social/blocked_users_list_screen.dart';
+import '../utils/friendly_error.dart';
 
     class SecurityPage extends StatefulWidget {
   const SecurityPage({super.key});
@@ -43,7 +44,7 @@ class _SecurityPageState extends State<SecurityPage> {
 
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("please login")),
+        const SnackBar(content: Text("Your session has expired. Please sign in again.")),
       );
       return;
     }
@@ -80,7 +81,7 @@ class _SecurityPageState extends State<SecurityPage> {
         isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Wrong current password."), backgroundColor: AppColors.error),
+        const SnackBar(content: Text("The current password is incorrect. Please try again."), backgroundColor: AppColors.error),
       );
     }
   }
@@ -124,7 +125,7 @@ class _SecurityPageState extends State<SecurityPage> {
         isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Password update failed — please try again."), backgroundColor: AppColors.error),
+        SnackBar(content: Text(friendlyErrorMessage(e, fallback: "We couldn’t update your password. Check your connection and try again.")), backgroundColor: AppColors.error),
       );
     }
   }
@@ -134,7 +135,7 @@ class _SecurityPageState extends State<SecurityPage> {
 
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Email not found.")),
+        const SnackBar(content: Text("Enter the email address linked to your account.")),
       );
       return;
     }
@@ -155,7 +156,7 @@ class _SecurityPageState extends State<SecurityPage> {
         context: context,
         builder: (_) => AlertDialog(
           title: const Text("Reset Link Sent"),
-          content: Text("Password reset karne link send ($email) please check your inbox."),
+          content: const Text("If an account exists for this email, reset instructions will be sent. Please check your inbox."),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -170,7 +171,7 @@ class _SecurityPageState extends State<SecurityPage> {
         isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Something went wrong — please try again."), backgroundColor: AppColors.error),
+        SnackBar(content: Text(friendlyErrorMessage(e, fallback: "We couldn’t send password reset instructions. Check your connection and try again.")), backgroundColor: AppColors.error),
       );
     }
   }
@@ -236,7 +237,7 @@ class _SecurityPageState extends State<SecurityPage> {
       setState(() { isLoading = false; });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Account deletion failed — please try again."), backgroundColor: AppColors.error),
+          SnackBar(content: Text(friendlyErrorMessage(e, fallback: "We couldn’t delete your account. Please try again or contact support if the problem continues.")), backgroundColor: AppColors.error),
         );
       }
     }
@@ -264,7 +265,7 @@ class _SecurityPageState extends State<SecurityPage> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text("Something went wrong — please try again."), 
+          content: Text(friendlyErrorMessage(e, fallback: "We couldn’t log you out. Please try again.")), 
           backgroundColor: AppColors.error
         ),
       );
