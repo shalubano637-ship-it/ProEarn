@@ -294,6 +294,8 @@ class _SearchPageState extends State<SearchPage> {
                           if (snapshot.hasError) {
                             return ErrorRetryView(
                               error: snapshot.error,
+                              genericMessage: "We couldn’t load search results. Check your connection and try again.",
+                              offlineMessage: "You appear to be offline. Reconnect and retry your search.",
                               onRetry: () => setState(() {}),
                             );
                           }
@@ -303,7 +305,7 @@ class _SearchPageState extends State<SearchPage> {
                           if (filtered.isEmpty) {
                             return const Center(child: Padding(
                               padding: EdgeInsets.all(20.0),
-                              child: Text("No posts found matching search query.", style: TextStyle(color: AppColors.textTertiary)),
+                              child: Text("No posts found for this search. Try different keywords.", style: TextStyle(color: AppColors.textTertiary)),
                             ));
                           }
 
