@@ -72,7 +72,7 @@ class _ChatImagePreviewPageState extends State<_ChatImagePreviewPage> {
       setState(() => _isSending = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Image upload failed: $e"),
+          content: const Text("We couldn’t upload this image. Check your connection and try again."),
           backgroundColor: AppColors.error,
           duration: const Duration(seconds: 8),
         ),
