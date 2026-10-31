@@ -18,6 +18,7 @@ import '../cloudflare_media_service.dart';
 import '../user_profile_features.dart';
 import '../theme/theme.dart';
 import '../utils.dart';
+import '../utils/friendly_error.dart';
 import '../messaging/chat_image_preview_page.dart';
 import '../messaging/chat_multi_image_preview_page.dart';
 import 'comment_gift_sheet.dart';
@@ -393,7 +394,7 @@ class _CommentScreenState extends State<CommentScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Couldn't send photo: $e"), backgroundColor: AppColors.error),
+          SnackBar(content: Text(friendlyErrorMessage(e, fallback: "We couldn’t send your photo. Check your connection and try again.")), backgroundColor: AppColors.error),
         );
       }
     }
@@ -434,7 +435,7 @@ class _CommentScreenState extends State<CommentScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Couldn't send photos: $e"), backgroundColor: AppColors.error),
+          SnackBar(content: Text(friendlyErrorMessage(e, fallback: "We couldn’t send your photos. Check your connection and try again.")), backgroundColor: AppColors.error),
         );
       }
     }
