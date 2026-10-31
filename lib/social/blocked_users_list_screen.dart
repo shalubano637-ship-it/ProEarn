@@ -29,7 +29,7 @@ class BlockedUsersListScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("Data fetch failed."));
+            return const Center(child: Text("Couldn’t load blocked users. Check your connection and try again."));
           }
 
           var userData = snapshot.data!.first;
