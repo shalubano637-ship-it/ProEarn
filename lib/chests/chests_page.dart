@@ -60,7 +60,7 @@ class _ChestsPageState extends State<ChestsPage> {
   Future<void> _shareReferralCode() async {
     final code = _referralCode;
     if (code == null || code.isEmpty) return;
-    await Share.share('Join me on Pro Earn. Use my referral code: $code');
+    await Share.share('Join me on proSN. Use my referral code: $code');
   }
 
   Future<void> _startChestTimer() async {
