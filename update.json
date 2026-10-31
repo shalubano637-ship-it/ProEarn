@@ -3,14 +3,14 @@
   "status": "published",
   "versionCode": 42,
   "versionName": "1.0.41",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.41/prosn.apk",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.41/proearn.apk",
   "title": "proSN Branding Update",
   "message": "The app name is now proSN.",
   "newFeatures": [
     "Updated app name and branding to proSN"
   ],
   "fixes": [
-    "Renamed Android launcher label and visible app branding"
+    "Corrected APK download URL for in-app updates"
   ],
   "forceUpdate": false,
   "buildTrigger": "1793432949528"
