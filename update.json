@@ -1,19 +1,20 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 46,
-  "versionName": "1.0.45",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.45/proearn.apk",
+  "versionCode": 47,
+  "versionName": "1.0.46",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.46/proearn.apk",
   "title": "ProSN Friendly Error Messages",
-  "message": "Clearer error messages explain common problems and how to fix them.",
+  "message": "Clearer error messages across account, posts, chat, Rooms, rewards, profile, settings, and app updates.",
   "newFeatures": [
-    "Clearer sign-in and sign-up messages",
-    "More helpful upload, chat, image, voice message, and chest timer errors"
+    "Clearer sign-in, sign-up, and account messages",
+    "More helpful post, profile, comment, chat, Room, gift, and reward errors"
   ],
   "fixes": [
-    "Hide technical backend details in common error popups",
-    "Add shared friendly messages for network, permissions, and common request failures"
+    "Replace raw technical exceptions in user-facing messages",
+    "Improve common network, upload, permission, and request error guidance",
+    "Fix Help page support button build error"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1793462000000"
+  "buildTrigger": "1793465000000"
 }
