@@ -5,7 +5,6 @@ import 'models.dart';
 import 'theme/theme.dart';
 import 'service.dart';
 import 'widgets/coin_balance_indicator.dart';
-import 'widgets/coin_icon.dart';
 
 class GiftShopPage extends StatefulWidget {
   const GiftShopPage({super.key});
@@ -28,7 +27,7 @@ class _GiftShopPageState extends State<GiftShopPage> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [const CoinIcon(size: 18), const SizedBox(width: 5), Text("${gift['priceCoins']} each")]),
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [Text("${gift['priceCoins']} each")]),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -46,7 +45,7 @@ class _GiftShopPageState extends State<GiftShopPage> {
                     ),
                   ],
                 ),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [const CoinIcon(size: 18), const SizedBox(width: 5), Text("Total: ${((gift['priceCoins'] as num) * qty).toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold))]),
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [Text("Total: ${((gift['priceCoins'] as num) * qty).toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold))]),
               ],
             ),
             actions: [
@@ -134,20 +133,7 @@ class _GiftShopPageState extends State<GiftShopPage> {
                       const SizedBox(height: 4),
                       Text(gift['name'] ?? '', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                           maxLines: 1, overflow: TextOverflow.ellipsis),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(color: AppColors.accent.withOpacity(.16), shape: BoxShape.circle),
-                            alignment: Alignment.center,
-                            child: const CoinIcon(size: 16),
-                          ),
-                          const SizedBox(width: 4),
-                          Text("${gift['priceCoins']}", style: const TextStyle(fontSize: 11, color: AppColors.accent, fontWeight: FontWeight.w800)),
-                        ],
-                      ),
+                      Text("${gift['priceCoins']}", style: const TextStyle(fontSize: 11, color: AppColors.accent, fontWeight: FontWeight.w800)),
                     ],
                   ),
                 ),
