@@ -226,7 +226,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(
-            "proSN",
+            "ProSN",
             style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold),
           ),
           centerTitle: true,

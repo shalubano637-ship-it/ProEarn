@@ -1,18 +1,17 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 43,
-  "versionName": "1.0.42",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.42/proearn.apk",
-  "title": "proSN New App Icon",
-  "message": "The app icon and branding have been refreshed.",
+  "versionCode": 44,
+  "versionName": "1.0.43",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.43/proearn.apk",
+  "title": "ProSN Brand Capitalization Update",
+  "message": "The app name is now displayed as ProSN.",
   "newFeatures": [
-    "Updated proSN launcher icon",
-    "Refreshed web app icons"
+    "Updated visible app branding to ProSN"
   ],
   "fixes": [
-    "Generated Android and web icons from the new proSN artwork"
+    "Standardized app name capitalization across Android, web, and app screens"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1793455000000"
+  "buildTrigger": "1793458000000"
 }

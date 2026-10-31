@@ -1,11 +1,11 @@
 {
-  "name": "proSN",
-  "short_name": "proSN",
+  "name": "ProSN",
+  "short_name": "ProSN",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0175C2",
-  "description": "proSN — AI content social platform with reels, creators, gifts and an in-app economy.",
+  "description": "ProSN — AI content social platform with reels, creators, gifts and an in-app economy.",
   "orientation": "portrait-primary",
   "prefer_related_applications": false,
   "icons": [

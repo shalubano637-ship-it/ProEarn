@@ -40,7 +40,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         setState(() {
-          splashText = "proSN";
+          splashText = "ProSN";
         });
       }
     });
@@ -500,7 +500,7 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text("proSN", style: AppTextStyles.displayLarge.copyWith(color: theme.colorScheme.onSurface, letterSpacing: 2)),
+                Text("ProSN", style: AppTextStyles.displayLarge.copyWith(color: theme.colorScheme.onSurface, letterSpacing: 2)),
                 const SizedBox(height: 10),
                 Text(isLogin ? "Login to continue" : "Create new account"),
                 const SizedBox(height: 40),

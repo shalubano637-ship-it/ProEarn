@@ -16,7 +16,7 @@ class HelpPage extends StatelessWidget {
       scheme: 'mailto',
       path: 'support.prosn@gmail.com',
       queryParameters: {
-        'subject': 'Support Request / Issue Report [proSN]',
+        'subject': 'Support Request / Issue Report [ProSN]',
         'body': 'Hi Support Team,\n\nUser ID / Username:\nDevice Model:\n\n[Type your issue here]'
       },
     );
@@ -40,7 +40,7 @@ class HelpPage extends StatelessWidget {
         backgroundColor: AppColors.background,
         appBar: AppBar(
           title: const Text(
-            'proSN Help & Support',
+            'ProSN Help & Support',
             style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
           ),
           backgroundColor: AppColors.background,
@@ -136,7 +136,7 @@ class HelpPage extends StatelessWidget {
 
   Widget _buildGuideTab() {
     final sections = <Map<String, dynamic>>[
-      {'title': '1. Create an Account and Sign In', 'steps': ['Open proSN and choose Sign Up if you are new.', 'Enter the requested details and complete the verification steps shown on screen.', 'If you already have an account, choose Sign In and enter your login details.', 'If you cannot access your account, use the password recovery option on the sign-in screen.']},
+      {'title': '1. Create an Account and Sign In', 'steps': ['Open ProSN and choose Sign Up if you are new.', 'Enter the requested details and complete the verification steps shown on screen.', 'If you already have an account, choose Sign In and enter your login details.', 'If you cannot access your account, use the password recovery option on the sign-in screen.']},
       {'title': '2. Browse the Feed', 'steps': ['Tap the Feed or Reels tab in the bottom navigation bar.', 'Swipe vertically to browse more posts and videos.', 'Use the available like, share, or other action buttons on a post to interact with it.', 'Tap a creator’s name or profile picture to open their profile.']},
       {'title': '3. Set Up and Edit Your Profile', 'steps': ['Tap your profile picture in the top-left corner of the main screen.', 'Open the Edit Profile option.', 'Update the fields you want to change, such as your display name, profile photo, or bio.', 'Save your changes and return to your profile to review them.']},
       {'title': '4. Upload Content', 'steps': ['Tap the Upload button in the bottom navigation bar.', 'Choose the media type and select the image or video you want to share, when available.', 'Add a caption and review the information before posting.', 'Submit the post and wait for the app to confirm that it has been uploaded.']},
@@ -149,7 +149,7 @@ class HelpPage extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('proSN Step-by-Step Guide', style: AppTextStyles.h2.copyWith(color: AppColors.textPrimary)),
+        Text('ProSN Step-by-Step Guide', style: AppTextStyles.h2.copyWith(color: AppColors.textPrimary)),
         const SizedBox(height: 8),
         Text('Follow these instructions to learn the main features of the app. Button names may vary slightly by app version.', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
         const SizedBox(height: 16),
@@ -196,11 +196,11 @@ class HelpPage extends StatelessWidget {
 
   String _getAboutUsText() {
     return '''
-ABOUT proSN
-Welcome to proSN, a social platform where people can share creative content, discover creators, connect with other users, and participate in community activities.
+ABOUT ProSN
+Welcome to ProSN, a social platform where people can share creative content, discover creators, connect with other users, and participate in community activities.
 
 OUR PURPOSE
-proSN aims to make sharing and discovering content simple, accessible, and enjoyable while encouraging respectful interactions between users.
+ProSN aims to make sharing and discovering content simple, accessible, and enjoyable while encouraging respectful interactions between users.
 
 WHAT YOU CAN DO
 - Browse short-form posts and videos in the feed.
