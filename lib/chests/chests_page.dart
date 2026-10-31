@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/theme.dart';
 import '../service.dart';
+import '../utils/friendly_error.dart';
 import '../chest_timer_service.dart';
 import '../ad_preloader.dart';
 import '../ad_unit_ids.dart';
@@ -102,7 +103,7 @@ class _ChestsPageState extends State<ChestsPage> {
     } catch (e) {
       debugPrint('Start chest timer failed: $e');
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not start chest timer: $e'), backgroundColor: AppColors.error),
+        SnackBar(content: Text(friendlyErrorMessage(e, fallback: "Could not start the chest timer. Please try again.")), backgroundColor: AppColors.error),
       );
     } finally {
       if (mounted) setState(() => _isClaiming = false);
