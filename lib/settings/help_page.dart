@@ -70,7 +70,7 @@ class HelpPage extends StatelessWidget {
         ),
         body: TabBarView(
           children: [
-            _buildSupportTab(),
+            _buildSupportTab(context),
 
             _buildGuideTab(),
 
@@ -89,7 +89,7 @@ class HelpPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSupportTab() {
+  Widget _buildSupportTab(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(20.0),
