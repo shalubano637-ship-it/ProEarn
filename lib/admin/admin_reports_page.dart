@@ -99,7 +99,7 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = "Reports load nahi hue: $e";
+        _error = "Reports couldn’t be loaded. Check your connection and try again.";
         _loading = false;
       });
     }
@@ -111,7 +111,7 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
       if (!mounted) return;
       setState(() => report['status'] = status);
     } catch (e) {
-      _showSnack("Update fail: $e", isError: true);
+      _showSnack("Couldn’t update this report. Please try again.", isError: true);
     }
   }
 
@@ -137,7 +137,7 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
       });
       _showSnack("User banned.");
     } catch (e) {
-      _showSnack("Ban fail: $e", isError: true);
+      _showSnack("Couldn’t update this user’s access. Please try again.", isError: true);
     }
   }
 
@@ -161,7 +161,7 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
       setState(() => _postsById.remove(postId));
       _showSnack("Post deleted.");
     } catch (e) {
-      _showSnack("Delete fail: $e", isError: true);
+      _showSnack("Couldn’t delete this item. Please try again.", isError: true);
     }
   }
 
