@@ -500,7 +500,7 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text("PRO EARN", style: AppTextStyles.displayLarge.copyWith(color: theme.colorScheme.onSurface, letterSpacing: 2)),
+                Text("proSN", style: AppTextStyles.displayLarge.copyWith(color: theme.colorScheme.onSurface, letterSpacing: 2)),
                 const SizedBox(height: 10),
                 Text(isLogin ? "Login to continue" : "Create new account"),
                 const SizedBox(height: 40),
