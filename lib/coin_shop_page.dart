@@ -103,8 +103,6 @@ class CoinShopPage extends StatelessWidget {
               duration: '30 days',
               price: '₹299',
               tag: 'BEST VALUE',
-              colors: colors,
-              theme: theme,
               benefits: const ['Ad-free app experience', '150 coins every day', 'Up to 4,500 coins over 30 days'],
             ),
             const SizedBox(height: 20),
