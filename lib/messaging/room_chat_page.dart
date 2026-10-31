@@ -214,7 +214,7 @@ class _RoomChatPageState extends State<RoomChatPage> {
       debugPrintStack(stackTrace: st);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Message could not be sent: $e'), backgroundColor: AppColors.error, duration: const Duration(seconds: 8)),
+          const SnackBar(content: Text('Your message couldn’t be sent. Check your connection and try again.'), backgroundColor: AppColors.error),
         );
       }
     } finally {
@@ -242,7 +242,7 @@ class _RoomChatPageState extends State<RoomChatPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Voice message failed: $e'), backgroundColor: AppColors.error),
+          const SnackBar(content: Text('Your voice message couldn’t be sent. Please try again.'), backgroundColor: AppColors.error),
         );
       }
     }
@@ -782,7 +782,7 @@ class _RoomInfoPageState extends State<RoomInfoPage> {
       await Supabase.instance.client.rpc('kick_room_member', params: {'p_room_id': widget.roomId, 'p_uid': uid});
       await _loadMembers();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not kick member: $e'), backgroundColor: AppColors.error));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Couldn’t remove this member. Please try again.'), backgroundColor: AppColors.error));
     }
   }
 
@@ -844,7 +844,7 @@ class _RoomInfoPageState extends State<RoomInfoPage> {
                         setDialogState(() => newProfileUrl = url);
                       }
                     } catch (e) {
-                      if (dialogContext.mounted) ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Could not set Room picture: $e'), backgroundColor: AppColors.error));
+                      if (dialogContext.mounted) ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(content: Text('Couldn’t update the Room picture. Please try again.'), backgroundColor: AppColors.error));
                     } finally {
                       if (dialogContext.mounted) setDialogState(() => uploading = false);
                     }
