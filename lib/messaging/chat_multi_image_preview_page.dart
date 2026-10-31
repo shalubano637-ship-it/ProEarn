@@ -92,7 +92,7 @@ class _ChatMultiImagePreviewPageState extends State<_ChatMultiImagePreviewPage> 
       setState(() => _isSending = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Image upload failed (${urls.length}/${sendable.length} sent): $e"),
+          content: Text("We couldn’t send all selected images. ${urls.length} of ${sendable.length} were sent. Please try again."),
           backgroundColor: AppColors.error,
           duration: const Duration(seconds: 8),
         ),
