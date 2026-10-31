@@ -85,8 +85,13 @@ jobs:
           storeFile=proearn-release.jks
           EOF
 
-      - name: Flutter pub get
-        run: flutter pub get
+      - name: Generate app icons from proSN artwork
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin
+          rsvg-convert -w 1024 -h 1024 assets/icon/app_icon.svg -o assets/icon/app_icon.png
+          flutter pub get
+          dart run flutter_launcher_icons
 
       - name: Build APK
         shell: bash
@@ -118,7 +123,7 @@ jobs:
           if [ "$STATUS" = "testing" ]; then
             NOTES="Admin test build. This update is NOT visible to normal users until the admin publishes it."
           else
-            NOTES="Published from the Pro Earn Admin Update Manager."
+            NOTES="Published from the proSN app branding update."
           fi
           gh release create "$TAG" proearn.apk \
             --title "$TAG" \
@@ -135,5 +140,3 @@ jobs:
         if: always()
         run: |
           rm -f android/proearn-release.jks android/key.properties
-
-# Rebuild trigger after final voice-message compile fix.
