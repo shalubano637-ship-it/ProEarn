@@ -108,7 +108,7 @@ class _SignupRewardsPopupState extends State<SignupRewardsPopup> {
     } catch (e) {
       debugPrint('claim_signup_daily_reward failed: $e');
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Daily reward claim failed: $e'), backgroundColor: AppColors.error, duration: const Duration(seconds: 8)),
+        const SnackBar(content: Text('We couldn’t claim your daily reward. Please try again.'), backgroundColor: AppColors.error, duration: Duration(seconds: 5)),
       );
     } finally {
       if (mounted) setState(() => _claimingDay = false);
