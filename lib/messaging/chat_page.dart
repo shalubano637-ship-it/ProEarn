@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import '../models.dart';
 import '../theme/theme.dart';
 import '../service.dart';
+import '../utils/friendly_error.dart';
 import '../cloudflare_media_service.dart';
 import 'chat_settings_page.dart';
 import 'chat_image_preview_page.dart';
@@ -206,7 +207,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       debugPrint("send_message failed: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Message failed to send: $e"), backgroundColor: AppColors.error),
+          SnackBar(content: Text(friendlyErrorMessage(e, fallback: "Your message could not be sent. Please try again.")), backgroundColor: AppColors.error),
         );
         if (text.isNotEmpty) _messageController.text = text; // restore so the user doesn't lose what they typed
       }
@@ -245,7 +246,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       debugPrint('Voice message send failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Voice message failed: $e'), backgroundColor: AppColors.error),
+          SnackBar(content: Text(friendlyErrorMessage(e, fallback: "Your voice message could not be sent. Please try again.")), backgroundColor: AppColors.error),
         );
       }
     }
@@ -266,7 +267,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       debugPrint("Image picker failed: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Couldn't open " + (source == ImageSource.camera ? "camera" : "gallery") + ": $e"), backgroundColor: AppColors.error),
+          SnackBar(content: Text(source == ImageSource.camera ? "Could not open the camera. Check app permissions and try again." : "Could not open your gallery. Check app permissions and try again."), backgroundColor: AppColors.error),
         );
       }
       return;
@@ -290,7 +291,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       debugPrint("Image send/upload failed: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Image upload failed: $e"), backgroundColor: AppColors.error),
+          SnackBar(content: Text(friendlyErrorMessage(e, fallback: "Your image could not be sent. Check your connection and try again.")), backgroundColor: AppColors.error),
         );
       }
     }
@@ -304,7 +305,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       debugPrint("Gallery picker failed: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Couldn't open gallery: $e"), backgroundColor: AppColors.error),
+          SnackBar(content: Text("Could not open your gallery. Check app permissions and try again."), backgroundColor: AppColors.error),
         );
       }
       return;
@@ -343,7 +344,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       debugPrint("Gallery image upload failed: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Image upload failed: $e"), backgroundColor: AppColors.error),
+          SnackBar(content: Text(friendlyErrorMessage(e, fallback: "Your image could not be sent. Check your connection and try again.")), backgroundColor: AppColors.error),
         );
       }
     }
