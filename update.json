@@ -1,17 +1,17 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 41,
-  "versionName": "1.0.40",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.40/proearn.apk",
-  "title": "Rewards Gift Price UI Fix",
-  "message": "Removed coin symbols from gift prices and purchase totals on the Rewards screen.",
+  "versionCode": 42,
+  "versionName": "1.0.41",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.41/prosn.apk",
+  "title": "proSN Branding Update",
+  "message": "The app name is now proSN.",
   "newFeatures": [
-    "Gift prices show numbers only"
+    "Updated app name and branding to proSN"
   ],
   "fixes": [
-    "Removed coin icons from gift cards and purchase dialog on Rewards screen"
+    "Renamed Android launcher label and visible app branding"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1793430357918"
+  "buildTrigger": "1793432949528"
 }
