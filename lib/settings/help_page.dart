@@ -11,7 +11,7 @@ import '../theme/theme.dart';
 class HelpPage extends StatelessWidget {
   const HelpPage({super.key});
 
-  Future<void> _contactSupport() async {
+  Future<void> _contactSupport(BuildContext context) async {
     final Uri emailLaunchUri = Uri(
       scheme: 'mailto',
       path: 'support.prosn@gmail.com',
@@ -22,13 +22,19 @@ class HelpPage extends StatelessWidget {
     );
 
     try {
-      if (await canLaunchUrl(emailLaunchUri)) {
-        await launchUrl(emailLaunchUri, mode: LaunchMode.externalApplication);
-      } else {
-        throw 'Could not launch email app';
+      final launched = await launchUrl(emailLaunchUri, mode: LaunchMode.externalApplication);
+      if (!launched && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No email app found. Email support.prosn@gmail.com directly.')),
+        );
       }
     } catch (e) {
-      debugPrint("Error launching email: $e");
+      debugPrint('Could not open email app: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open email. Contact support.prosn@gmail.com directly.')),
+        );
+      }
     }
   }
 
@@ -97,13 +103,13 @@ class HelpPage extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              "Facing any problems or have questions?",
+              "Need help with your account, content, messages, or app features? Contact our support team.",
               textAlign: TextAlign.center,
               style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 30),
             GestureDetector(
-              onTap: _contactSupport,
+              onTap: () => _contactSupport(context),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 decoration: BoxDecoration(
@@ -117,7 +123,7 @@ class HelpPage extends StatelessWidget {
                     Icon(Icons.email_outlined, color: AppColors.textOnAccent),
                     SizedBox(width: 10),
                     Text(
-                      "Contact for any issue",
+                      "Email Support",
                       style: TextStyle(
                         color: AppColors.textOnAccent,
                         fontWeight: FontWeight.bold,
@@ -151,7 +157,7 @@ class HelpPage extends StatelessWidget {
       children: [
         Text('ProSN Step-by-Step Guide', style: AppTextStyles.h2.copyWith(color: AppColors.textPrimary)),
         const SizedBox(height: 8),
-        Text('Follow these instructions to learn the main features of the app. Button names may vary slightly by app version.', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
+        Text('Follow these instructions to learn the main features of the app. Use the steps below to find common features. Some options may be available only when you are signed in.', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
         const SizedBox(height: 16),
         ...sections.map((section) => Card(
           color: AppColors.surface,
@@ -188,7 +194,7 @@ class HelpPage extends StatelessWidget {
 
           fontSize: 13,
           height: 1.6,
-          fontFamily: 'monospace',
+          fontFamily: null,
         ),
       ),
     );

@@ -1,17 +1,20 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 44,
-  "versionName": "1.0.43",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.43/proearn.apk",
-  "title": "ProSN Brand Capitalization Update",
-  "message": "The app name is now displayed as ProSN.",
+  "versionCode": 45,
+  "versionName": "1.0.44",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.44/proearn.apk",
+  "title": "ProSN Help & Legal Content Update",
+  "message": "Updated the Help & Support page, step-by-step guide, and legal information.",
   "newFeatures": [
-    "Updated visible app branding to ProSN"
+    "Improved Support contact flow",
+    "Reviewed Guide, About Us, Terms, Privacy, Community Guidelines, and Child Safety sections"
   ],
   "fixes": [
-    "Standardized app name capitalization across Android, web, and app screens"
+    "Standardized ProSN branding and support email",
+    "Removed named service providers from the Privacy Policy",
+    "Improved readability of legal text"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1793458000000"
+  "buildTrigger": "1793460000000"
 }

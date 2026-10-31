@@ -1,10 +1,10 @@
 const String kCurrentTermsVersion = '2026-09';
 
 const String kTermsAndConditionsText = '''
-PRO EARN — TERMS OF USE
+ProSN — TERMS OF USE
 Last Updated: September 2026
 
-By creating an account or using PRO EARN, you agree to these Terms of Use and the Community Guidelines.
+By creating an account or using ProSN, you agree to these Terms of Use and the Community Guidelines.
 
 1. ELIGIBILITY AND ACCOUNTS
 - Provide accurate account information and keep your account secure.
@@ -18,7 +18,7 @@ By creating an account or using PRO EARN, you agree to these Terms of Use and th
 - Content may be automatically screened and may also be reviewed after reports or other safety signals.
 
 3. MODERATION AND ENFORCEMENT
-- PRO EARN uses device-side and server-side safety checks for uploaded media and server-side text moderation for supported UGC.
+- ProSN uses device-side and server-side safety checks for uploaded media and server-side text moderation for supported UGC.
 - Reported content and accounts may be reviewed and removed when appropriate.
 - We may restrict, suspend, or terminate accounts for repeated or severe violations.
 - Child sexual abuse and exploitation content is strictly prohibited. We will take appropriate action when we obtain actual knowledge of such content and follow applicable reporting obligations.
@@ -29,7 +29,7 @@ By creating an account or using PRO EARN, you agree to these Terms of Use and th
 - Reports may be retained as necessary for safety, abuse prevention, legal compliance, and moderation records.
 
 5. COINS AND REWARDS
-- PRO EARN uses in-app virtual coins and gifts.
+- ProSN uses in-app virtual coins and gifts.
 - Virtual coins and gifts have no cash value unless the app explicitly states otherwise in a future approved feature.
 - Coins must not be obtained through bots, fraud, self-dealing, or coordinated engagement manipulation.
 
@@ -46,7 +46,7 @@ By creating an account or using PRO EARN, you agree to these Terms of Use and th
 - Some information may be retained when reasonably necessary for fraud prevention, safety, legal compliance, dispute resolution, or other lawful purposes, as described in the Privacy Policy.
 
 9. CHILD SAFETY
-- PRO EARN prohibits child sexual abuse and exploitation (CSAE), CSAM, grooming, sexual solicitation of minors, sextortion of minors, and child trafficking/exploitation.
+- ProSN prohibits child sexual abuse and exploitation (CSAE), CSAM, grooming, sexual solicitation of minors, sextortion of minors, and child trafficking/exploitation.
 - Our child-safety standards and reporting process are publicly available and form part of these rules.
 
 10. CHANGES
@@ -54,9 +54,9 @@ We may update these Terms. Material changes will be communicated through the app
 ''';
 
 const String kCommunityGuidelinesText = '''
-PRO EARN — COMMUNITY GUIDELINES
+ProSN — COMMUNITY GUIDELINES
 
-PRO EARN is a social platform. The following behavior is not allowed:
+ProSN is a social platform. The following behavior is not allowed:
 
 - Child sexual abuse or exploitation, CSAM, grooming, sexual solicitation of minors, or sextortion.
 - Pornography, explicit sexual acts, or sexual content involving minors.
@@ -80,13 +80,13 @@ Moderation:
 Appeals:
 If your content or account is restricted, contact support with the reason shown in the app. We may review the decision and restore access where appropriate.
 
-Safety contact: proearn.in@gmail.com
+Safety contact: support.prosn@gmail.com
 ''';
 
 const String kChildSafetyStandardsText = '''
-PRO EARN — CHILD SAFETY STANDARDS
+ProSN — CHILD SAFETY STANDARDS
 
-PRO EARN strictly prohibits child sexual abuse and exploitation (CSAE).
+ProSN strictly prohibits child sexual abuse and exploitation (CSAE).
 
 Prohibited content and behavior include:
 - Child sexual abuse material (CSAM), including visual depictions involving minors in sexually explicit conduct.
@@ -101,29 +101,29 @@ REPORTING
 Users can report suspected child-safety violations from within the app. Reports are reviewed and appropriate action is taken, including removal and account enforcement where warranted.
 
 CSAM RESPONSE
-When PRO EARN obtains actual knowledge of CSAM or other CSAE content, it will take appropriate action, including removal and reporting to the appropriate authority where required by applicable law.
+When ProSN obtains actual knowledge of CSAM or other CSAE content, it will take appropriate action, including removal and reporting to the appropriate authority where required by applicable law.
 
 CHILD SAFETY POINT OF CONTACT
-Designated safety contact: proearn.in@gmail.com
+Designated safety contact: support.prosn@gmail.com
 
 The contact is responsible for receiving child-safety concerns and communications from Google Play and coordinating enforcement and review procedures.
 
-This standard applies regardless of whether the app is marketed to children. Users must not use PRO EARN to facilitate exploitation or endangerment of children.
+This standard applies regardless of whether the app is marketed to children. Users must not use ProSN to facilitate exploitation or endangerment of children.
 ''';
 
 const String kPrivacyPolicyText = '''
-PRO EARN — PRIVACY POLICY
+ProSN — PRIVACY POLICY
 Last Updated: September 2026
 
 1. DATA WE PROCESS
-Depending on the features you use, PRO EARN may process:
+Depending on the features you use, ProSN may process:
 - Account information such as email, user ID, username, profile information, and verification state.
 - User-generated content such as posts, comments, messages, profile images, and report information.
 - Social activity such as follows, likes, shares, notifications, and in-app coin/gift activity.
 - Technical information needed for security, reliability, crash reporting, abuse prevention, and advertising.
 
 2. SERVICE PROVIDERS
-PRO EARN uses service providers including Supabase for authentication/database infrastructure, Cloudflare for media storage/delivery and server processing, OneSignal for push notifications, Sentry for crash/error monitoring, and Google Mobile Ads for advertising.
+ProSN uses third-party service providers to support account access, data storage, media delivery, notifications, app reliability, and advertising. Individual provider names are not listed in this policy. Providers may process information only as needed to deliver their services, subject to applicable terms and privacy requirements.
 
 3. MEDIA MODERATION
 Uploaded media is first checked on the device. Media that passes the device check is sent through a server-side media gateway where an additional moderation check is performed before publication. Content can also be reviewed after a safety report or other moderation signal.
@@ -132,7 +132,7 @@ Uploaded media is first checked on the device. Media that passes the device chec
 Messages are available to the conversation participants as part of the messaging feature. Reports may include snapshots or identifiers needed to investigate safety complaints. Safety and abuse records may be retained as reasonably necessary for enforcement, fraud prevention, legal compliance, and dispute resolution.
 
 5. ADVERTISING
-Google Mobile Ads may process device and advertising-related information according to Google's applicable policies and your device/account advertising settings.
+Advertising providers may process device and advertising-related information according to their applicable policies and your device or account advertising settings.
 
 6. SECURITY
 We use authentication, access controls, row-level security, server-side authorization, rate limits, and other safeguards. No internet service can guarantee absolute security.
@@ -141,5 +141,5 @@ We use authentication, access controls, row-level security, server-side authoriz
 You can request account and associated-data deletion through the in-app Security settings and the public deletion-request resource. Data that must be retained for legal, security, fraud-prevention, or other lawful reasons may be retained for the applicable period.
 
 8. CONTACT
-Privacy and safety questions: proearn.in@gmail.com
+Privacy and safety questions: support.prosn@gmail.com
 ''';
