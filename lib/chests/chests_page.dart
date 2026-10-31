@@ -350,7 +350,7 @@ class _GiftShopSectionState extends State<_GiftShopSection> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text("Price: ${gift['priceCoins']} 🪙 each"),
+                Text("Price: ${gift['priceCoins']} each"),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -369,7 +369,7 @@ class _GiftShopSectionState extends State<_GiftShopSection> {
                   ],
                 ),
                 Text(
-                  "Total: ${((gift['priceCoins'] as num) * qty).toStringAsFixed(2)} 🪙",
+                  "Total: ${((gift['priceCoins'] as num) * qty).toStringAsFixed(2)}",
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
@@ -457,7 +457,7 @@ class _GiftShopSectionState extends State<_GiftShopSection> {
                     const SizedBox(height: 4),
                     Text(gift['name'] ?? '', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                         maxLines: 1, overflow: TextOverflow.ellipsis),
-                    Text("${gift['priceCoins']} 🪙", style: const TextStyle(fontSize: 11, color: AppColors.accent)),
+                    Text("${gift['priceCoins']}", style: const TextStyle(fontSize: 11, color: AppColors.accent)),
                   ],
                 ),
               ),
