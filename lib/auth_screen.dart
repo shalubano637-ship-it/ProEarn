@@ -265,14 +265,27 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       await Supabase.instance.client.auth.resetPasswordForEmail(email);
+      if (!mounted) return;
+      setState(() {
+        isSendingReset = false;
+        resetLinkSent = true;
+      });
     } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        isSendingReset = false;
+        resetLinkSent = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(friendlyErrorMessage(
+            e,
+            fallback: "We couldn’t send the reset link. Check your connection and try again.",
+          )),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
-
-    if (!mounted) return;
-    setState(() {
-      isSendingReset = false;
-      resetLinkSent = true;
-    });
   }
 
   Future<void> handleGoogleAuth() async {
@@ -874,7 +887,7 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Error: ${e.toString().split(']').last.trim()}"),
+            content: Text(friendlyErrorMessage(e, fallback: "We couldn’t send the verification email. Please wait a moment and try again.")),
             behavior: SnackBarBehavior.floating,
             backgroundColor: AppColors.error,
           ),
