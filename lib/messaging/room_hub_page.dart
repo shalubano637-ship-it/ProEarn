@@ -120,7 +120,7 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
                 if (dialogContext.mounted) Navigator.pop(dialogContext, row);
               } catch (e) {
                 setDialogState(() => busy = false);
-                if (dialogContext.mounted) ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text(e.toString().contains('ROOM_ALREADY_EXISTS') ? 'You can create only one Room.' : e.toString().replaceFirst('PostgrestException(message: ', '').split(', code:').first), backgroundColor: AppColors.error));
+                if (dialogContext.mounted) ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text(e.toString().contains('ROOM_ALREADY_EXISTS') ? 'You can create only one Room.' : 'Couldn’t create the Room. Check your connection and try again.'), backgroundColor: AppColors.error));
               }
             }, child: busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Create')),
           ],
@@ -225,7 +225,7 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
         return const Center(child: CircularProgressIndicator());
       }
       if (snapshot.hasError) {
-        return Center(child: Text('Could not load Rooms: ${snapshot.error}'));
+        return Center(child: const Text('Rooms couldn’t be loaded. Check your connection and try again.'));
       }
 
       final rooms = snapshot.data ?? [];
