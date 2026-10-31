@@ -40,7 +40,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         setState(() {
-          splashText = "PRO EARN";
+          splashText = "proSN";
         });
       }
     });
