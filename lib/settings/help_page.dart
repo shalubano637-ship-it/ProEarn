@@ -14,9 +14,9 @@ class HelpPage extends StatelessWidget {
   Future<void> _contactSupport() async {
     final Uri emailLaunchUri = Uri(
       scheme: 'mailto',
-      path: 'proearn.in@gmail.com',
+      path: 'support.prosn@gmail.com',
       queryParameters: {
-        'subject': 'Support Request / Issue Report [PRO EARN]',
+        'subject': 'Support Request / Issue Report [proSN]',
         'body': 'Hi Support Team,\n\nUser ID / Username:\nDevice Model:\n\n[Type your issue here]'
       },
     );
@@ -35,12 +35,12 @@ class HelpPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 6, // Support, About, Terms, Privacy, Community Guidelines, Child Safety
+      length: 7, // Support, Guide, About, Terms, Privacy, Community Guidelines, Child Safety
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
           title: const Text(
-            'PRO EARN Support',
+            'proSN Help & Support',
             style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
           ),
           backgroundColor: AppColors.background,
@@ -53,6 +53,7 @@ class HelpPage extends StatelessWidget {
             isScrollable: true, // Swiping controls handle multiple tabs properly
             tabs: [
               Tab(icon: Icon(Icons.support_agent), text: "Support"),
+              Tab(icon: Icon(Icons.menu_book_outlined), text: "Guide"),
               Tab(icon: Icon(Icons.info_outline), text: "About Us"),
               Tab(icon: Icon(Icons.gavel), text: "Terms"),
               Tab(icon: Icon(Icons.privacy_tip), text: "Privacy"),
@@ -64,6 +65,8 @@ class HelpPage extends StatelessWidget {
         body: TabBarView(
           children: [
             _buildSupportTab(),
+
+            _buildGuideTab(),
 
             _buildLegalTab(_getAboutUsText()),
 
@@ -131,6 +134,49 @@ class HelpPage extends StatelessWidget {
     );
   }
 
+  Widget _buildGuideTab() {
+    final sections = <Map<String, dynamic>>[
+      {'title': '1. Create an Account and Sign In', 'steps': ['Open proSN and choose Sign Up if you are new.', 'Enter the requested details and complete the verification steps shown on screen.', 'If you already have an account, choose Sign In and enter your login details.', 'If you cannot access your account, use the password recovery option on the sign-in screen.']},
+      {'title': '2. Browse the Feed', 'steps': ['Tap the Feed or Reels tab in the bottom navigation bar.', 'Swipe vertically to browse more posts and videos.', 'Use the available like, share, or other action buttons on a post to interact with it.', 'Tap a creator’s name or profile picture to open their profile.']},
+      {'title': '3. Set Up and Edit Your Profile', 'steps': ['Tap your profile picture in the top-left corner of the main screen.', 'Open the Edit Profile option.', 'Update the fields you want to change, such as your display name, profile photo, or bio.', 'Save your changes and return to your profile to review them.']},
+      {'title': '4. Upload Content', 'steps': ['Tap the Upload button in the bottom navigation bar.', 'Choose the media type and select the image or video you want to share, when available.', 'Add a caption and review the information before posting.', 'Submit the post and wait for the app to confirm that it has been uploaded.']},
+      {'title': '5. Follow Creators and Manage Privacy', 'steps': ['Open a user’s profile and tap Follow, if the option is available.', 'To change account privacy, open Settings and look for the private account option.', 'Review who can message you in the messaging or privacy settings.', 'Private-account and messaging preferences may limit who can see or contact you.']},
+      {'title': '6. Send and Read Messages', 'steps': ['Tap Messages in the bottom navigation bar.', 'Open an existing conversation or select a user when that option is available.', 'Type your message and tap Send.', 'If you cannot message someone, check their messaging settings and whether either account has blocked the other.']},
+      {'title': '7. Coins, Gifts, and Rewards', 'steps': ['Tap the coin balance or open the Coin Shop to review available coin options.', 'Open the Bag or Gifts area to view items available to your account.', 'Follow the on-screen instructions to claim or use a reward when eligible.', 'Review the displayed price, limits, and confirmation screen before spending coins.', 'Reward availability and limits may vary. Do not assume a reward or payment is complete until the app confirms it.']},
+      {'title': '8. Leaderboard and Community Rooms', 'steps': ['Tap Leaderboard in the bottom navigation bar to view rankings.', 'Open the Rooms section to browse available community rooms.', 'Choose a room and follow the on-screen instructions to join or participate.', 'Treat other users respectfully and follow the Community Guidelines.']},
+      {'title': '9. Report a Problem or Contact Support', 'steps': ['Open Settings and select Help & Support.', 'Choose the Support tab and tap Contact for any issue.', 'Explain what happened in your email and list the steps that caused the issue.', 'Include your username, app version, device model, and a screenshot if helpful. Never send your password or verification code.', 'You can also email support.prosn@gmail.com directly.']}
+    ];
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text('proSN Step-by-Step Guide', style: AppTextStyles.titleLarge.copyWith(color: AppColors.textPrimary)),
+        const SizedBox(height: 8),
+        Text('Follow these instructions to learn the main features of the app. Button names may vary slightly by app version.', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
+        const SizedBox(height: 16),
+        ...sections.map((section) => Card(
+          color: AppColors.surface,
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(section['title'] as String, style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                ...(section['steps'] as List<String>).asMap().entries.map((entry) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${entry.key + 1}. ', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.accent, fontWeight: FontWeight.bold)),
+                    Expanded(child: Text(entry.value, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary, height: 1.4))),
+                  ]),
+                )),
+              ],
+            ),
+          ),
+        )),
+      ],
+    );
+  }
   Widget _buildLegalTab(String text) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -150,18 +196,21 @@ class HelpPage extends StatelessWidget {
 
   String _getAboutUsText() {
     return '''
-ABOUT PRO EARN
-Welcome to PRO EARN, the premier social environment designed specifically for AI-generated media creators and tech enthusiasts.
+ABOUT proSN
+Welcome to proSN, a social platform where people can share creative content, discover creators, connect with other users, and participate in community activities.
 
-OUR MISSION
-Our core objective is to empower prompt engineers, digital creative minds, and social media enthusiasts by providing an engaging framework where AI creativity directly maps to economic incentives. We bridge the gap between algorithmic processing and active audience validation.
+OUR PURPOSE
+proSN aims to make sharing and discovering content simple, accessible, and enjoyable while encouraging respectful interactions between users.
 
-WHAT WE DO
-- Provide an advanced 9:16 vertical feed ecosystem optimized for rich UI presentation.
-- Implement an absolute validation architecture ('Gets' scoring mechanics) that calculates content performance metrics in real-time.
-- Foster a safe, heavily moderated social space that champions original generation setups while maintaining strict adherence to universal app marketplace policy guidelines.
+WHAT YOU CAN DO
+- Browse short-form posts and videos in the feed.
+- Like, share, and interact with content where these options are available.
+- Visit profiles and follow creators.
+- Chat with other users, subject to their messaging settings.
+- Explore the leaderboard, gifts, coins, and available rewards.
+- Manage your profile, privacy, and app settings.
 
-Powered by secure infrastructure pipelines and automated cloud classification algorithms, PRO EARN delivers a next-generation decentralized engagement environment.
+We use secure server systems to support app features and help protect user information. Specific server or service provider names are not listed here.
 ''';
   }
 
