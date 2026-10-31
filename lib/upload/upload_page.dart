@@ -17,6 +17,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../service.dart';
 import '../theme/theme.dart';
+import '../utils/friendly_error.dart';
 
 import 'global_image_adjuster.dart';
 
@@ -202,7 +203,7 @@ class _UploadPageState extends State<UploadPage> {
           content: Text(
             isModerationRejection
                 ? "Post not allowed: caption or prompt contains blocked content."
-                : "Upload failed: $e",
+                : friendlyErrorMessage(e, fallback: "We couldn’t upload your post. Check your connection and try again."),
           ),
           backgroundColor: AppColors.error,
         ),
