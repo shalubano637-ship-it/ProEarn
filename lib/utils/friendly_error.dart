@@ -19,12 +19,24 @@ String friendlyErrorMessage(
       message.contains('invalid_credentials')) {
     return 'The email or password is incorrect. Check your details and try again.';
   }
+  if (message.contains('invalid email') || message.contains('email address is invalid')) {
+    return 'Enter a valid email address and try again.';
+  }
+  if (message.contains('weak password') || message.contains('password should be at least')) {
+    return 'Choose a stronger password that meets the password requirements.';
+  }
   if (message.contains('email not confirmed')) {
     return 'Please verify your email address before signing in.';
   }
   if (message.contains('already registered') ||
       message.contains('user already exists')) {
     return 'An account with this email already exists. Try signing in instead.';
+  }
+  if (message.contains('duplicate key') || message.contains('unique constraint')) {
+    return 'This information is already in use. Check your details and try again.';
+  }
+  if (message.contains('foreign key') || message.contains('violates check constraint')) {
+    return 'This action could not be completed with the current information. Please refresh and try again.';
   }
   if (message.contains('permission denied') ||
       message.contains('row-level security') ||
