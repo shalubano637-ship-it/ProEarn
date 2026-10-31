@@ -1,17 +1,17 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 40,
-  "versionName": "1.0.39",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.39/proearn.apk",
-  "title": "Gift Shop Price UI Update",
-  "message": "Removed coin icons beside gift prices. Prices now appear as text only.",
+  "versionCode": 41,
+  "versionName": "1.0.40",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.40/proearn.apk",
+  "title": "Rewards Gift Price UI Fix",
+  "message": "Removed coin symbols from gift prices and purchase totals on the Rewards screen.",
   "newFeatures": [
-    "Gift prices display without coin icons"
+    "Gift prices show numbers only"
   ],
   "fixes": [
-    "Removed coin icons from gift card prices and purchase dialog price totals"
+    "Removed coin icons from gift cards and purchase dialog on Rewards screen"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1793427903032"
+  "buildTrigger": "1793430357918"
 }
