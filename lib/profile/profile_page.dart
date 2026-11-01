@@ -35,6 +35,7 @@ class ProfilePage extends StatefulWidget {
 }
 class _ProfilePageState extends State<ProfilePage> {
   bool selectionMode = false;
+  bool _followActionInProgress = false;
   List<String> selectedPosts = [];
   
   BannerAd? _bannerAd;
@@ -108,15 +109,18 @@ class _ProfilePageState extends State<ProfilePage> {
     // The public_profiles view intentionally contains profile-safe fields only.
     // Follow relationships live on users, so load those arrays for both own and
     // other profiles; otherwise the follow button and lists always appear empty.
-    final relationshipData = await Supabase.instance.client
-        .from('users')
-        .select('followers,following')
-        .eq('uid', uid)
-        .maybeSingle();
+    final relationshipData = await Supabase.instance.client.rpc(
+      'get_follow_relationships',
+      params: {'p_target_id': uid},
+    );
+    final relationships = relationshipData is Map
+        ? Map<String, dynamic>.from(relationshipData)
+        : <String, dynamic>{};
     return {
       ...profile,
-      'followers': relationshipData?['followers'] ?? const [],
-      'following': relationshipData?['following'] ?? const [],
+      'followers': relationships['followers'] ?? const [],
+      'following': relationships['following'] ?? const [],
+      'canViewRelationships': relationships['can_view'] ?? true,
     };
   }
 
@@ -387,40 +391,46 @@ class _ProfilePageState extends State<ProfilePage> {
                                             ? theme.colorScheme.onSurface 
                                             : theme.colorScheme.onPrimary,
                                       ),
-                                      onPressed: () async {
+                                      onPressed: _followActionInProgress ? null : () async {
+                                        setState(() => _followActionInProgress = true);
                                         try {
-                                          if (isFollowing) {
-                                            await Supabase.instance.client.rpc('toggle_follow', params: {
-                                              'p_follower_id': currentUser.id,
-                                              'p_target_id': targetUid,
-                                              'p_follow': false,
-                                            });
-                                          } else {
-                                            await Supabase.instance.client.rpc('toggle_follow', params: {
-                                              'p_follower_id': currentUser.id,
-                                              'p_target_id': targetUid,
-                                              'p_follow': true,
-                                            });
+                                          await Supabase.instance.client.rpc('toggle_follow', params: {
+                                            'p_follower_id': currentUser.id,
+                                            'p_target_id': targetUid,
+                                            'p_follow': !isFollowing,
+                                          });
 
-                                            sendNotification(
-                                              targetOwnerId: targetUid,
-                                              type: 'follow',
-                                              message: 'started following you.',
-                                            );
+                                          if (!isFollowing) {
+                                            try {
+                                              await sendNotification(
+                                                targetOwnerId: targetUid,
+                                                type: 'follow',
+                                                message: 'started following you.',
+                                              );
+                                            } catch (notificationError) {
+                                              debugPrint("Follow notification failed: $notificationError");
+                                            }
                                           }
-                                          // Reload the relationship arrays so the button,
-                                          // counts, and follow lists reflect the database.
                                           await _refreshProfile();
                                         } catch (e) {
                                           debugPrint("toggle_follow failed: $e");
                                           if (context.mounted) {
                                             ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text("Couldn't update follow status — please try again."), backgroundColor: AppColors.error),
+                                              SnackBar(
+                                                content: Text("Couldn't update follow status. ${e.toString().contains('Too many follow') ? 'Please wait a minute and try again.' : 'Check your connection and try again.'}"),
+                                                backgroundColor: AppColors.error,
+                                              ),
                                             );
+                                          }
+                                        } finally {
+                                          if (mounted) {
+                                            setState(() => _followActionInProgress = false);
                                           }
                                         }
                                       },
-                                      child: Text(isFollowing ? "Unfollow" : "Follow"),
+                                      child: _followActionInProgress
+                                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                                          : Text(isFollowing ? "Unfollow" : "Follow"),
                                     );
                                   },
                                 ),
