@@ -149,6 +149,24 @@ Deno.serve(async (req) => {
       return json({ success: true });
     }
 
+    // Suppress message push when recipient is actively viewing this exact chat.
+    // The chat screen refreshes presence every 30 seconds; stale rows are ignored.
+    if (type === "message") {
+      const activeSince = new Date(Date.now() - 90000).toISOString();
+      const { data: presence, error: presenceError } = await admin.from("user_presence")
+        .select('uid,screen,chattingWithUid,updatedAt')
+        .eq("uid", targetOwnerId)
+        .eq("screen", "chat")
+        .eq("chattingWithUid", senderId)
+        .gte("updatedAt", activeSince)
+        .maybeSingle();
+      if (presenceError) {
+        console.error("chat presence lookup failed:", presenceError);
+      } else if (presence) {
+        return json({ success: true, pushSuppressed: true, reason: "recipient_in_chat" });
+      }
+    }
+
     const { data: sender } = await admin.from("users").select('userName,profileUrl')
       .eq("uid", senderId).maybeSingle();
 
