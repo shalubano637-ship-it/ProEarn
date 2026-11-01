@@ -1,4 +1,5 @@
 
+import 'dart:async';
 import 'dart:convert';
 import 'package:universal_io/universal_io.dart';
 import 'package:flutter/material.dart';
@@ -73,6 +74,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   bool _iBlockedThem = false;
   bool _theyBlockedMe = false;
   bool _isUnblocking = false;
+  Timer? _presenceHeartbeat;
 
   @override
   void initState() {
@@ -84,6 +86,14 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       'p_screen': 'chat',
       'p_chatting_with_uid': widget.otherUid,
     }).catchError((e) => debugPrint('set_presence failed: $e'));
+    // Refresh presence while this chat remains open so push suppression stays accurate.
+    _presenceHeartbeat = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!mounted) return;
+      Supabase.instance.client.rpc('set_presence', params: {
+        'p_screen': 'chat',
+        'p_chatting_with_uid': widget.otherUid,
+      }).catchError((e) => debugPrint('set_presence heartbeat failed: $e'));
+    });
   }
 
   Future<void> _loadBlockStatus() async {
@@ -688,6 +698,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _presenceHeartbeat?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _messageController.dispose();
     _scrollController.dispose();
