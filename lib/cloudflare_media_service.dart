@@ -8,17 +8,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class CloudflareMediaService {
   static const gatewayUrl = String.fromEnvironment(
     'CLOUDFLARE_MEDIA_GATEWAY_URL',
-    defaultValue: '',
+    defaultValue: 'https://proearn-media-gateway.shalubano637.workers.dev',
   );
 
   static Future<Map<String, dynamic>> _post(
     String path,
     Map<String, dynamic> body,
   ) async {
-    if (gatewayUrl.isEmpty) {
-      throw StateError('Cloudflare moderation gateway is not configured');
-    }
-
     final token = Supabase.instance.client.auth.currentSession?.accessToken;
     if (token == null) throw StateError('Not authenticated');
 
@@ -45,9 +41,7 @@ class CloudflareMediaService {
     return Map<String, dynamic>.from(decoded as Map);
   }
 
-  /// Second moderation gate. This does NOT store the image.
-  /// It only sends the bytes to Cloudflare for server-side safety analysis
-  /// and returns a short-lived approval token for the ImgBB Edge Function.
+  /// Server-side safety check. The image is stored separately in R2.
   static Future<String> moderateImageBytes(
     Uint8List bytes, {
     String contentType = 'image/jpeg',
@@ -76,18 +70,12 @@ class CloudflareMediaService {
     return approvalToken;
   }
 
-  /// Backwards-compatible file API. It performs server-side moderation only;
-  /// the actual storage upload is handled by the ImgBB Edge Function.
   static Future<String> moderateImage(File file) async {
     final bytes = await file.readAsBytes();
-    return moderateImageBytes(
-      bytes,
-      contentType: _contentType(file.path),
-    );
+    return moderateImageBytes(bytes, contentType: _contentType(file.path));
   }
 
-  /// Uploads through the authenticated Supabase Edge Function. The server
-  /// checks post images with Cloudflare before storing approved images in ImgBB.
+  /// Authenticated upload to the Supabase Edge Function, which writes to R2.
   static Future<String> uploadImageBytes(
     Uint8List bytes, {
     String folder = 'posts',
@@ -102,9 +90,8 @@ class CloudflareMediaService {
       throw StateError('Image is too large');
     }
 
-
     final response = await Supabase.instance.client.functions.invoke(
-      'imgbb-upload',
+      'r2-upload',
       body: {
         'imageBase64': base64Encode(bytes),
         'folder': folder,
@@ -116,11 +103,11 @@ class CloudflareMediaService {
     );
 
     final data = response.data;
-    if (data is! Map) throw StateError('Invalid ImgBB response');
+    if (data is! Map) throw StateError('Invalid R2 upload response');
 
     final url = data['url']?.toString();
     if (url == null || url.isEmpty) {
-      throw StateError('ImgBB did not return an image URL');
+      throw StateError('R2 did not return an image URL');
     }
 
     onProgress?.call(bytes.length, bytes.length);
