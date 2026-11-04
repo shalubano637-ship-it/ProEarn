@@ -1,11 +1,5 @@
-import { AwsClient } from "npm:aws4fetch@1.0.20";
-
 interface Env {
   R2_BUCKET: R2Bucket;
-  R2_ACCOUNT_ID: string;
-  R2_ACCESS_KEY_ID: string;
-  R2_SECRET_ACCESS_KEY: string;
-  R2_PUBLIC_BASE_URL: string;
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
@@ -55,26 +49,6 @@ async function getUser(request: Request, env: Env) {
   const profile = profiles[0];
   if (!profile || !profile.termsAcceptedAt || profile.termsVersion !== '2026-09' || profile.isBanned === true) return null;
   return { ...user, isPrivateAccount: profile.isPrivateAccount === true };
-}
-
-function r2Key(userId: string, folder: string, extension: string) {
-  const safeFolder = ["profile", "chat", "comments", "rooms"].includes(folder) ? folder : "posts";
-  return `${safeFolder}/${userId}/${crypto.randomUUID()}.${extension}`;
-}
-
-async function signedPutUrl(env: Env, key: string, contentType: string) {
-  const client = new AwsClient({
-    accessKeyId: env.R2_ACCESS_KEY_ID,
-    secretAccessKey: env.R2_SECRET_ACCESS_KEY,
-  });
-  const encodedKey = key.split("/").map(encodeURIComponent).join("/");
-  const url = new URL(`https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/proearn-media/${encodedKey}`);
-  url.searchParams.set("X-Amz-Expires", "900");
-  const signed = await client.sign(
-    new Request(url, { method: "PUT", headers: { "Content-Type": contentType } }),
-    { aws: { signQuery: true } },
-  );
-  return signed.url;
 }
 
 function bytesToBase64(bytes: Uint8Array) {
@@ -262,57 +236,6 @@ export default {
         headers.set("Cache-Control", "public, max-age=86400");
         headers.set("Access-Control-Allow-Origin", "*");
         return new Response(upstream.body, { status: 200, headers });
-      }
-
-      if (url.pathname === "/v1/upload-intent" && request.method === "POST") {
-        const body = await request.json<{ contentType?: string; folder?: string }>();
-        const contentType = String(body.contentType ?? "");
-        if (!ALLOWED_TYPES.has(contentType)) return json({ error: "Unsupported image type" }, 400);
-        const extension = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
-        const key = r2Key(user.id, String(body.folder ?? "posts"), extension);
-        const uploadUrl = await signedPutUrl(env, key, contentType);
-        return json({ uploadUrl, objectKey: key, maxBytes: MAX_IMAGE_BYTES });
-      }
-
-      if (url.pathname === "/v1/finalize-media" && request.method === "POST") {
-        const body = await request.json<Record<string, unknown>>();
-        const objectKey = String(body.objectKey ?? "");
-        const contentType = String(body.contentType ?? "");
-        const size = Number(body.size ?? 0);
-        if (!objectKey.startsWith(`${String(body.folder ?? "posts")}/${user.id}/`)) return json({ error: "Invalid object" }, 403);
-        if (!ALLOWED_TYPES.has(contentType) || size <= 0 || size > MAX_IMAGE_BYTES) return json({ error: "Invalid upload" }, 400);
-
-        const moderation = await moderate(env, objectKey, user.id);
-        if (!moderation.safe) {
-          await env.R2_BUCKET.delete(objectKey);
-          return json({ error: "Content rejected", reason: moderation.reason }, 422);
-        }
-        const mediaUrl = `${env.R2_PUBLIC_BASE_URL.replace(/\/$/, "")}/${objectKey}`;
-        return json({ url: mediaUrl });
-      }
-
-      if (url.pathname === "/v1/finalize-post" && request.method === "POST") {
-        const body = await request.json<Record<string, unknown>>();
-        const objectKey = String(body.objectKey ?? "");
-        const contentType = String(body.contentType ?? "");
-        const size = Number(body.size ?? 0);
-        if (!objectKey.startsWith(`posts/${user.id}/`)) return json({ error: "Invalid object" }, 403);
-        if (!ALLOWED_TYPES.has(contentType) || size <= 0 || size > MAX_IMAGE_BYTES) return json({ error: "Invalid upload" }, 400);
-
-        const moderation = await moderate(env, objectKey, user.id);
-        if (!moderation.safe) {
-          await env.R2_BUCKET.delete(objectKey);
-          return json({ error: "Content rejected", reason: moderation.reason }, 422);
-        }
-
-        const imageUrl = `${env.R2_PUBLIC_BASE_URL.replace(/\/$/, "")}/${objectKey}`;
-        try {
-          const post = await createPost(env, user.id, body, imageUrl, objectKey, user.isPrivateAccount);
-          return json({ post, url: imageUrl });
-        } catch (error) {
-          await env.R2_BUCKET.delete(objectKey);
-          throw error;
-        }
       }
 
       return json({ error: "Not found" }, 404);
