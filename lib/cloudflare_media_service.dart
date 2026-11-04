@@ -8,7 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class CloudflareMediaService {
   static const gatewayUrl = String.fromEnvironment(
     'CLOUDFLARE_MEDIA_GATEWAY_URL',
-    defaultValue: 'https://proearn-media-gateway.shalubano637.workers.dev',
+    defaultValue: 'https://proearn-media-gateway.0nasir07860.workers.dev',
   );
 
   static Future<Map<String, dynamic>> _post(
