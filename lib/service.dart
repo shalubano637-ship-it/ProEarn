@@ -259,7 +259,7 @@ class GlobalCachedImage extends StatelessWidget {
   });
 
   static const String _imageProxyBase =
-      'https://proearn-media-gateway.shalubano637.workers.dev/v1/image-proxy?url=';
+      'https://proearn-media-gateway.0nasir07860.workers.dev/v1/image-proxy?url=';
 
   String _resolvedImageUrl() {
     final uri = Uri.tryParse(imageUrl);
