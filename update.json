@@ -1,20 +1,18 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 47,
-  "versionName": "1.0.46",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.46/proearn.apk",
-  "title": "ProSN Friendly Error Messages",
-  "message": "Clearer error messages across account, posts, chat, Rooms, rewards, profile, settings, and app updates.",
+  "versionCode": 48,
+  "versionName": "1.0.47",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.47/proearn.apk",
+  "title": "Cloudflare R2 Upload Migration",
+  "message": "Updated post uploads to use Cloudflare R2 and moved legacy image proxy traffic to the new Cloudflare account.",
   "newFeatures": [
-    "Clearer sign-in, sign-up, and account messages",
-    "More helpful post, profile, comment, chat, Room, gift, and reward errors"
+    "Post images upload through the R2 upload service"
   ],
   "fixes": [
-    "Replace raw technical exceptions in user-facing messages",
-    "Improve common network, upload, permission, and request error guidance",
-    "Fix Help page support button build error"
+    "Use the new Cloudflare Worker for legacy ImgBB image proxy requests",
+    "Remove dependency on the old Cloudflare account for image proxying"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1793465000000"
+  "buildTrigger": "1793783781785"
 }
