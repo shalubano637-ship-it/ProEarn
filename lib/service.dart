@@ -167,7 +167,7 @@ Future<String?> uploadImageBytesToMediaGateway(
       folder: folder,
     );
   } catch (e) {
-    debugPrint("Cloudflare moderation + ImgBB upload failed: $e");
+    debugPrint("Cloudflare R2 upload failed: $e");
     return null;
   }
 }
@@ -184,7 +184,7 @@ Future<String?> uploadImageToMediaGateway(
       onProgress: onProgress,
     );
   } catch (e) {
-    debugPrint("Cloudflare moderation + ImgBB upload failed: $e");
+    debugPrint("Cloudflare R2 upload failed: $e");
     return null;
   }
 }
@@ -206,7 +206,7 @@ Future<Map<String, dynamic>> createPostThroughCloudflareBytes({
     link: link,
     onProgress: onProgress,
   );
-  if (url.isEmpty) throw StateError('ImgBB did not return a post image URL');
+  if (url.isEmpty) throw StateError('R2 did not return a post image URL');
   return {'url': url};
 }
 
@@ -225,7 +225,7 @@ Future<Map<String, dynamic>> createPostThroughCloudflare({
     link: link,
     onProgress: onProgress,
   );
-  if (url.isEmpty) throw StateError('ImgBB did not return a post image URL');
+  if (url.isEmpty) throw StateError('R2 did not return a post image URL');
   return {'url': url};
 }
 
