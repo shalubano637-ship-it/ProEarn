@@ -1,23 +1,20 @@
 # ProEarn Cloudflare media gateway
 
-Flow:
-1. Flutter performs on-device moderation.
-2. Flutter requests /v1/upload-intent with the Supabase access token.
-3. Worker authenticates the user and returns a short-lived R2 PUT URL.
-4. Flutter uploads directly to R2.
-5. Flutter calls /v1/finalize-post or /v1/finalize-media.
-6. Worker fetches the object and performs a server-side vision safety check with Cloudflare Workers AI.
-7. Only approved posts are inserted into Supabase with the service-role key.
+The Worker provides:
+- Authenticated image moderation through Workers AI.
+- Legacy image URL proxying so images already stored in the database continue to render.
+- Internal per-user R2 cleanup during account deletion.
 
-Required Cloudflare secrets:
-- R2_ACCESS_KEY_ID
-- R2_SECRET_ACCESS_KEY
-- SUPABASE_SERVICE_ROLE_KEY
+New image uploads are handled by the Supabase `r2-upload` Edge Function. That function uses the R2 credentials stored as Supabase Edge Function secrets and writes objects to the `proearn-videos` bucket.
 
-Required variables:
-- R2_ACCOUNT_ID
-- R2_PUBLIC_BASE_URL
-- SUPABASE_URL
-- SUPABASE_ANON_KEY
+Required Worker binding:
+- `R2_BUCKET` -> `proearn-videos`
+
+Required Worker variables/secrets:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `INTERNAL_DELETE_TOKEN`
+- `MODERATION_SHARED_SECRET`
 
 The Worker fails closed if server moderation is unavailable.
