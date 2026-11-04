@@ -10,7 +10,7 @@ const R2_SECRET_ACCESS_KEY = Deno.env.get("R2_SECRET_ACCESS_KEY")!;
 const R2_BUCKET_NAME = Deno.env.get("R2_BUCKET_NAME")!;
 const R2_PUBLIC_URL = Deno.env.get("R2_PUBLIC_URL")!;
 const MEDIA_GATEWAY_URL = Deno.env.get("MEDIA_GATEWAY_URL") ??
-  "https://proearn-media-gateway.shalubano637.workers.dev";
+  "https://proearn-media-gateway.0nasir07860.workers.dev";
 
 const MAX_BYTES = 9 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
