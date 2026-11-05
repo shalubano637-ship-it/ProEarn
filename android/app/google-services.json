@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "449305618154",
+    "project_id": "proearn-6acdd",
+    "storage_bucket": "proearn-6acdd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:449305618154:android:721f9004ba924608109993",
+        "android_client_info": {
+          "package_name": "com.example.proearn"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBFR_jbBE_kviy2Ow_WF_X1pj0I9lfz4As"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
