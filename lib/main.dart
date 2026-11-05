@@ -97,16 +97,6 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
       }
 
       try {
-        if (defaultTargetPlatform == TargetPlatform.android) {
-          await Firebase.initializeApp();
-          FcmService.initialize();
-        }
-      } catch (e, st) {
-        debugPrint('Firebase Init Error: $e');
-        Sentry.captureException(e, stackTrace: st);
-      }
-
-      try {
         await appThemeController.load();
         await Supabase.initialize(
           url: const String.fromEnvironment(
@@ -120,6 +110,17 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
         );
       } catch (e, st) {
         debugPrint("Supabase Init Error: $e");
+        Sentry.captureException(e, stackTrace: st);
+      }
+
+      // Start Firebase Messaging after Supabase is ready for auth restoration.
+      try {
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          await Firebase.initializeApp();
+          FcmService.initialize();
+        }
+      } catch (e, st) {
+        debugPrint('Firebase Init Error: $e');
         Sentry.captureException(e, stackTrace: st);
       }
 
