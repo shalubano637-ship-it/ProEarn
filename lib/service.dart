@@ -56,11 +56,15 @@ class PushService {
     final client = Supabase.instance.client;
 
     if (isEnabled) {
-      final accepted = await OneSignal.Notifications.requestPermission(true);
+      // Register FCM independently of OneSignal's permission response.
+      final fcmEnabled = await FcmService.enableForCurrentUser();
+      final oneSignalAccepted = await OneSignal.Notifications.requestPermission(true);
 
-      if (accepted) {
+      if (oneSignalAccepted) {
         await OneSignal.login(currentUser.id);
-        await FcmService.enableForCurrentUser();
+      }
+
+      if (fcmEnabled || oneSignalAccepted) {
         await client.from(kUsersCollection).update({
           'pushNotificationsEnabled': true,
           'notifyLikes': true,
@@ -69,7 +73,9 @@ class PushService {
           'notifyFollow': true,
           'notifyMessages': true,
         }).eq('uid', currentUser.id);
-        debugPrint("OneSignal device linked with default preferences enabled.");
+        debugPrint("Push notifications enabled; FCM and OneSignal registration attempted.");
+      } else {
+        debugPrint("Push notifications were not enabled because permission was denied.");
       }
     } else {
       await FcmService.disableForCurrentUser();
