@@ -391,9 +391,7 @@ class _LoginPageState extends State<LoginPage> {
               context,
               MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
                 );
-                await PushService.togglePushNotificationStatus(true);
-            
-          }
+}
         }
       } on AuthException catch (e) {
         if (mounted) Navigator.pop(context); // Close Loader
