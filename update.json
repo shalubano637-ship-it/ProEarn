@@ -1,18 +1,18 @@
 {
   "published": true,
   "status": "published",
-  "versionCode": 48,
-  "versionName": "1.0.47",
-  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.47/proearn.apk",
-  "title": "Cloudflare R2 Upload Migration",
-  "message": "Updated post uploads to use Cloudflare R2 and moved legacy image proxy traffic to the new Cloudflare account.",
+  "versionCode": 49,
+  "versionName": "1.0.48",
+  "apkUrl": "https://github.com/shalubano637-ship-it/ProEarn/releases/download/v1.0.48/proearn.apk",
+  "title": "FCM Push Notification Update",
+  "message": "Improved Firebase Cloud Messaging token registration and push notification delivery, while retaining OneSignal fallback.",
   "newFeatures": [
-    "Post images upload through the R2 upload service"
+    "Firebase Cloud Messaging integration for Android push notifications"
   ],
   "fixes": [
-    "Use the new Cloudflare Worker for legacy ImgBB image proxy requests",
-    "Remove dependency on the old Cloudflare account for image proxying"
+    "Register FCM tokens on sign-in and restored sessions",
+    "Keep FCM registration independent of OneSignal permission"
   ],
   "forceUpdate": false,
-  "buildTrigger": "1793783781785"
+  "buildTrigger": "1793871560863"
 }
