@@ -72,6 +72,7 @@ class PushService {
         debugPrint("OneSignal device linked with default preferences enabled.");
       }
     } else {
+      await FcmService.disableForCurrentUser();
       await OneSignal.logout();
       await client.from(kUsersCollection).update({
         'pushNotificationsEnabled': false,
