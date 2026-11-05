@@ -5,7 +5,6 @@ import 'package:universal_io/universal_io.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'fcm_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -56,15 +55,9 @@ class PushService {
     final client = Supabase.instance.client;
 
     if (isEnabled) {
-      // Register FCM independently of OneSignal's permission response.
       final fcmEnabled = await FcmService.enableForCurrentUser();
-      final oneSignalAccepted = await OneSignal.Notifications.requestPermission(true);
 
-      if (oneSignalAccepted) {
-        await OneSignal.login(currentUser.id);
-      }
-
-      if (fcmEnabled || oneSignalAccepted) {
+      if (fcmEnabled) {
         await client.from(kUsersCollection).update({
           'pushNotificationsEnabled': true,
           'notifyLikes': true,
@@ -73,13 +66,12 @@ class PushService {
           'notifyFollow': true,
           'notifyMessages': true,
         }).eq('uid', currentUser.id);
-        debugPrint("Push notifications enabled; FCM and OneSignal registration attempted.");
+        debugPrint("Push notifications enabled with FCM.");
       } else {
         debugPrint("Push notifications were not enabled because permission was denied.");
       }
     } else {
       await FcmService.disableForCurrentUser();
-      await OneSignal.logout();
       await client.from(kUsersCollection).update({
         'pushNotificationsEnabled': false,
       }).eq('uid', currentUser.id);
