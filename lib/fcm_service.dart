@@ -14,6 +14,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 class FcmService {
   static StreamSubscription<String>? _tokenSubscription;
   static StreamSubscription<AuthState>? _authSubscription;
+  static StreamSubscription<RemoteMessage>? _messageSubscription;
   static bool _initialized = false;
 
   static void initialize() {
@@ -22,7 +23,10 @@ class FcmService {
 
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-    // Re-register when a stored session is restored or a user signs in.
+    // Explicitly enable FCM auto-init so Firebase can create/refresh this
+    // installation's registration token.
+    unawaited(FirebaseMessaging.instance.setAutoInitEnabled(true));
+
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((event) {
       if (event.event == AuthChangeEvent.signedIn ||
           event.event == AuthChangeEvent.initialSession ||
@@ -32,11 +36,11 @@ class FcmService {
     });
 
     _tokenSubscription = FirebaseMessaging.instance.onTokenRefresh.listen(
-      (token) => _saveToken(token),
+      (token) => unawaited(_saveToken(token)),
       onError: (error) => debugPrint('FCM token refresh error: $error'),
     );
 
-    FirebaseMessaging.onMessage.listen((message) {
+    _messageSubscription = FirebaseMessaging.onMessage.listen((message) {
       debugPrint('FCM foreground message: ${message.messageId}');
     });
   }
@@ -44,12 +48,14 @@ class FcmService {
   static Future<void> syncForCurrentUser() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
+
     try {
       final row = await Supabase.instance.client
           .from('users')
           .select('pushNotificationsEnabled')
           .eq('uid', user.id)
           .maybeSingle();
+
       if (row?['pushNotificationsEnabled'] == true) {
         await enableForCurrentUser();
       }
@@ -60,7 +66,10 @@ class FcmService {
 
   static Future<bool> enableForCurrentUser() async {
     final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return false;
+    if (user == null) {
+      debugPrint('FCM registration skipped: no signed-in Supabase user.');
+      return false;
+    }
 
     try {
       final settings = await FirebaseMessaging.instance.requestPermission(
@@ -69,20 +78,29 @@ class FcmService {
         sound: true,
       );
 
-      final allowed = settings.authorizationStatus == AuthorizationStatus.authorized ||
+      final allowed =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
           settings.authorizationStatus == AuthorizationStatus.provisional;
-      if (!allowed) {
-        debugPrint('FCM notification permission not granted.');
-        return false;
-      }
+      debugPrint('FCM notification authorization: ${settings.authorizationStatus}');
 
+      // Token registration is independent of notification display permission.
+      // Generate and save the token even if Android notification permission is denied.
       final token = await FirebaseMessaging.instance.getToken();
       if (token == null || token.isEmpty) {
-        debugPrint('FCM did not return a registration token.');
+        debugPrint('FCM token generation failed: Firebase returned an empty token.');
+        return false;
+      }
+      debugPrint('FCM token generated successfully (value intentionally hidden).');
+
+      final saved = await _saveToken(token);
+      if (!saved) return false;
+
+      if (!allowed) {
+        debugPrint('FCM token saved, but notification display permission is denied.');
         return false;
       }
 
-      await _saveToken(token);
+      debugPrint('FCM registration and Supabase token save succeeded.');
       return true;
     } catch (error, stackTrace) {
       debugPrint('FCM registration failed: $error');
@@ -91,9 +109,12 @@ class FcmService {
     }
   }
 
-  static Future<void> _saveToken(String token) async {
+  static Future<bool> _saveToken(String token) async {
     final user = Supabase.instance.client.auth.currentUser;
-    if (user == null || token.isEmpty) return;
+    if (user == null || token.isEmpty) {
+      debugPrint('FCM token save skipped: user is signed out or token is empty.');
+      return false;
+    }
 
     try {
       final saved = await Supabase.instance.client
@@ -102,13 +123,18 @@ class FcmService {
           .eq('uid', user.id)
           .select('uid')
           .maybeSingle();
+
       if (saved == null) {
-        debugPrint('FCM token update matched no user row (uid/RLS check required).');
-      } else {
-        debugPrint('FCM token saved for current user.');
+        debugPrint('FCM token save failed: no matching users row (check uid/RLS).');
+        return false;
       }
-    } catch (error) {
-      debugPrint('Could not save FCM token to Supabase: $error');
+
+      debugPrint('FCM token saved successfully for current user.');
+      return true;
+    } catch (error, stackTrace) {
+      debugPrint('FCM token save failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      return false;
     }
   }
 
@@ -129,8 +155,10 @@ class FcmService {
   static Future<void> dispose() async {
     await _tokenSubscription?.cancel();
     await _authSubscription?.cancel();
+    await _messageSubscription?.cancel();
     _tokenSubscription = null;
     _authSubscription = null;
+    _messageSubscription = null;
     _initialized = false;
   }
 }
