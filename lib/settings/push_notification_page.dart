@@ -192,7 +192,7 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
         }).eq('uid', _currentUid);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Notifications could not be enabled. Check permission and try again.")),
+            SnackBar(content: Text(FcmService.lastEnableError ?? 'Notifications could not be enabled. Unknown FCM error.')),
           );
         }
       }
