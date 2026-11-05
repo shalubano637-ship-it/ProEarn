@@ -13,6 +13,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 class FcmService {
   static StreamSubscription<String>? _tokenSubscription;
+  static StreamSubscription<AuthState>? _authSubscription;
   static bool _initialized = false;
 
   static void initialize() {
@@ -20,6 +21,15 @@ class FcmService {
     _initialized = true;
 
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+    // Re-register when a stored session is restored or a user signs in.
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((event) {
+      if (event.event == AuthChangeEvent.signedIn ||
+          event.event == AuthChangeEvent.initialSession ||
+          event.event == AuthChangeEvent.tokenRefreshed) {
+        unawaited(syncForCurrentUser());
+      }
+    });
 
     _tokenSubscription = FirebaseMessaging.instance.onTokenRefresh.listen(
       (token) => _saveToken(token),
@@ -29,6 +39,23 @@ class FcmService {
     FirebaseMessaging.onMessage.listen((message) {
       debugPrint('FCM foreground message: ${message.messageId}');
     });
+  }
+
+  static Future<void> syncForCurrentUser() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    try {
+      final row = await Supabase.instance.client
+          .from('users')
+          .select('pushNotificationsEnabled')
+          .eq('uid', user.id)
+          .maybeSingle();
+      if (row?['pushNotificationsEnabled'] == true) {
+        await enableForCurrentUser();
+      }
+    } catch (error) {
+      debugPrint('FCM startup sync failed: $error');
+    }
   }
 
   static Future<bool> enableForCurrentUser() async {
@@ -69,10 +96,17 @@ class FcmService {
     if (user == null || token.isEmpty) return;
 
     try {
-      await Supabase.instance.client
+      final saved = await Supabase.instance.client
           .from('users')
           .update({'fcmToken': token})
-          .eq('uid', user.id);
+          .eq('uid', user.id)
+          .select('uid')
+          .maybeSingle();
+      if (saved == null) {
+        debugPrint('FCM token update matched no user row (uid/RLS check required).');
+      } else {
+        debugPrint('FCM token saved for current user.');
+      }
     } catch (error) {
       debugPrint('Could not save FCM token to Supabase: $error');
     }
@@ -94,7 +128,9 @@ class FcmService {
 
   static Future<void> dispose() async {
     await _tokenSubscription?.cancel();
+    await _authSubscription?.cancel();
     _tokenSubscription = null;
+    _authSubscription = null;
     _initialized = false;
   }
 }
