@@ -8,6 +8,74 @@ const ONESIGNAL_REST_API_KEY = Deno.env.get("ONESIGNAL_REST_API_KEY")!;
 
 const ALLOWED_TYPES = new Set(["like", "comment", "follow", "get", "message", "chest_ready"]);
 const MAX_MESSAGE_LENGTH = 300;
+
+const FIREBASE_PROJECT_ID = Deno.env.get("FIREBASE_PROJECT_ID") ?? "";
+const FIREBASE_CLIENT_EMAIL = Deno.env.get("FIREBASE_CLIENT_EMAIL") ?? "";
+const FIREBASE_PRIVATE_KEY = Deno.env.get("FIREBASE_PRIVATE_KEY") ?? "";
+let cachedAccessToken = "";
+let cachedAccessTokenExpiry = 0;
+
+function b64url(value: string | Uint8Array): string {
+  const bytes = typeof value === "string" ? new TextEncoder().encode(value) : value;
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/=/g, "").replace(/\\+/g, "-").replace(/\\//g, "_");
+}
+function pemBytes(pem: string): Uint8Array {
+  const normalized = pem.replace(/\\n/g, "\n").replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\\s/g, "");
+  const raw = atob(normalized);
+  return Uint8Array.from(raw, c => c.charCodeAt(0));
+}
+async function firebaseAccessToken(): Promise<string> {
+  if (cachedAccessToken && Date.now() < cachedAccessTokenExpiry - 60000) return cachedAccessToken;
+  if (!FIREBASE_PROJECT_ID || !FIREBASE_CLIENT_EMAIL || !FIREBASE_PRIVATE_KEY) {
+    throw new Error("Firebase secrets missing");
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const unsigned = b64url(JSON.stringify({alg:"RS256",typ:"JWT"})) + "." +
+    b64url(JSON.stringify({
+      iss:FIREBASE_CLIENT_EMAIL,
+      scope:"https://www.googleapis.com/auth/firebase.messaging",
+      aud:"https://oauth2.googleapis.com/token",
+      iat:now,
+      exp:now+3600
+    }));
+  const key = await crypto.subtle.importKey(
+    "pkcs8", pemBytes(FIREBASE_PRIVATE_KEY),
+    {name:"RSASSA-PKCS1-v1_5",hash:"SHA-256"}, false, ["sign"]
+  );
+  const sig = new Uint8Array(await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(unsigned)
+  ));
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method:"POST",
+    headers:{"Content-Type":"application/x-www-form-urlencoded"},
+    body:new URLSearchParams({
+      grant_type:"urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion:unsigned+"."+b64url(sig)
+    })
+  });
+  if (!response.ok) throw new Error("Google OAuth token request failed: "+response.status);
+  const result = await response.json();
+  cachedAccessToken = String(result.access_token ?? "");
+  cachedAccessTokenExpiry = Date.now() + Number(result.expires_in ?? 3600)*1000;
+  if (!cachedAccessToken) throw new Error("Google OAuth token missing");
+  return cachedAccessToken;
+}
+async function sendFcm(token: string, title: string, body: string, data: Record<string,string>) {
+  const access = await firebaseAccessToken();
+  return await fetch("https://fcm.googleapis.com/v1/projects/"+FIREBASE_PROJECT_ID+"/messages:send", {
+    method:"POST",
+    headers:{Authorization:"Bearer "+access,"Content-Type":"application/json"},
+    body:JSON.stringify({message:{
+      token,
+      notification:{title,body},
+      data,
+      android:{priority:"HIGH"}
+    }})
+  });
+}
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -212,26 +280,50 @@ Deno.serve(async (req) => {
       type === "message" ? "Someone sent you a message" :
       "Your chest is ready to open! 🎁";
 
-    const pushResponse = await fetch("https://onesignal.com/api/v1/notifications", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json; charset=utf-8",
-        "Authorization": `Key ${ONESIGNAL_REST_API_KEY}`,
-      },
-      body: JSON.stringify({
-        app_id: ONESIGNAL_APP_ID,
-        target_channel: "push",
-        include_aliases: { external_id: [targetOwnerId] },
-        headings: { en: pushTitle },
-        contents: { en: pushBody },
-        data: { type, senderId, targetPostId },
-        priority: 10,
-      }),
-    });
-    if (!pushResponse.ok) {
-      const errorBody = await pushResponse.text();
-      console.error("OneSignal push failed:", pushResponse.status, errorBody);
-      return json({ success: false, pushError: "OneSignal delivery failed" }, 502);
+    const { data: recipient } = await admin.from("users").select("fcmToken")
+      .eq("uid", targetOwnerId).maybeSingle();
+    const fcmToken = String(recipient?.fcmToken ?? "").trim();
+    let fcmDelivered = false;
+    if (fcmToken) {
+      try {
+        const fcmResponse = await sendFcm(fcmToken, pushTitle, pushBody, {type,senderId,targetPostId});
+        if (fcmResponse.ok) {
+          fcmDelivered = true;
+        } else {
+          const error = await fcmResponse.json().catch(() => ({}));
+          const errorCode = String(error?.error?.details?.[0]?.errorCode ?? "");
+          console.error("FCM delivery failed:", fcmResponse.status, errorCode || "provider_error");
+          if (errorCode === "UNREGISTERED" || fcmResponse.status === 404) {
+            await admin.from("users").update({fcmToken:null}).eq("uid",targetOwnerId);
+          }
+        }
+      } catch (error) {
+        console.error("FCM send failed:", error instanceof Error ? error.message : "unknown");
+      }
+    }
+    // Use OneSignal only if FCM is unavailable or delivery fails.
+    if (!fcmDelivered) {
+      const pushResponse = await fetch("https://onesignal.com/api/v1/notifications", {
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json; charset=utf-8",
+          "Authorization":`Key ${ONESIGNAL_REST_API_KEY}`
+        },
+        body:JSON.stringify({
+          app_id:ONESIGNAL_APP_ID,
+          target_channel:"push",
+          include_aliases:{external_id:[targetOwnerId]},
+          headings:{en:pushTitle},
+          contents:{en:pushBody},
+          data:{type,senderId,targetPostId},
+          priority:10
+        })
+      });
+      if (!pushResponse.ok) {
+        const errorBody = await pushResponse.text();
+        console.error("OneSignal fallback failed:",pushResponse.status,errorBody);
+        return json({success:false,pushError:"Push delivery failed"},502);
+      }
     }
     if (type === "chest_ready" && chestProgressTable != null) {
       const { error: markPushError } = await admin.from(chestProgressTable)
