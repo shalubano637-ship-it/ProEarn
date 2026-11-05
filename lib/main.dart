@@ -11,7 +11,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:sentry_flutter/sentry_flutter.dart';
 
-import 'package:onesignal_flutter/onesignal_flutter.dart';
 
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -21,9 +20,6 @@ import 'theme/theme.dart';
 import 'theme/theme_controller.dart';
 import 'chest_timer_service.dart';
 import 'ad_preloader.dart';
-import 'messaging/chat_page.dart';
-import 'chests/chests_page.dart';
-import 'user_profile_features.dart';
 
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -138,34 +134,6 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 }
 
 Future<void> _initializeDeferredServices() async {
-
-  try {
-    OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
-    OneSignal.initialize("d82b1c8e-4add-4022-9f3d-8af0bcdf7915");
-    OneSignal.Notifications.addClickListener((event) {
-      final data = event.notification.additionalData;
-      if (data == null) return;
-      final type = data['type'] as String?;
-      final nav = navigatorKey.currentState;
-      if (nav == null) return;
-      if (type == 'message') {
-        final senderId = data['senderId'] as String?;
-        final senderName = data['senderName'] as String? ?? 'User';
-        if (senderId != null) {
-          nav.push(MaterialPageRoute(
-            builder: (_) => ChatPage(otherUid: senderId, otherUserName: senderName),
-          ));
-        }
-      } else if (type == 'chest_ready') {
-        nav.push(MaterialPageRoute(builder: (_) => const ChestsPage()));
-      } else if (type == 'like' || type == 'follow' || type == 'comment' || type == 'get') {
-        nav.push(MaterialPageRoute(builder: (_) => const NotificationPage()));
-      }
-    });
-  } catch (e, st) {
-    debugPrint("OneSignal Init Error: $e");
-    Sentry.captureException(e, stackTrace: st);
-  }
 
   chestTimerService.initialize();
   unawaited(loadUserDataOnStartup());
