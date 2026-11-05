@@ -73,7 +73,9 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
             return;
           }
 
-          ensureUserDocumentExists();
+          await ensureUserDocumentExists();
+          await FcmService.syncForCurrentUser();
+          if (!mounted) return;
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
