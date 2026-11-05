@@ -16,6 +16,7 @@ class FcmService {
   static StreamSubscription<AuthState>? _authSubscription;
   static StreamSubscription<RemoteMessage>? _messageSubscription;
   static bool _initialized = false;
+  static String? lastEnableError;
 
   static void initialize() {
     if (_initialized) return;
@@ -62,6 +63,8 @@ class FcmService {
       debugPrint('FCM registration skipped: no signed-in Supabase user.');
       return false;
     }
+    var stage = 'checking notification permission';
+    lastEnableError = null;
     try {
       final settings = await FirebaseMessaging.instance.requestPermission(
         alert: true,
@@ -73,26 +76,36 @@ class FcmService {
           settings.authorizationStatus == AuthorizationStatus.provisional;
       debugPrint('FCM notification authorization: ${settings.authorizationStatus}');
 
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token == null || token.isEmpty) {
-        debugPrint('FCM token generation failed: empty Firebase token.');
+      if (!allowed) {
+        lastEnableError = 'Android notification permission status: ${settings.authorizationStatus}. Check app notification permission.';
         return false;
       }
-      if (!await _saveToken(token)) return false;
 
+      stage = 'generating Firebase token';
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token == null || token.isEmpty) {
+        lastEnableError = 'Firebase returned an empty FCM token.';
+        debugPrint(lastEnableError);
+        return false;
+      }
+
+      stage = 'saving FCM token to Supabase';
+      if (!await _saveToken(token)) {
+        lastEnableError = 'FCM token generated, but Supabase did not save it. Check users table update/RLS.';
+        return false;
+      }
+
+      stage = 'saving notification preference';
       await Supabase.instance.client
           .from('users')
           .update({'pushNotificationsEnabled': allowed})
           .eq('uid', user.id);
 
-      if (!allowed) {
-        debugPrint('FCM token saved, but notification permission is denied.');
-        return false;
-      }
       debugPrint('FCM registration and preference update succeeded.');
       return true;
     } catch (error, stackTrace) {
-      debugPrint('FCM registration failed: $error');
+      lastEnableError = '$stage failed: $error';
+      debugPrint('FCM registration failed at $stage: $error');
       debugPrintStack(stackTrace: stackTrace);
       return false;
     }
