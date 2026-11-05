@@ -213,7 +213,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((state) {
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((state) async {
       if (state.event == AuthChangeEvent.signedIn &&
           isGoogleAuthStarting &&
           mounted) {
