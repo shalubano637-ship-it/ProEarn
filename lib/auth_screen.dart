@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'fcm_service.dart';
 
 import 'models.dart';
 import 'service.dart';
@@ -217,6 +218,9 @@ class _LoginPageState extends State<LoginPage> {
           isGoogleAuthStarting &&
           mounted) {
         isGoogleAuthStarting = false;
+        // Ask for notification permission immediately after Google sign-in.
+        await FcmService.enableForCurrentUser();
+        if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const SplashPage()),
           (route) => false,
@@ -386,6 +390,8 @@ class _LoginPageState extends State<LoginPage> {
           chestTimerService.initialize();
           loadUserDataOnStartup();
 
+          // Ask for notification permission immediately after successful login.
+          await FcmService.enableForCurrentUser();
           if (mounted) {
             Navigator.pushReplacement(
               context,
