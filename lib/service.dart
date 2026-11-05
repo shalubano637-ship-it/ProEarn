@@ -6,6 +6,7 @@ import 'package:universal_io/universal_io.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:onesignal_flutter/onesignal_flutter.dart';
+import 'fcm_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
@@ -59,6 +60,7 @@ class PushService {
 
       if (accepted) {
         await OneSignal.login(currentUser.id);
+        await FcmService.enableForCurrentUser();
         await client.from(kUsersCollection).update({
           'pushNotificationsEnabled': true,
           'notifyLikes': true,
