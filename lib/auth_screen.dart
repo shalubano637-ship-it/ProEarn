@@ -1,7 +1,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:onesignal_flutter/onesignal_flutter.dart';
 
 import 'models.dart';
 import 'service.dart';
@@ -73,7 +72,6 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
             return;
           }
 
-           OneSignal.login(user.id); 
           ensureUserDocumentExists();
           Navigator.pushReplacement(
             context,
@@ -355,7 +353,7 @@ class _LoginPageState extends State<LoginPage> {
 
         final signedInUser = authResponse.user;
         if (signedInUser != null) {
-          OneSignal.login(signedInUser.id);
+
         }
 
         if (mounted) Navigator.pop(context); // Close Loader
@@ -826,8 +824,6 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
           setState(() {
             isEmailVerified = true;
           });
-
-          OneSignal.login(response.user!.id);
 
           await ensureUserDocumentExists();
 
