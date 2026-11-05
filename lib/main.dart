@@ -1,6 +1,8 @@
 
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show kDebugMode, defaultTargetPlatform, TargetPlatform;
+import 'package:firebase_core/firebase_core.dart';
+import 'fcm_service.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -91,6 +93,16 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
         await Hive.openBox('app_settings');
       } catch (e, st) {
         debugPrint("Hive Init Error: $e");
+        Sentry.captureException(e, stackTrace: st);
+      }
+
+      try {
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          await Firebase.initializeApp();
+          FcmService.initialize();
+        }
+      } catch (e, st) {
+        debugPrint('Firebase Init Error: $e');
         Sentry.captureException(e, stackTrace: st);
       }
 
