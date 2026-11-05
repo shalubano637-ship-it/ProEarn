@@ -5,7 +5,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:onesignal_flutter/onesignal_flutter.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import '../fcm_service.dart';
 
 import '../models.dart';
 import '../theme/theme.dart';
@@ -43,11 +44,15 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
   }
 
   Future<void> _checkCurrentDevicePermission() async {
-    final granted = OneSignal.Notifications.permission;
-    if (mounted) {
-      setState(() {
-        _isDevicePermissionGranted = granted;
-      });
+    try {
+      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      final granted =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional;
+      if (mounted) setState(() => _isDevicePermissionGranted = granted);
+    } catch (error) {
+      debugPrint('Could not read notification permission: $error');
+      if (mounted) setState(() => _isDevicePermissionGranted = false);
     }
   }
 
@@ -170,28 +175,29 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
     if (mounted) setState(() => _pushEnabled = isEnabled);
 
     if (isEnabled) {
-      if (!isDeviceGranted) {
-        final accepted = await OneSignal.Notifications.requestPermission(true);
-        
-        if (!accepted && mounted) {
+      final enabled = await FcmService.enableForCurrentUser();
+      if (enabled) {
+        await client.from(kUsersCollection).update({
+          'pushNotificationsEnabled': true,
+          'notifyLikes': true,
+          'notifyComments': true,
+          'notifyGets': true,
+          'notifyFollow': true,
+          'notifyMessages': true,
+          'notifyChestReady': true,
+        }).eq('uid', _currentUid);
+      } else {
+        await client.from(kUsersCollection).update({
+          'pushNotificationsEnabled': false,
+        }).eq('uid', _currentUid);
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Push is enabled in the app, but system/browser permission is still off.")),
+            const SnackBar(content: Text("Notifications could not be enabled. Check permission and try again.")),
           );
         }
       }
-
-      await OneSignal.login(_currentUid);
-      await client.from(kUsersCollection).update({
-        'pushNotificationsEnabled': true,
-        'notifyLikes': true,
-        'notifyComments': true,
-        'notifyGets': true,
-        'notifyFollow': true,
-        'notifyMessages': true,
-        'notifyChestReady': true,
-      }).eq('uid', _currentUid);
     } else {
-      await OneSignal.logout();
+      await FcmService.disableForCurrentUser();
       await client.from(kUsersCollection).update({
         'pushNotificationsEnabled': false,
       }).eq('uid', _currentUid);
