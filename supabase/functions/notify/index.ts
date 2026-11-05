@@ -3,8 +3,6 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ONESIGNAL_APP_ID = Deno.env.get("ONESIGNAL_APP_ID")!;
-const ONESIGNAL_REST_API_KEY = Deno.env.get("ONESIGNAL_REST_API_KEY")!;
 
 const ALLOWED_TYPES = new Set(["like", "comment", "follow", "get", "message", "chest_ready"]);
 const MAX_MESSAGE_LENGTH = 300;
@@ -266,7 +264,7 @@ Deno.serve(async (req) => {
     }
 
     // Keep the in-app chest notification even when chest push notifications are disabled.
-    // This preference controls OneSignal delivery, not the Notifications inbox.
+    // This preference controls FCM delivery, not the Notifications inbox.
     if (targetPrefs.pushNotificationsEnabled !== true ||
         (type === "chest_ready" && targetPrefs.notifyChestReady === false)) {
       return json({ success: true });
@@ -300,32 +298,11 @@ Deno.serve(async (req) => {
       } catch (error) {
         console.error("FCM send failed:", error instanceof Error ? error.message : "unknown");
       }
-    }
-    // Use OneSignal only if FCM is unavailable or delivery fails.
-    if (!fcmDelivered) {
-      const pushResponse = await fetch("https://onesignal.com/api/v1/notifications", {
-        method:"POST",
-        headers:{
-          "Content-Type":"application/json; charset=utf-8",
-          "Authorization":`Key ${ONESIGNAL_REST_API_KEY}`
-        },
-        body:JSON.stringify({
-          app_id:ONESIGNAL_APP_ID,
-          target_channel:"push",
-          include_aliases:{external_id:[targetOwnerId]},
-          headings:{en:pushTitle},
-          contents:{en:pushBody},
-          data:{type,senderId,targetPostId},
-          priority:10
-        })
-      });
-      if (!pushResponse.ok) {
-        const errorBody = await pushResponse.text();
-        console.error("OneSignal fallback failed:",pushResponse.status,errorBody);
-        return json({success:false,pushError:"Push delivery failed"},502);
-      }
+    } else {
+      console.warn("FCM push skipped: recipient has no registered device token.");
     }
     if (type === "chest_ready" && chestProgressTable != null) {
+
       const { error: markPushError } = await admin.from(chestProgressTable)
         .update({ pushSentAt: new Date().toISOString() })
         .eq("uid", senderId)
