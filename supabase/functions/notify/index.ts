@@ -69,7 +69,7 @@ async function sendFcm(token: string, title: string, body: string, data: Record<
       token,
       notification:{title,body},
       data,
-      android:{priority:"HIGH"}
+      android:{priority:"HIGH",notification:{channel_id:"prosn_default_notifications",sound:"default"}}
     }})
   });
 }
@@ -301,7 +301,7 @@ Deno.serve(async (req) => {
     } else {
       console.warn("FCM push skipped: recipient has no registered device token.");
     }
-    if (type === "chest_ready" && chestProgressTable != null) {
+    if (type === "chest_ready" && chestProgressTable != null && fcmDelivered) {
 
       const { error: markPushError } = await admin.from(chestProgressTable)
         .update({ pushSentAt: new Date().toISOString() })
