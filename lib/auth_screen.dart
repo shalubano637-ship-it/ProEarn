@@ -54,7 +54,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
           final termsOk = await _ensureCurrentTermsAccepted(user.id);
           if (!mounted) return;
           if (!termsOk) {
-            await Supabase.instance.client.auth.signOut();
+            await FcmService.signOutAndUnlink();
             if (!mounted) return;
             Navigator.pushReplacement(
               context,
@@ -911,7 +911,7 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
         actions: [
           TextButton.icon(
             onPressed: () async {
-              await Supabase.instance.client.auth.signOut();
+              await FcmService.signOutAndUnlink();
               resetLocalUserState();
               if (context.mounted) {
                 Navigator.pushReplacement(
@@ -1044,7 +1044,7 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
                   onPressed: () async {
                     _timer?.cancel();
                     _countdownTimer?.cancel();
-                    await Supabase.instance.client.auth.signOut();
+                    await FcmService.signOutAndUnlink();
                     resetLocalUserState();
                     if (mounted) {
                       Navigator.pushReplacement(
