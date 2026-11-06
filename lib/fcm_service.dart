@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -18,12 +19,21 @@ class FcmService {
   static bool _initialized = false;
   static String? lastEnableError;
   static String? lastTokenSaveError;
+  static final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  static const AndroidNotificationChannel _foregroundChannel = AndroidNotificationChannel(
+    'prosn_foreground_notifications',
+    'ProSN notifications',
+    description: 'Notifications received while ProSN is open',
+    importance: Importance.max,
+    playSound: true,
+  );
 
   static void initialize() {
     if (_initialized) return;
     _initialized = true;
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     unawaited(FirebaseMessaging.instance.setAutoInitEnabled(true));
+    unawaited(_initializeLocalNotifications());
 
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((event) {
       if (event.event == AuthChangeEvent.signedIn ||
@@ -38,7 +48,50 @@ class FcmService {
     );
     _messageSubscription = FirebaseMessaging.onMessage.listen((message) {
       debugPrint('FCM foreground message: ${message.messageId}');
+      unawaited(_showForegroundNotification(message));
     });
+  }
+
+
+  static Future<void> _initializeLocalNotifications() async {
+    const settings = InitializationSettings(
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+    );
+    await _localNotifications.initialize(settings);
+    final androidPlugin = _localNotifications
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await androidPlugin?.createNotificationChannel(_foregroundChannel);
+  }
+
+  static Future<void> _showForegroundNotification(RemoteMessage message) async {
+    final title = message.notification?.title ??
+        message.data['title']?.toString() ??
+        'ProSN';
+    final body = message.notification?.body ??
+        message.data['body']?.toString() ??
+        'You have a new notification';
+    try {
+      await _localNotifications.show(
+        message.messageId?.hashCode ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title,
+        body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            _foregroundChannel.id,
+            _foregroundChannel.name,
+            channelDescription: _foregroundChannel.description,
+            importance: Importance.max,
+            priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+            playSound: true,
+          ),
+        ),
+        payload: message.data.toString(),
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Could not show foreground notification: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
   }
 
   // Silent startup sync: save the device token without showing a permission prompt.
