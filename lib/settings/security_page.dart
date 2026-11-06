@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models.dart';
 import '../auth_screen.dart';
+import '../fcm_service.dart';
 import '../theme/theme.dart';
 import '../posts/hidden_posts_list_screen.dart';
 import '../social/blocked_users_list_screen.dart';
@@ -223,6 +224,7 @@ class _SecurityPageState extends State<SecurityPage> {
     setState(() { isLoading = true; });
 
     try {
+      await FcmService.unlinkCurrentUserToken();
       await Supabase.instance.client.functions.invoke('delete-account');
       await Supabase.instance.client.auth.signOut();
       resetLocalUserState();
@@ -245,7 +247,7 @@ class _SecurityPageState extends State<SecurityPage> {
 
   Future<void> handleLogout() async {
     try {
-      await Supabase.instance.client.auth.signOut();
+      await FcmService.signOutAndUnlink();
       resetLocalUserState();
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
