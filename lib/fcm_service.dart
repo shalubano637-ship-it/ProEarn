@@ -194,6 +194,25 @@ class FcmService {
     }
   }
 
+
+  // Remove this device from the current account before signing out.
+  // Keep the user's notification preference unchanged so it works again
+  // automatically the next time this account is signed in.
+  static Future<void> unlinkCurrentUserToken() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    await Supabase.instance.client
+        .from('users')
+        .update({'fcmToken': null})
+        .eq('uid', user.id);
+    debugPrint('FCM token unlinked from user ${user.id} before sign out.');
+  }
+
+  static Future<void> signOutAndUnlink() async {
+    await unlinkCurrentUserToken();
+    await Supabase.instance.client.auth.signOut();
+  }
+
   static Future<void> disableForCurrentUser() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
