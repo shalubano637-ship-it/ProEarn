@@ -17,6 +17,7 @@ class FcmService {
   static StreamSubscription<RemoteMessage>? _messageSubscription;
   static bool _initialized = false;
   static String? lastEnableError;
+  static String? lastTokenSaveError;
 
   static void initialize() {
     if (_initialized) return;
@@ -91,7 +92,7 @@ class FcmService {
 
       stage = 'saving FCM token to Supabase';
       if (!await _saveToken(token)) {
-        lastEnableError = 'FCM token generated, but Supabase did not save it. Check users table update/RLS.';
+        lastEnableError = lastTokenSaveError ?? 'FCM token generated, but Supabase did not save it.';
         return false;
       }
 
@@ -113,7 +114,11 @@ class FcmService {
 
   static Future<bool> _saveToken(String token) async {
     final user = Supabase.instance.client.auth.currentUser;
-    if (user == null || token.isEmpty) return false;
+    if (user == null || token.isEmpty) {
+      lastTokenSaveError = 'No authenticated Supabase user or empty FCM token.';
+      return false;
+    }
+    lastTokenSaveError = null;
     try {
       final saved = await Supabase.instance.client
           .from('users')
@@ -122,12 +127,14 @@ class FcmService {
           .select('uid')
           .maybeSingle();
       if (saved == null) {
-        debugPrint('FCM token save failed: no matching users row or update denied.');
+        lastTokenSaveError = 'Supabase UPDATE matched 0 rows for the signed-in user. Check public.users.uid against auth.uid().';
+        debugPrint('FCM token save failed: $lastTokenSaveError');
         return false;
       }
       debugPrint('FCM token saved successfully.');
       return true;
     } catch (error, stackTrace) {
+      lastTokenSaveError = 'Supabase token UPDATE error: $error';
       debugPrint('FCM token save failed: $error');
       debugPrintStack(stackTrace: stackTrace);
       return false;
