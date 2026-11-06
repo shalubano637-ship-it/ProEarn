@@ -123,7 +123,7 @@ Future<bool> isCurrentUserBanned() async {
         .eq('uid', user.id)
         .maybeSingle();
     if (data != null && data['isBanned'] == true) {
-      await Supabase.instance.client.auth.signOut();
+      await FcmService.signOutAndUnlink();
       resetLocalUserState();
       return true;
     }
