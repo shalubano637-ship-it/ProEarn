@@ -21,9 +21,9 @@ class FcmService {
   static String? lastTokenSaveError;
   static final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   static const AndroidNotificationChannel _foregroundChannel = AndroidNotificationChannel(
-    'prosn_foreground_notifications',
+    'prosn_default_notifications',
     'ProSN notifications',
-    description: 'Notifications received while ProSN is open',
+    description: 'ProSN push notifications',
     importance: Importance.max,
     playSound: true,
   );
