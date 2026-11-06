@@ -7,6 +7,7 @@ import 'dart:async';
 
 import 'models.dart';
 import 'service.dart';
+import 'fcm_service.dart';
 import 'auth_screen.dart';
 
 import 'social_feed.dart';
@@ -148,7 +149,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         .listen((rows) async {
       if (rows.isNotEmpty && rows.first['isBanned'] == true) {
         await _banWatchSub?.cancel();
-        await Supabase.instance.client.auth.signOut();
+        await FcmService.signOutAndUnlink();
         resetLocalUserState();
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
