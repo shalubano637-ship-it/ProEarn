@@ -48,6 +48,7 @@ class _RoomChatPageState extends State<RoomChatPage> {
   Timer? _timer;
   List<Map<String, dynamic>> _messages = [];
   bool _loading = true;
+  bool _loadingMessages = false;
   bool _sending = false;
   bool _isFavorite = false;
   bool _favoriteBusy = false;
@@ -177,13 +178,24 @@ class _RoomChatPageState extends State<RoomChatPage> {
   }
 
   Future<void> _loadMessages({bool silent = false}) async {
+    // The periodic refresh must never overlap a request already in flight.
+    if (_loadingMessages) return;
+    _loadingMessages = true;
     try {
       final result = await Supabase.instance.client.rpc('get_room_messages', params: {
         'p_room_id': widget.roomId,
         'p_limit': 200,
       });
       final rows = (result as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-      if (mounted) setState(() { _messages = rows; _loading = false; });
+      if (!mounted) return;
+      // Avoid rebuilding the full room chat when the poll returns unchanged data.
+      final changed = jsonEncode(rows) != jsonEncode(_messages);
+      if (changed || _loading) {
+        setState(() {
+          if (changed) _messages = rows;
+          _loading = false;
+        });
+      }
     } catch (e) {
       if (!silent && mounted) {
         setState(() => _loading = false);
@@ -191,6 +203,8 @@ class _RoomChatPageState extends State<RoomChatPage> {
           const SnackBar(content: Text('Could not load Room messages.'), backgroundColor: AppColors.error),
         );
       }
+    } finally {
+      _loadingMessages = false;
     }
   }
 
