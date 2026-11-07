@@ -62,6 +62,7 @@ class _CommentScreenState extends State<CommentScreen> {
   final FocusNode _focusNode = FocusNode();
   final ImagePicker _picker = ImagePicker();
   String? _currentlyHighlightedId;
+  late final Stream<List<Map<String, dynamic>>> _commentsStream;
 
   String? _replyingToUserId;
   String? _replyingToUsername;
@@ -94,6 +95,11 @@ class _CommentScreenState extends State<CommentScreen> {
   void initState() {
     super.initState();
     _currentlyHighlightedId = widget.highlightCommentId;
+    _commentsStream = Supabase.instance.client
+        .from(kCommentsCollection)
+        .stream(primaryKey: ['id'])
+        .eq('postId', widget.postId)
+        .order('timestamp', ascending: false);
     
     if (_currentlyHighlightedId != null && _currentlyHighlightedId!.isNotEmpty) {
       Timer(const Duration(seconds: 3), () {
@@ -815,11 +821,7 @@ class _CommentScreenState extends State<CommentScreen> {
             children: [
               Expanded(
                 child: StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: Supabase.instance.client
-                      .from(kCommentsCollection)
-                      .stream(primaryKey: ['id'])
-                      .eq('postId', widget.postId)
-                      .order('timestamp', ascending: false),
+                  stream: _commentsStream,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
