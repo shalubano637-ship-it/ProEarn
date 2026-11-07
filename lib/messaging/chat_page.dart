@@ -102,7 +102,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
     try {
       // Both block checks are independent. Run them concurrently.
-      final results = await Future.wait([
+      final results = await Future.wait<dynamic>([
         Supabase.instance.client
             .from(kUsersCollection)
             .select('blockedUsers')
