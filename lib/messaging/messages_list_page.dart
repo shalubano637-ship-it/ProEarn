@@ -34,6 +34,8 @@ class _MessagesListPageState extends State<MessagesListPage> {
   bool _isBannerLoaded = false;
 
   Future<List<Map<String, dynamic>>>? _conversationsFuture;
+  List<Map<String, dynamic>>? _cachedConversations;
+  Timer? _inboxRefreshDebounce;
   RealtimeChannel? _chatUpdatesChannel;
 
   Future<List<Map<String, dynamic>>> _fetchConversations() async {
@@ -58,7 +60,17 @@ class _MessagesListPageState extends State<MessagesListPage> {
   }
 
   void _refreshConversations() {
-    if (mounted) setState(() { _conversationsFuture = _fetchConversations(); });
+    if (!mounted) return;
+    setState(() {
+      _conversationsFuture = _fetchConversations();
+    });
+  }
+
+  void _scheduleConversationRefresh() {
+    _inboxRefreshDebounce?.cancel();
+    _inboxRefreshDebounce = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) _refreshConversations();
+    });
   }
 
   Widget _buildNormalConversationList(List<Map<String, dynamic>> allConversations, String currentUid) {
@@ -99,13 +111,13 @@ class _MessagesListPageState extends State<MessagesListPage> {
         event: PostgresChangeEvent.all,
         schema: 'public',
         table: 'conversations',
-        callback: (_) => _refreshConversations(),
+        callback: (_) => _scheduleConversationRefresh(),
       )
       ..onPostgresChanges(
         event: PostgresChangeEvent.insert,
         schema: 'public',
         table: 'messages',
-        callback: (_) => _refreshConversations(),
+        callback: (_) => _scheduleConversationRefresh(),
       )
       ..subscribe();
     _loadBannerAd();
@@ -132,6 +144,7 @@ class _MessagesListPageState extends State<MessagesListPage> {
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    _inboxRefreshDebounce?.cancel();
     _searchController.dispose();
     _bannerAd?.dispose();
     final channel = _chatUpdatesChannel;
@@ -188,9 +201,21 @@ class _MessagesListPageState extends State<MessagesListPage> {
             child: FutureBuilder<List<Map<String, dynamic>>>(
               future: _conversationsFuture,
               builder: (context, convSnapshot) {
-                if (convSnapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-                if (convSnapshot.hasError) return ErrorRetryView(error: convSnapshot.error, onRetry: () => setState(() {}));
-                return _buildNormalConversationList(convSnapshot.data ?? [], currentUid);
+                if (convSnapshot.hasData) {
+                  _cachedConversations = convSnapshot.data;
+                }
+                final cached = _cachedConversations;
+                if (convSnapshot.connectionState == ConnectionState.waiting && cached == null) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (convSnapshot.hasError && cached == null) {
+                  return ErrorRetryView(error: convSnapshot.error, onRetry: _refreshConversations);
+                }
+                // Keep the existing inbox visible during background refreshes.
+                return _buildNormalConversationList(
+                  convSnapshot.hasData ? convSnapshot.data! : (cached ?? const []),
+                  currentUid,
+                );
               },
             ),
           ),        ],
