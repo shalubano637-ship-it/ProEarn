@@ -105,7 +105,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<Map<String, dynamic>?> _loadProfileData(String uid) async {
     // These reads are independent; run them together to avoid serial network latency.
-    final results = await Future.wait([
+    final results = await Future.wait<dynamic>([
       Supabase.instance.client.from('public_profiles').select().eq('uid', uid).maybeSingle(),
       Supabase.instance.client.rpc('get_follow_relationships', params: {'p_target_id': uid}),
     ]);
@@ -407,7 +407,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                           } else {
                                             updatedFollowers.add(currentUser.id);
                                           }
-                                          final updatedProfile = Map<String, dynamic>.from(uData)
+                                          final updatedProfile = Map<String, dynamic>.from(userSnapshot.data!)
                                             ..['followers'] = updatedFollowers;
                                           if (mounted) {
                                             setState(() {
