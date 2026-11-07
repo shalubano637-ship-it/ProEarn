@@ -8,16 +8,29 @@ import '../models.dart';
 import '../service.dart';
 import '../theme/theme.dart';
 
-       class LikeButton extends StatelessWidget {
+       class LikeButton extends StatefulWidget {
   final String postId;
   const LikeButton({super.key, required this.postId});
+
+  @override
+  State<LikeButton> createState() => _LikeButtonState();
+}
+
+class _LikeButtonState extends State<LikeButton> {
+  late final Stream<List<Map<String, dynamic>>> _postStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _postStream = Supabase.instance.client.from(kPostsCollection).stream(primaryKey: ['id']).eq('id', widget.postId);
+  }
 
   void toggleLikeOperation(bool currentlyLiked, String currentUserId) async {
     final client = Supabase.instance.client;
 
     if (currentlyLiked) {
       await client.rpc('toggle_post_like', params: {
-        'p_post_id': postId,
+        'p_post_id': widget.postId,
         'p_user_id': currentUserId,
         'p_like': false,
       });
@@ -28,7 +41,7 @@ import '../theme/theme.dart';
         'p_like': true,
       });
 
-      var postSnapshot = await client.from(kPostsCollection).select().eq('id', postId).maybeSingle();
+      var postSnapshot = await client.from(kPostsCollection).select().eq('id', widget.postId.maybeSingle();
       if (postSnapshot != null) {
         String targetOwner = postSnapshot[kPostOwnerUidField] ?? '';
 
@@ -37,7 +50,7 @@ import '../theme/theme.dart';
             targetOwnerId: targetOwner,
             type: 'like',
             message: 'liked your post.',
-            targetPostId: postId,
+            targetPostId: widget.postId,
           );
         }
       }
@@ -50,7 +63,7 @@ import '../theme/theme.dart';
     if (user == null) return const SizedBox.shrink();
 
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: Supabase.instance.client.from(kPostsCollection).stream(primaryKey: ['id']).eq('id', postId),
+      stream: _postStream,
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Column(
