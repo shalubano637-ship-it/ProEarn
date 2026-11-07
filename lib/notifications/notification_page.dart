@@ -24,12 +24,11 @@ class NotificationPage extends StatefulWidget {
 class _NotificationPageState extends State<NotificationPage> with WidgetsBindingObserver {
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
+  Stream<List<Map<String, dynamic>>>? _notificationsStream;
 
   Future<void> _refreshNotifications() async {
-    if (!mounted) return;
-    // Rebuild the stream subscription so the latest notifications are fetched.
-    setState(() {});
-    await Future<void>.delayed(const Duration(milliseconds: 600));
+    // Notifications arrive through the persistent realtime stream; rebuilding
+    // the page here would unnecessarily recreate the subscription.
   }
 
   @override
@@ -37,6 +36,14 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadBannerAd();
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid != null) {
+      _notificationsStream = Supabase.instance.client
+          .from(kNotificationsCollection)
+          .stream(primaryKey: ['id'])
+          .eq('targetOwnerId', uid)
+          .order('timestamp', ascending: false);
+    }
     Supabase.instance.client.rpc('set_presence', params: {'p_screen': 'notifications'})
         .catchError((e) => debugPrint('set_presence failed: $e'));
   }
@@ -125,11 +132,7 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
 
           Expanded(
             child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: Supabase.instance.client
-                  .from(kNotificationsCollection)
-                  .stream(primaryKey: ['id'])
-                  .eq('targetOwnerId', currentUser.id)
-                  .order('timestamp', ascending: false),
+              stream: _notificationsStream,
               builder: (context, notificationSnapshot) {
                 if (notificationSnapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -225,71 +228,53 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
                           if (type == 'comment') leadingIcon = Icons.comment;
                           if (type == 'follow') leadingIcon = Icons.person_add;
 
-                          final String dbSenderName = data['senderName'] ?? 'Someone';
-                          final String dbSenderProfile = data['senderProfileUrl'] ?? '';
+                          final String senderName = data['senderName'] ?? 'Someone';
+                          final String senderProfile = data['senderProfileUrl'] ?? '';
 
-                          return FutureBuilder<Map<String, dynamic>?>(
-                            future: Supabase.instance.client
-                                .from('public_profiles')
-                                .select()
-                                .eq('uid', senderId)
-                                .maybeSingle(),
-                            builder: (context, senderSnapshot) {
-                              String realTimeProfileUrl = dbSenderProfile;
-                              String realTimeName = dbSenderName;
-
-                              if (senderSnapshot.hasData && senderSnapshot.data != null) {
-                                final senderData = senderSnapshot.data!;
-                                realTimeProfileUrl = senderData['profileUrl'] ?? dbSenderProfile;
-                                realTimeName = senderData['userName'] ?? dbSenderName;
+                          return ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 1),
+                            leading: CircleAvatar(
+                              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                              child: ClipOval(
+                                child: GlobalCachedImage(
+                                  imageUrl: senderProfile,
+                                  width: 40,
+                                  height: 40,
+                                  errorWidget: Icon(leadingIcon, color: theme.colorScheme.primary),
+                                ),
+                              ),
+                            ),
+                            title: RichText(
+                              text: TextSpan(
+                                style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
+                                children: [
+                                  TextSpan(text: senderName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  TextSpan(text: ' $rawMessage'),
+                                ],
+                              ),
+                            ),
+                            subtitle: Text(
+                              timeText,
+                              style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6)),
+                            ),
+                            onTap: () {
+                              if (type == 'comment' && targetPostId.trim().isNotEmpty) {
+                                ReelsAutoTrigger.targetPostId = targetPostId.trim();
+                                ReelsAutoTrigger.highlightCommentId = notificationCommentId;
+                                Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+                                  (route) => false,
+                                );
+                              } else if ((type == 'follow' || type == 'like') && senderId.isNotEmpty) {
+                                final isMe = senderId == currentUser.id;
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ProfilePage(isOwnProfile: isMe, otherUser: isMe ? null : senderId),
+                                  ),
+                                );
                               }
-
-                              return ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 1),
-                                leading: CircleAvatar(
-                                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                                  child: ClipOval(
-                                    child: GlobalCachedImage(
-                                      imageUrl: realTimeProfileUrl,
-                                      width: 40,
-                                      height: 40,
-                                      errorWidget: Icon(leadingIcon, color: theme.colorScheme.primary),
-                                    ),
-                                  ),
-                                ),
-                                title: RichText(
-                                  text: TextSpan(
-                                    style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
-                                    children: [
-                                      TextSpan(text: realTimeName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                      TextSpan(text: ' $rawMessage'),
-                                    ],
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  timeText,
-                                  style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6)),
-                                ),
-                                onTap: () {
-                                  if (type == 'comment' && targetPostId.trim().isNotEmpty) {
-                                    ReelsAutoTrigger.targetPostId = targetPostId.trim();
-                                    ReelsAutoTrigger.highlightCommentId = notificationCommentId;
-                                    Navigator.pushAndRemoveUntil(
-                                      context,
-                                      MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-                                      (route) => false,
-                                    );
-                                  } else if ((type == 'follow' || type == 'like') && senderId.isNotEmpty) {
-                                    bool isMe = senderId == currentUser.id;
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => ProfilePage(isOwnProfile: isMe, otherUser: isMe ? null : senderId),
-                                      ),
-                                    );
-                                  }
-                                },
-                              );
                             },
                           );
                         } catch (_) {
