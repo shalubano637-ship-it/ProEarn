@@ -17,16 +17,35 @@ import '../theme/theme.dart';
 }
 
 class _LikeButtonState extends State<LikeButton> {
-  late final Stream<List<Map<String, dynamic>>> _postStream;
+  late Stream<List<Map<String, dynamic>>> _postStream;
+  bool _likeRequestInProgress = false;
 
   @override
   void initState() {
     super.initState();
-    _postStream = Supabase.instance.client.from(kPostsCollection).stream(primaryKey: ['id']).eq('id', widget.postId);
+    _createPostStream();
   }
 
-  void toggleLikeOperation(bool currentlyLiked, String currentUserId) async {
+  void _createPostStream() {
+    _postStream = Supabase.instance.client
+        .from(kPostsCollection)
+        .stream(primaryKey: ['id'])
+        .eq('id', widget.postId);
+  }
+
+  @override
+  void didUpdateWidget(covariant LikeButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.postId != widget.postId) {
+      _createPostStream();
+    }
+  }
+
+  Future<void> toggleLikeOperation(bool currentlyLiked, String currentUserId) async {
+    if (_likeRequestInProgress) return;
+    setState(() => _likeRequestInProgress = true);
     final client = Supabase.instance.client;
+    try {
 
     if (currentlyLiked) {
       await client.rpc('toggle_post_like', params: {
@@ -51,9 +70,24 @@ class _LikeButtonState extends State<LikeButton> {
             type: 'like',
             message: 'liked your post.',
             targetPostId: widget.postId,
-          );
+          ).catchError((error) {
+            debugPrint('Like notification failed: $error');
+          });
         }
       }
+    } catch (error, stackTrace) {
+      debugPrint('Like toggle failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't update like. Please try again."),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _likeRequestInProgress = false);
     }
   }
 
@@ -86,7 +120,9 @@ class _LikeButtonState extends State<LikeButton> {
           button: true,
           toggled: isCurrentUserLiked,
           child: GestureDetector(
-          onTap: () => toggleLikeOperation(isCurrentUserLiked, user.id),
+          onTap: _likeRequestInProgress
+              ? null
+              : () => toggleLikeOperation(isCurrentUserLiked, user.id),
           child: Column(
             children: [
               AnimatedSwitcher(
