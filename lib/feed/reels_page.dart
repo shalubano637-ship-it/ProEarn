@@ -35,13 +35,21 @@ import '../widgets/error_retry_view.dart';
 class _ReelsPageState extends State<ReelsPage> {
   late PageController _pageController;
   final Set<String> _prefetchedUrls = {};
+  final Map<String, Future<Map<String, dynamic>?>> _profileFutures = {};
   List<Map<String, dynamic>>? _shuffledDocs;
   String _lastStreamDocIds = "";
 
   Stream<List<Map<String, dynamic>>>? _userStream;
   Stream<List<Map<String, dynamic>>>? _postsStream;
 
-  int _nextAdTarget = 5; 
+  int _nextAdTarget = 5;
+
+  Future<Map<String, dynamic>?> _profileFuture(String uid) =>
+      _profileFutures.putIfAbsent(uid, () => Supabase.instance.client
+          .from('public_profiles')
+          .select('uid,userName')
+          .eq('uid', uid)
+          .maybeSingle());
 
   void _initStreams() {
     final currentUser = Supabase.instance.client.auth.currentUser;
@@ -150,10 +158,12 @@ class _ReelsPageState extends State<ReelsPage> {
       builder: (context, userSnapshot) {
         List<dynamic> liveBlockedUsers = [];
         List<dynamic> liveHiddenPosts = [];
+        List<dynamic> liveFollowing = [];
         if (userSnapshot.hasData && userSnapshot.data!.isNotEmpty) {
           var userData = userSnapshot.data!.first;
           liveBlockedUsers = userData['blockedUsers'] ?? [];
           liveHiddenPosts = userData['hiddenPosts'] ?? [];
+          liveFollowing = userData['following'] ?? [];
         }
 
         return StreamBuilder<List<Map<String, dynamic>>>(
@@ -304,11 +314,7 @@ class _ReelsPageState extends State<ReelsPage> {
                                     }
                                   },
                                   child: FutureBuilder<Map<String, dynamic>?>(
-                                    future: Supabase.instance.client
-                                        .from('public_profiles')
-                                        .select()
-                                        .eq('uid', postOwner)
-                                        .maybeSingle(),
+                                    future: _profileFuture(postOwner),
                                     builder: (context, userSnapshot) {
                                       String displayHandle = "Loading...";
                                       if (userSnapshot.hasData && userSnapshot.data != null) {
@@ -323,33 +329,18 @@ class _ReelsPageState extends State<ReelsPage> {
                                 ),
                                 const SizedBox(width: 12),
                                 if (postOwner != currentUser.id)
-                                  StreamBuilder<List<Map<String, dynamic>>>(
-                                    stream: Supabase.instance.client.from(kUsersCollection).stream(primaryKey: ['uid']).eq('uid', currentUser.id),
-                                    builder: (context, userSub) {
-                                      List<dynamic> myFollowing = [];
-                                      if (userSub.hasData && userSub.data!.isNotEmpty) {
-                                        var d = userSub.data!.first;
-                                        myFollowing = d['following'] ?? [];
-                                      }
-
-                                      bool isFollowing = myFollowing.contains(postOwner);
-                                      
+                                  Builder(
+                                    builder: (context) {
+                                      final isFollowing = liveFollowing.contains(postOwner);
                                       return GestureDetector(
                                         onTap: () async {
                                           try {
-                                            if (isFollowing) {
-                                              await Supabase.instance.client.rpc('toggle_follow', params: {
-                                                'p_follower_id': currentUser.id,
-                                                'p_target_id': postOwner,
-                                                'p_follow': false,
-                                              });
-                                            } else {
-                                              await Supabase.instance.client.rpc('toggle_follow', params: {
-                                                'p_follower_id': currentUser.id,
-                                                'p_target_id': postOwner,
-                                                'p_follow': true,
-                                              });
-
+                                            await Supabase.instance.client.rpc('toggle_follow', params: {
+                                              'p_follower_id': currentUser.id,
+                                              'p_target_id': postOwner,
+                                              'p_follow': !isFollowing,
+                                            });
+                                            if (!isFollowing) {
                                               sendNotification(
                                                 targetOwnerId: postOwner,
                                                 type: 'follow',
@@ -369,7 +360,7 @@ class _ReelsPageState extends State<ReelsPage> {
                                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                                           decoration: BoxDecoration(color: AppColors.accent, borderRadius: AppRadius.xlRadius),
                                           child: Text(
-                                            isFollowing ? "Unfollow" : "Follow", 
+                                            isFollowing ? "Unfollow" : "Follow",
                                             style: const TextStyle(color: AppColors.textOnAccent, fontWeight: FontWeight.bold),
                                           ),
                                         ),
