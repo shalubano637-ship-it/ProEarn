@@ -29,7 +29,7 @@ class _NativeAdCardState extends State<NativeAdCard> {
       adUnitId: AdUnitIds.native,
       factoryId: 'proEarnNative',
       request: const AdRequest(),
-      nativeAdOptions: const NativeAdOptions(
+      nativeAdOptions: NativeAdOptions(
         adChoicesPlacement: AdChoicesPlacement.topRightCorner,
         mediaAspectRatio: MediaAspectRatio.any,
       ),
