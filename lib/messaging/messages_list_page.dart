@@ -368,68 +368,37 @@ class _ConversationsList extends StatefulWidget {
 
 class _ConversationsListState extends State<_ConversationsList> {
   late Future<Map<String, Map<String, dynamic>>> _profilesFuture;
-  final Map<String, Future<int?>> _unreadCountFutures = {};
-  RealtimeChannel? _unreadUpdatesChannel;
+  late Future<Map<String, int>> _unreadCountsFuture;
 
   @override
   void initState() {
     super.initState();
     _profilesFuture = _fetchOtherParticipantProfiles();
-
-    // Refresh unread counts independently of the parent inbox refresh.
-    // A new message or a read-marker update must invalidate cached counts.
-    final client = Supabase.instance.client;
-    _unreadUpdatesChannel = client
-        .channel('unread-counts-${widget.currentUid}')
-      ..onPostgresChanges(
-        event: PostgresChangeEvent.insert,
-        schema: 'public',
-        table: 'messages',
-        callback: (_) => _refreshUnreadCounts(),
-      )
-      ..onPostgresChanges(
-        event: PostgresChangeEvent.update,
-        schema: 'public',
-        table: 'conversations',
-        callback: (_) => _refreshUnreadCounts(),
-      )
-      ..subscribe();
+    _unreadCountsFuture = _fetchUnreadCounts();
   }
 
-  void _refreshUnreadCounts() {
-    if (!mounted) return;
-    setState(() {
-      _unreadCountFutures.clear();
-    });
-  }
-
-  Future<int?> _fetchUnreadCount(String conversationId, String? lastReadAt) async {
+  Future<Map<String, int>> _fetchUnreadCounts() async {
+    if (widget.isForwardMode) return {};
     try {
-      var query = Supabase.instance.client
-          .from('messages')
-          .select('id')
-          .eq('conversationId', conversationId)
-          .neq('senderId', widget.currentUid);
-      if (lastReadAt != null && lastReadAt.isNotEmpty) {
-        query = query.gt('createdAt', lastReadAt);
-      }
-      final rows = await query;
-      return rows.length;
+      // A single RPC returns counts for every conversation, avoiding an
+      // individual messages SELECT for every visible inbox row.
+      final rows = await Supabase.instance.client.rpc('get_unread_message_counts');
+      return {
+        for (final row in (rows as List))
+          row['conversation_id'].toString():
+              ((row['unread_count'] as num?)?.toInt() ?? 0),
+      };
     } catch (e, stackTrace) {
-      // Keep query failures visible in logs instead of silently treating them
-      // as a genuine zero-unread state.
-      debugPrint('Could not load unread count for conversation $conversationId: $e');
+      debugPrint('Could not load inbox unread counts: $e');
       debugPrintStack(stackTrace: stackTrace);
-      return null;
+      rethrow;
     }
   }
 
   Future<int?> _unreadCountFuture(String conversationId, String? lastReadAt) {
-    final cacheKey = '$conversationId|${lastReadAt ?? ''}';
-    return _unreadCountFutures.putIfAbsent(
-      cacheKey,
-      () => _fetchUnreadCount(conversationId, lastReadAt),
-    );
+    // All row badges share the same in-flight Future and therefore the same
+    // single database round trip.
+    return _unreadCountsFuture.then((counts) => counts[conversationId] ?? 0);
   }
 
   @override
@@ -437,17 +406,13 @@ class _ConversationsListState extends State<_ConversationsList> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.conversations != widget.conversations ||
         oldWidget.currentUid != widget.currentUid) {
-      _unreadCountFutures.clear();
+      _unreadCountsFuture = _fetchUnreadCounts();
       _profilesFuture = _fetchOtherParticipantProfiles();
     }
   }
 
   @override
   void dispose() {
-    final channel = _unreadUpdatesChannel;
-    if (channel != null) {
-      Supabase.instance.client.removeChannel(channel);
-    }
     super.dispose();
   }
 
