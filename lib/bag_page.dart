@@ -19,6 +19,7 @@ class BagPage extends StatefulWidget {
 
 class _BagPageState extends State<BagPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late Future<Map<String, dynamic>?> _viewProfileFuture;
 
   bool get _isOwnBag => widget.viewUid == null;
   String get _uid => widget.viewUid ?? Supabase.instance.client.auth.currentUser?.id ?? '';
@@ -26,10 +27,16 @@ class _BagPageState extends State<BagPage> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _viewProfileFuture = _loadViewProfile();
     _tabController = TabController(length: 2, vsync: this, initialIndex: widget.initialTabIndex);
     _tabController.addListener(() {
       if (mounted) setState(() {});
     });
+  }
+
+  Future<Map<String, dynamic>?> _loadViewProfile() {
+    if (_isOwnBag || _uid.isEmpty) return Future.value(null);
+    return Supabase.instance.client.from('public_profiles').select('userName').eq('uid', _uid).maybeSingle();
   }
 
   @override
@@ -95,7 +102,7 @@ class _BagPageState extends State<BagPage> with SingleTickerProviderStateMixin {
         title: _isOwnBag
             ? const Text("Bag")
             : FutureBuilder<Map<String, dynamic>?>(
-                future: Supabase.instance.client.from('public_profiles').select('userName').eq('uid', _uid).maybeSingle(),
+                future: _viewProfileFuture,
                 builder: (context, snapshot) => Text("${snapshot.data?['userName'] ?? 'User'}'s Bag"),
               ),
         actions: [
@@ -160,7 +167,7 @@ class _OwnedGiftsTab extends StatelessWidget {
   }
 }
 
-class _GiftInventorySection extends StatelessWidget {
+class _GiftInventorySection extends StatefulWidget {
   final String uid;
   final String source;
   final String title;
@@ -171,30 +178,50 @@ class _GiftInventorySection extends StatelessWidget {
     required this.title,
   });
 
+  @override
+  State<_GiftInventorySection> createState() => _GiftInventorySectionState();
+}
+
+class _GiftInventorySectionState extends State<_GiftInventorySection> {
+  late Future<List<Map<String, dynamic>>> _rowsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _rowsFuture = _loadRows();
+  }
+
   Future<List<Map<String, dynamic>>> _loadRows() {
     var query = Supabase.instance.client
         .from('gift_inventory')
         .select('*, gifts(*)')
-        .eq('ownerUid', uid)
+        .eq('ownerUid', widget.uid)
         .gt('count', 0);
-
-    query = source == 'free'
+    query = widget.source == 'free'
         ? query.neq('source', 'purchased')
         : query.eq('source', 'purchased');
-
     return query.order('expiresAt', ascending: true, nullsFirst: false);
   }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _loadRows(),
+      future: _rowsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Column(
             children: [
-              _sectionHeader(title),
+              _sectionHeader(widget.title),
               const Expanded(child: Center(child: CircularProgressIndicator())),
+            ],
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Column(
+            children: [
+              _sectionHeader(widget.title),
+              const Expanded(child: Center(child: Text('Could not load gifts.'))),
             ],
           );
         }
@@ -223,12 +250,12 @@ class _GiftInventorySection extends StatelessWidget {
 
         return Column(
           children: [
-            _sectionHeader(title),
+            _sectionHeader(widget.title),
             Expanded(
               child: grouped.isEmpty
                   ? Center(
                       child: Text(
-                        source == 'free'
+                        widget.source == 'free'
                             ? "No free gifts yet — open a chest or claim a reward."
                             : "No purchase gifts yet — buy some from the Gift Shop.",
                         textAlign: TextAlign.center,
@@ -236,8 +263,7 @@ class _GiftInventorySection extends StatelessWidget {
                     )
                   : GridView.builder(
                       padding: const EdgeInsets.all(12),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 3,
                         mainAxisSpacing: 12,
                         crossAxisSpacing: 12,
@@ -249,7 +275,6 @@ class _GiftInventorySection extends StatelessWidget {
                         final gift = entry['gift'] as Map<String, dynamic>;
                         final count = entry['count'] as int;
                         final expiresAt = entry['soonestExpiry'];
-
                         return Container(
                           decoration: BoxDecoration(
                             color: AppColors.surfaceElevated,
@@ -267,25 +292,13 @@ class _GiftInventorySection extends StatelessWidget {
                               const SizedBox(height: 4),
                               Text(
                                 gift['name'] ?? '',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              Text(
-                                "x$count",
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textTertiary,
-                                ),
-                              ),
+                              Text("x$count", style: const TextStyle(fontSize: 11, color: AppColors.textTertiary)),
                               if (expiresAt != null)
-                                _ExpiryCountdown(
-                                  expiresAt:
-                                      DateTime.parse(expiresAt.toString()),
-                                ),
+                                _ExpiryCountdown(expiresAt: DateTime.parse(expiresAt.toString())),
                             ],
                           ),
                         );
@@ -302,10 +315,7 @@ class _GiftInventorySection extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-      ),
+      child: Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
     );
   }
 }
@@ -351,24 +361,52 @@ class _ExpiryCountdownState extends State<_ExpiryCountdown> {
   }
 }
 
-class _ReceivedGiftsTab extends StatelessWidget {
+class _ReceivedGiftsTab extends StatefulWidget {
   final String uid;
   const _ReceivedGiftsTab({required this.uid});
 
   @override
+  State<_ReceivedGiftsTab> createState() => _ReceivedGiftsTabState();
+}
+
+class _ReceivedGiftsTabState extends State<_ReceivedGiftsTab> {
+  late Future<List<Map<String, dynamic>>> _giftsFuture;
+  Future<List<Map<String, dynamic>>>? _sendersFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _giftsFuture = _loadGifts();
+  }
+
+  Future<List<Map<String, dynamic>>> _loadGifts() => Supabase.instance.client
+      .from('gift_received_log')
+      .select('*, gifts(*)')
+      .eq('recipientUid', widget.uid)
+      .order('createdAt', ascending: false)
+      .limit(100);
+
+  Future<List<Map<String, dynamic>>> _loadSenders(List<Map<String, dynamic>> rows) {
+    final ids = rows.map((r) => r['fromUid'] as String).toSet().toList();
+    if (ids.isEmpty) return Future.value([]);
+    return Supabase.instance.client
+        .from('public_profiles')
+        .select('uid,userName')
+        .inFilter('uid', ids);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (uid.isEmpty) return const Center(child: Text("Please log in."));
+    if (widget.uid.isEmpty) return const Center(child: Text("Please log in."));
 
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: Supabase.instance.client
-          .from('gift_received_log')
-          .select('*, gifts(*)')
-          .eq('recipientUid', uid)
-          .order('createdAt', ascending: false)
-          .limit(100),
+      future: _giftsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return const Center(child: Text("Could not load received gifts."));
         }
         final rows = snapshot.data ?? [];
         if (rows.isEmpty) {
@@ -380,15 +418,13 @@ class _ReceivedGiftsTab extends StatelessWidget {
           );
         }
 
-        final fromUids = rows.map((r) => r['fromUid'] as String).toSet().toList();
-
+        _sendersFuture ??= _loadSenders(rows);
         return FutureBuilder<List<Map<String, dynamic>>>(
-          future: Supabase.instance.client.from('public_profiles').select().inFilter('uid', fromUids),
+          future: _sendersFuture,
           builder: (context, sendersSnapshot) {
             final senderProfiles = {
               for (final p in (sendersSnapshot.data ?? [])) p['uid'] as String: p,
             };
-
             return ListView.builder(
               itemCount: rows.length,
               itemBuilder: (context, index) {
@@ -398,7 +434,6 @@ class _ReceivedGiftsTab extends StatelessWidget {
                 final quantity = row['quantity'];
                 final createdAt = row['createdAt'];
                 final senderName = senderProfiles[fromUid]?['userName'] ?? 'Someone';
-
                 return ListTile(
                   leading: SizedBox(
                     width: 40,
