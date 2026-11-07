@@ -615,7 +615,7 @@ class _PeriodToggle extends StatelessWidget {
   }
 }
 
-class _LeaderboardBody extends StatelessWidget {
+class _LeaderboardBody extends StatefulWidget {
   final _Period period;
   final _Metric metric;
   final VoidCallback onRetry;
@@ -623,26 +623,47 @@ class _LeaderboardBody extends StatelessWidget {
   const _LeaderboardBody({super.key, required this.period, required this.metric, required this.onRetry});
 
   @override
+  State<_LeaderboardBody> createState() => _LeaderboardBodyState();
+}
+
+class _LeaderboardBodyState extends State<_LeaderboardBody> {
+  late Future<List<_RankedUser>> _leaderboardFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _leaderboardFuture = _fetchLeaderboard(widget.period, widget.metric);
+  }
+
+  @override
+  void didUpdateWidget(covariant _LeaderboardBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.period != widget.period || oldWidget.metric != widget.metric) {
+      _leaderboardFuture = _fetchLeaderboard(widget.period, widget.metric);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<_RankedUser>>(
-      future: _fetchLeaderboard(period, metric),
+      future: _leaderboardFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator(color: AppColors.accent));
         }
         if (snapshot.hasError) {
-          return ErrorRetryView(error: snapshot.error, onRetry: onRetry);
+          return ErrorRetryView(error: snapshot.error, onRetry: widget.onRetry);
         }
 
         final users = snapshot.data ?? [];
         if (users.isEmpty) {
           return Center(
             child: Text(
-              metric == _Metric.room
-                  ? (period == _Period.allTime ? "No Rooms yet." : "No Room visits yet for this day.")
-                  : period == _Period.allTime
+              widget.metric == _Metric.room
+                  ? (widget.period == _Period.allTime ? "No Rooms yet." : "No Room visits yet for this day.")
+                  : widget.period == _Period.allTime
                       ? "No creators yet."
-                      : (metric == _Metric.likes ? "No likes yet for this day." : "No gets yet for this day."),
+                      : (widget.metric == _Metric.likes ? "No likes yet for this day." : "No gets yet for this day."),
               style: const TextStyle(color: AppColors.textTertiary),
             ),
           );
@@ -900,18 +921,39 @@ class _RankDelta extends StatelessWidget {
   }
 }
 
-class _OwnRankCard extends StatelessWidget {
+class _OwnRankCard extends StatefulWidget {
   final _Period period;
   final _Metric metric;
 
   const _OwnRankCard({super.key, required this.period, required this.metric});
 
   @override
+  State<_OwnRankCard> createState() => _OwnRankCardState();
+}
+
+class _OwnRankCardState extends State<_OwnRankCard> {
+  late Future<_OwnRank?> _ownRankFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _ownRankFuture = _fetchOwnRank(widget.period, widget.metric);
+  }
+
+  @override
+  void didUpdateWidget(covariant _OwnRankCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.period != widget.period || oldWidget.metric != widget.metric) {
+      _ownRankFuture = _fetchOwnRank(widget.period, widget.metric);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final myUid = Supabase.instance.client.auth.currentUser?.id;
 
     return FutureBuilder<_OwnRank?>(
-      future: _fetchOwnRank(period, metric),
+      future: _ownRankFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox(height: 0);
@@ -930,11 +972,11 @@ class _OwnRankCard extends StatelessWidget {
               borderRadius: AppRadius.lgRadius,
             ),
             child: Text(
-              metric == _Metric.room
-                  ? (period == _Period.allTime
+              widget.metric == _Metric.room
+                  ? (widget.period == _Period.allTime
                       ? "Your Room is not ranked yet — invite people to join."
                       : "Your Room is not ranked for this day yet.")
-                  : period == _Period.allTime
+                  : widget.period == _Period.allTime
                       ? "You're not ranked yet — start earning gets to appear here."
                       : "You're not ranked for this day yet.",
               textAlign: TextAlign.center,
@@ -943,7 +985,7 @@ class _OwnRankCard extends StatelessWidget {
           );
         }
 
-        final isRoom = metric == _Metric.room && ownRank.roomId != null;
+        final isRoom = widget.metric == _Metric.room && ownRank.roomId != null;
         return GestureDetector(
           onTap: isRoom ? null : () => _openProfile(context, myUid),
           child: Container(
