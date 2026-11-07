@@ -5,9 +5,10 @@ import '../ad_unit_ids.dart';
 
 /// Loads a platform-rendered Google native ad using the Android factory.
 class NativeAdCard extends StatefulWidget {
-  const NativeAdCard({super.key, this.height = 280});
+  const NativeAdCard({super.key, this.height = 280, this.onFailed});
 
   final double height;
+  final VoidCallback? onFailed;
 
   @override
   State<NativeAdCard> createState() => _NativeAdCardState();
@@ -43,7 +44,10 @@ class _NativeAdCardState extends State<NativeAdCard> {
         onAdFailedToLoad: (ad, error) {
           debugPrint('Native ad failed to load: $error');
           ad.dispose();
-          if (mounted) setState(() => _nativeAd = null);
+          if (mounted) {
+            setState(() => _nativeAd = null);
+            widget.onFailed?.call();
+          }
         },
       ),
     );
@@ -59,12 +63,8 @@ class _NativeAdCardState extends State<NativeAdCard> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_loaded || _nativeAd == null) {
-      return SizedBox(
-        height: widget.height,
-        child: const Center(child: CircularProgressIndicator()),
-      );
-    }
+    if (_nativeAd == null && !_loaded) return SizedBox(height: widget.height);
+    if (!_loaded) return SizedBox(height: widget.height);
     return SizedBox(
       height: widget.height,
       width: double.infinity,
