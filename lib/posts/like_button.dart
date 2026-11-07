@@ -36,12 +36,12 @@ class _LikeButtonState extends State<LikeButton> {
       });
     } else {
       await client.rpc('toggle_post_like', params: {
-        'p_post_id': postId,
+        'p_post_id': widget.postId,
         'p_user_id': currentUserId,
         'p_like': true,
       });
 
-      var postSnapshot = await client.from(kPostsCollection).select().eq('id', widget.postId.maybeSingle();
+      var postSnapshot = await client.from(kPostsCollection).select().eq('id', widget.postId).maybeSingle();
       if (postSnapshot != null) {
         String targetOwner = postSnapshot[kPostOwnerUidField] ?? '';
 
