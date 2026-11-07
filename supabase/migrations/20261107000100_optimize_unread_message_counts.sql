@@ -4,8 +4,8 @@ create or replace function public.get_unread_message_counts()
 returns table(conversation_id uuid, unread_count bigint)
 language sql
 stable
-security definer
-set search_path = public
+security invoker
+set search_path = ''
 as $$
   select
     c.id,
