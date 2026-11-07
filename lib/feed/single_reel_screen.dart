@@ -35,7 +35,12 @@ import '../posts/more_options_button.dart';
 }
 class _SingleReelScreenState extends State<SingleReelScreen> {
   late PageController _pageController;
-  int _nextAdTarget = 5; 
+  int _nextAdTarget = 5;
+  final Map<String, Future<Map<String, dynamic>?>> _profileFutures = {};
+
+  Future<Map<String, dynamic>?> _profileFuture(String uid) =>
+      _profileFutures.putIfAbsent(uid, () => Supabase.instance.client
+          .from('public_profiles').select('userName').eq('uid', uid).maybeSingle()); 
 
   @override
   void initState() {
@@ -168,11 +173,7 @@ class _SingleReelScreenState extends State<SingleReelScreen> {
                             }
                           },
                           child: FutureBuilder<Map<String, dynamic>?>(
-                            future: Supabase.instance.client
-                                .from('public_profiles')
-                                .select()
-                                .eq('uid', postOwner)
-                                .maybeSingle(),
+                            future: _profileFuture(postOwner),
                             builder: (context, userSnapshot) {
                               String displayHandle = "Loading...";
                               if (userSnapshot.hasData && userSnapshot.data != null) {
