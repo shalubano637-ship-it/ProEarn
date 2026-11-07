@@ -40,17 +40,21 @@ class _MessagesListPageState extends State<MessagesListPage> {
 
   Future<List<Map<String, dynamic>>> _fetchConversations() async {
     final currentUid = Supabase.instance.client.auth.currentUser?.id ?? '';
-    final conversations = await Supabase.instance.client
-        .from('conversations')
-        .select()
-        .or('participantA.eq.$currentUid,participantB.eq.$currentUid')
-        .order('lastMessageAt', ascending: false);
-
-    final requests = await Supabase.instance.client
-        .from('message_requests')
-        .select('conversationId')
-        .eq('recipientId', currentUid)
-        .eq('status', 'pending');
+    // Inbox rows and pending requests are independent reads.
+    final results = await Future.wait([
+      Supabase.instance.client
+          .from('conversations')
+          .select()
+          .or('participantA.eq.$currentUid,participantB.eq.$currentUid')
+          .order('lastMessageAt', ascending: false),
+      Supabase.instance.client
+          .from('message_requests')
+          .select('conversationId')
+          .eq('recipientId', currentUid)
+          .eq('status', 'pending'),
+    ]);
+    final conversations = results[0] as List;
+    final requests = results[1] as List;
 
     final pendingIds = requests.map((r) => r['conversationId'].toString()).toSet();
 
