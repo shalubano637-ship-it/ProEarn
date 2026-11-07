@@ -11,7 +11,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models.dart';
 import '../theme/theme.dart';
 
-class ShareButton extends StatelessWidget {
+class ShareButton extends StatefulWidget {
   final String postId;
   final String postLink;
 
@@ -21,16 +21,29 @@ class ShareButton extends StatelessWidget {
     required this.postLink
   });
 
+  @override
+  State<ShareButton> createState() => _ShareButtonState();
+}
+
+class _ShareButtonState extends State<ShareButton> {
+  late final Stream<List<Map<String, dynamic>>> _postStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _postStream = Supabase.instance.client.from(kPostsCollection).stream(primaryKey: ['id']).eq('id', widget.postId);
+  }
+
   Future<void> _incrementShareCount() async {
     await Supabase.instance.client.rpc('increment_share_count', params: {
-      'p_post_id': postId,
+      'p_post_id': widget.postId,
     });
   }
 
   Future<void> _handleAppShare(BuildContext context) async {
     try {
       final ShareResult result = await Share.share(
-        'Check out this amazing AI Generation on PRO EARN!\nPost Link: $postLink',
+        'Check out this amazing AI Generation on PRO EARN!\nPost Link: ${widget.postLink}',
         subject: 'PRO EARN',
       );
 
@@ -44,7 +57,7 @@ class ShareButton extends StatelessWidget {
 
   Future<void> _handleDirectCopy(BuildContext context) async {
     try {
-      await Clipboard.setData(ClipboardData(text: postLink));
+      await Clipboard.setData(ClipboardData(text: widget.postLink));
       
       await _incrementShareCount();
 
@@ -98,7 +111,7 @@ class ShareButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: Supabase.instance.client.from(kPostsCollection).stream(primaryKey: ['id']).eq('id', postId),
+      stream: _postStream,
       builder: (context, snapshot) {
         int dynamicSharesCount = 0;
 
