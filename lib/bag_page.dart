@@ -6,6 +6,7 @@ import 'theme/theme.dart';
 import 'service.dart';
 import 'utils.dart';
 import 'chests/chests_page.dart';
+import 'widgets/ad_banner_slot.dart';
 
 class BagPage extends StatefulWidget {
   final String? viewUid;
@@ -120,6 +121,7 @@ class _BagPageState extends State<BagPage> with SingleTickerProviderStateMixin {
             child: _bagSectionToggle(),
           ) : null,
       ),
+      bottomNavigationBar: const AdBannerSlot(),
       body: _isOwnBag
           ? TabBarView(
               controller: _tabController,
