@@ -5,6 +5,7 @@ import 'models.dart';
 import 'theme/theme.dart';
 import 'service.dart';
 import 'widgets/coin_balance_indicator.dart';
+import 'widgets/ad_banner_slot.dart';
 
 class GiftShopPage extends StatefulWidget {
   const GiftShopPage({super.key});
@@ -106,6 +107,7 @@ class _GiftShopPageState extends State<GiftShopPage> {
           ),
         ],
       ),
+      bottomNavigationBar: const AdBannerSlot(),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _giftsFuture,
         builder: (context, snapshot) {
