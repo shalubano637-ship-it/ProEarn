@@ -39,6 +39,9 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
+  final Set<int> _visitedPageIndexes = {0};
+  Stream<List<Map<String, dynamic>>>? _profileStream;
+  Stream<List<Map<String, dynamic>>>? _notificationsStream;
   final Box settingsBox = Hive.box('app_settings');
   DateTime? lastNotificationViewedTime;
   StreamSubscription<List<Map<String, dynamic>>>? _banWatchSub;
@@ -59,7 +62,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   void initState() {
     super.initState();
-    _loadLastViewedTime(); // App start hote hi Hive se time read karein
+    _loadLastViewedTime(); // Read the last viewed time once without rebuilding the page.
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid != null) {
+      _profileStream = Supabase.instance.client
+          .from(kUsersCollection)
+          .stream(primaryKey: ['uid'])
+          .eq('uid', uid);
+      _notificationsStream = Supabase.instance.client
+          .from(kNotificationsCollection)
+          .stream(primaryKey: ['id'])
+          .eq('targetOwnerId', uid)
+          .order('timestamp', ascending: false);
+    }
     // Keep the chest timer alive across the whole app, not only on ChestsPage.
     chestTimerService.initialize();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -163,9 +178,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void _loadLastViewedTime() {
     final savedTimeStr = settingsBox.get('last_notification_time');
     if (savedTimeStr != null) {
-      setState(() {
-        lastNotificationViewedTime = DateTime.parse(savedTimeStr);
-      });
+      lastNotificationViewedTime = DateTime.tryParse(savedTimeStr);
     }
   }
 
@@ -249,10 +262,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   child: currentUser == null
                       ? const CircleAvatar(radius: 18, child: Icon(Icons.person_outline))
                       : StreamBuilder<List<Map<String, dynamic>>>(
-                          stream: Supabase.instance.client
-                              .from(kUsersCollection)
-                              .stream(primaryKey: ['uid'])
-                              .eq('uid', currentUser.id),
+                          stream: _profileStream,
                           builder: (context, snapshot) {
                             String profileUrl = "";
                             if (snapshot.hasData && snapshot.data!.isNotEmpty) {
@@ -313,11 +323,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     onPressed: () {},
                   )
                 : StreamBuilder<List<Map<String, dynamic>>>(
-                    stream: Supabase.instance.client
-                        .from(kNotificationsCollection)
-                        .stream(primaryKey: ['id'])
-                        .eq('targetOwnerId', currentUser.id)
-                        .order('timestamp', ascending: false),
+                    stream: _notificationsStream,
                     builder: (context, snapshot) {
                       bool showRedDot = false;
 
@@ -372,11 +378,22 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   ),
           ],
         ),
-        body: _pages[_selectedIndex],
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: List<Widget>.generate(_pages.length, (index) {
+            // Build each tab only on first visit, then keep its State and stream
+            // subscriptions alive while the user switches between tabs.
+            return _visitedPageIndexes.contains(index)
+                ? _pages[index]
+                : const SizedBox.shrink();
+          }),
+        ),
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _selectedIndex,
           onTap: (index) {
+            if (index == _selectedIndex) return;
             setState(() {
+              _visitedPageIndexes.add(index);
               _selectedIndex = index;
             });
           },
