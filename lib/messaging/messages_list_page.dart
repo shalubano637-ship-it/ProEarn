@@ -391,7 +391,7 @@ class _ConversationsListState extends State<_ConversationsList> {
     } catch (e, stackTrace) {
       debugPrint('Could not load inbox unread counts: $e');
       debugPrintStack(stackTrace: stackTrace);
-      return {};
+      rethrow;
     }
   }
 
