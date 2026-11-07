@@ -467,29 +467,15 @@ class _MessagesUnreadNavIconState extends State<_MessagesUnreadNavIcon> {
       _refreshRequested = true;
       return;
     }
-    final uid = _client.auth.currentUser?.id;
-    if (uid == null) return;
+    if (_client.auth.currentUser == null) return;
     _fetching = true;
     try {
-      final rows = await _client
-          .from('conversations')
-          .select('id,participantA,participantB,lastReadAtA,lastReadAtB')
-          .or('participantA.eq.$uid,participantB.eq.$uid');
-      var total = 0;
-      for (final conv in rows) {
-        final isA = conv['participantA'] == uid;
-        final lastReadAt = (isA ? conv['lastReadAtA'] : conv['lastReadAtB'])?.toString();
-        var query = _client
-            .from('messages')
-            .select('id')
-            .eq('conversationId', conv['id'].toString())
-            .neq('senderId', uid);
-        if (lastReadAt != null && lastReadAt.isNotEmpty) {
-          query = query.gt('createdAt', lastReadAt);
-        }
-        final unreadRows = await query;
-        total += unreadRows.length;
-      }
+      // One server-side aggregate replaces one query per conversation.
+      final rows = await _client.rpc('get_unread_message_counts');
+      final total = (rows as List).fold<int>(
+        0,
+        (sum, row) => sum + ((row['unread_count'] as num?)?.toInt() ?? 0),
+      );
       if (mounted) {
         setState(() {
           _unreadCount = total;
