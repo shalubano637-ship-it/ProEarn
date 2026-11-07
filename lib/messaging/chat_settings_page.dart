@@ -18,6 +18,7 @@ class ChatSettingsPage extends StatefulWidget {
 
 class _ChatSettingsPageState extends State<ChatSettingsPage> {
   bool? _muted; // null while loading
+  late final Future<Map<String, dynamic>?> _profileFuture;
   bool _isBusy = false;
 
   bool _isReportOn = false;
@@ -36,6 +37,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
   @override
   void initState() {
     super.initState();
+    _profileFuture = Supabase.instance.client.from('public_profiles').select().eq('uid', widget.otherUid).maybeSingle();
     _loadMuteState();
   }
 
@@ -141,7 +143,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
           children: [
             const SizedBox(height: AppSpacing.lg),
             FutureBuilder<Map<String, dynamic>?>(
-              future: Supabase.instance.client.from('public_profiles').select().eq('uid', widget.otherUid).maybeSingle(),
+              future: _profileFuture,
               builder: (context, snapshot) {
                 final profileUrl = snapshot.data?['profileUrl'] ?? '';
                 final userName = snapshot.data?['userName'] ?? widget.otherUserName;
