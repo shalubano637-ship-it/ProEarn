@@ -431,6 +431,7 @@ class _MessagesUnreadNavIconState extends State<_MessagesUnreadNavIcon> {
   bool _loaded = false;
   bool _fetching = false;
   bool _refreshRequested = false;
+  Timer? _refreshDebounce;
 
   @override
   void initState() {
@@ -443,7 +444,7 @@ class _MessagesUnreadNavIconState extends State<_MessagesUnreadNavIcon> {
           event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'messages',
-          callback: (_) => _loadUnreadCount(),
+          callback: (_) => _scheduleUnreadRefresh(),
         )
         ..onPostgresChanges(
           event: PostgresChangeEvent.all,
@@ -453,6 +454,12 @@ class _MessagesUnreadNavIconState extends State<_MessagesUnreadNavIcon> {
         )
         ..subscribe();
     }
+  }
+
+  void _scheduleUnreadRefresh() {
+    // Coalesce bursts of message/conversation events into one badge refresh.
+    _refreshDebounce?.cancel();
+    _refreshDebounce = Timer(const Duration(milliseconds: 350), _loadUnreadCount);
   }
 
   Future<void> _loadUnreadCount() async {
@@ -504,6 +511,7 @@ class _MessagesUnreadNavIconState extends State<_MessagesUnreadNavIcon> {
 
   @override
   void dispose() {
+    _refreshDebounce?.cancel();
     final channel = _channel;
     if (channel != null) _client.removeChannel(channel);
     super.dispose();
