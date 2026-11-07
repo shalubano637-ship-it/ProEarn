@@ -75,6 +75,7 @@ class _LikeButtonState extends State<LikeButton> {
           });
         }
       }
+    }
     } catch (error, stackTrace) {
       debugPrint('Like toggle failed: $error');
       debugPrintStack(stackTrace: stackTrace);
