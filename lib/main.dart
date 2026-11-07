@@ -6,6 +6,7 @@ import 'fcm_service.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -137,7 +138,13 @@ Future<void> _initializeDeferredServices() async {
 
   chestTimerService.initialize();
   unawaited(loadUserDataOnStartup());
-  RewardedAdPreloader.preload();
+  try {
+    await MobileAds.instance.initialize();
+    RewardedAdPreloader.preload();
+  } catch (e, st) {
+    debugPrint('Google Mobile Ads initialization failed: $e');
+    Sentry.captureException(e, stackTrace: st);
+  }
 }
 class AiSocialApp extends StatelessWidget {
   const AiSocialApp({super.key});
