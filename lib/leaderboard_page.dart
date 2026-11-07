@@ -7,6 +7,7 @@ import 'service.dart';
 import 'user_profile_features.dart';
 import 'widgets/error_retry_view.dart';
 import 'messaging/room_chat_page.dart';
+import 'widgets/ad_banner_slot.dart';
 
 enum _Period { yesterday, today, allTime }
 enum _Metric { popularity, gets, likes, room }
@@ -485,6 +486,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
         ],
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       ),
+      bottomNavigationBar: const AdBannerSlot(),
       body: Column(
         children: [
           Padding(
