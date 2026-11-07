@@ -337,43 +337,10 @@ class _ReelsPageState extends State<ReelsPage> {
                                 ),
                                 const SizedBox(width: 12),
                                 if (postOwner != currentUser.id)
-                                  Builder(
-                                    builder: (context) {
-                                      final isFollowing = liveFollowing.contains(postOwner);
-                                      return GestureDetector(
-                                        onTap: () async {
-                                          try {
-                                            await Supabase.instance.client.rpc('toggle_follow', params: {
-                                              'p_follower_id': currentUser.id,
-                                              'p_target_id': postOwner,
-                                              'p_follow': !isFollowing,
-                                            });
-                                            if (!isFollowing) {
-                                              sendNotification(
-                                                targetOwnerId: postOwner,
-                                                type: 'follow',
-                                                message: 'started following you.',
-                                              );
-                                            }
-                                          } catch (e) {
-                                            debugPrint("toggle_follow failed: $e");
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(content: Text("Couldn't update follow status — please try again."), backgroundColor: AppColors.error),
-                                              );
-                                            }
-                                          }
-                                        },
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                          decoration: BoxDecoration(color: AppColors.accent, borderRadius: AppRadius.xlRadius),
-                                          child: Text(
-                                            isFollowing ? "Unfollow" : "Follow",
-                                            style: const TextStyle(color: AppColors.textOnAccent, fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
-                                      );
-                                    },
+                                  _ReelFollowButton(
+                                    key: ValueKey<String>('follow-$postOwner'),
+                                    targetUid: postOwner,
+                                    initiallyFollowing: liveFollowing.contains(postOwner),
                                   ),
                               ],
                             ),
@@ -422,6 +389,106 @@ class _ReelsPageState extends State<ReelsPage> {
           },
         );
       },
+    );
+  }
+}
+
+
+class _ReelFollowButton extends StatefulWidget {
+  final String targetUid;
+  final bool initiallyFollowing;
+
+  const _ReelFollowButton({
+    super.key,
+    required this.targetUid,
+    required this.initiallyFollowing,
+  });
+
+  @override
+  State<_ReelFollowButton> createState() => _ReelFollowButtonState();
+}
+
+class _ReelFollowButtonState extends State<_ReelFollowButton> {
+  late bool _following;
+  bool _requestInProgress = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _following = widget.initiallyFollowing;
+  }
+
+  @override
+  void didUpdateWidget(covariant _ReelFollowButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initiallyFollowing != widget.initiallyFollowing &&
+        !_requestInProgress) {
+      _following = widget.initiallyFollowing;
+    }
+  }
+
+  Future<void> _toggle() async {
+    if (_requestInProgress) return;
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    final previous = _following;
+    final next = !previous;
+    setState(() {
+      _following = next;
+      _requestInProgress = true;
+    });
+
+    try {
+      await Supabase.instance.client.rpc('toggle_follow', params: {
+        'p_follower_id': user.id,
+        'p_target_id': widget.targetUid,
+        'p_follow': next,
+      });
+
+      if (next) {
+        sendNotification(
+          targetOwnerId: widget.targetUid,
+          type: 'follow',
+          message: 'started following you.',
+        ).catchError((error) {
+          debugPrint('Follow notification failed: $error');
+        });
+      }
+    } catch (error) {
+      debugPrint('toggle_follow failed: $error');
+      if (mounted) {
+        setState(() => _following = previous);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't update follow status. Please try again."),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _requestInProgress = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _requestInProgress ? null : _toggle,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.accent,
+          borderRadius: AppRadius.xlRadius,
+        ),
+        child: Text(
+          _following ? "Unfollow" : "Follow",
+          style: const TextStyle(
+            color: AppColors.textOnAccent,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
     );
   }
 }
