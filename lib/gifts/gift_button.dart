@@ -111,8 +111,6 @@ class _SendGiftSheetState extends State<_SendGiftSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final uid = Supabase.instance.client.auth.currentUser?.id ?? '';
-
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
       minChildSize: 0.4,
