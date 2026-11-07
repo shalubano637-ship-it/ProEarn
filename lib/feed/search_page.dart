@@ -33,20 +33,38 @@ class _SearchPageState extends State<SearchPage> {
   final Map<String, Future<List<Map<String, dynamic>>>> _userSearchFutures = {};
   final Map<String, Future<List<Map<String, dynamic>>>> _postSearchFutures = {};
 
-  Future<List<Map<String, dynamic>>> _userSearchFuture(String query) =>
-      _userSearchFutures.putIfAbsent(query, () => Supabase.instance.client
+  static const int _maxSearchCacheEntries = 20;
+
+  void _trimSearchCache(Map<String, Future<List<Map<String, dynamic>>>> cache) {
+    while (cache.length >= _maxSearchCacheEntries) {
+      cache.remove(cache.keys.first);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _userSearchFuture(String query) {
+    if (! _userSearchFutures.containsKey(query)) {
+      _trimSearchCache(_userSearchFutures);
+      _userSearchFutures[query] = Supabase.instance.client
           .from('public_profiles')
           .select()
           .ilike('userName', '%$query%')
-          .limit(30));
+          .limit(30);
+    }
+    return _userSearchFutures[query]!;
+  }
 
-  Future<List<Map<String, dynamic>>> _postSearchFuture(String query) =>
-      _postSearchFutures.putIfAbsent(query, () => Supabase.instance.client
+  Future<List<Map<String, dynamic>>> _postSearchFuture(String query) {
+    if (!_postSearchFutures.containsKey(query)) {
+      _trimSearchCache(_postSearchFutures);
+      _postSearchFutures[query] = Supabase.instance.client
           .from(kPostsCollection)
           .select()
           .or('caption.ilike.%$query%,prompt.ilike.%$query%')
           .order('timestamp', ascending: false)
-          .limit(60));
+          .limit(60);
+    }
+    return _postSearchFutures[query]!;
+  }
 
   BannerAd? _bannerAd;
   bool _isBannerAdLoaded = false;
@@ -88,6 +106,10 @@ class _SearchPageState extends State<SearchPage> {
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
+          if (!mounted) {
+            ad.dispose();
+            return;
+          }
           setState(() {
             _isBannerAdLoaded = true;
           });
@@ -109,6 +131,10 @@ class _SearchPageState extends State<SearchPage> {
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
+          if (!mounted) {
+            ad.dispose();
+            return;
+          }
           setState(() {
             _isGridAdLoaded = true;
           });
