@@ -101,15 +101,21 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     if (myUid == null) return;
 
     try {
-      final myRow = await Supabase.instance.client
-          .from(kUsersCollection)
-          .select('blockedUsers')
-          .eq('uid', myUid)
-          .maybeSingle();
+      // Both block checks are independent. Run them concurrently.
+      final results = await Future.wait([
+        Supabase.instance.client
+            .from(kUsersCollection)
+            .select('blockedUsers')
+            .eq('uid', myUid)
+            .maybeSingle(),
+        Supabase.instance.client.rpc(
+          'is_blocked_by_user',
+          params: {'p_target_uid': widget.otherUid},
+        ),
+      ]);
+      final myRow = results[0] as Map<String, dynamic>?;
       final myBlockedList = (myRow?['blockedUsers'] as List?)?.cast<String>() ?? [];
-
-      final blockedByThem = await Supabase.instance.client
-          .rpc('is_blocked_by_user', params: {'p_target_uid': widget.otherUid});
+      final blockedByThem = results[1];
 
       if (!mounted) return;
       setState(() {
@@ -159,13 +165,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       final id = await Supabase.instance.client
           .rpc('get_or_create_conversation', params: {'p_other_uid': widget.otherUid});
 
-      final conv = await Supabase.instance.client
-          .from('conversations')
-          .select()
-          .eq('id', id)
-          .single();
-
-      final bool iAmA = conv['participantA'] == myUid;
+      // get_or_create_conversation already returns the conversation ID.
+      // The extra conversations SELECT was unused and delayed chat startup.
       if (mounted) {
         setState(() {
           _conversationId = id as String;
