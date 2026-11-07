@@ -29,6 +29,24 @@ class _SearchPageState extends State<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchDebounce;
   String _debouncedQuery = '';
+  late final Stream<List<Map<String, dynamic>>> _postsStream;
+  final Map<String, Future<List<Map<String, dynamic>>>> _userSearchFutures = {};
+  final Map<String, Future<List<Map<String, dynamic>>>> _postSearchFutures = {};
+
+  Future<List<Map<String, dynamic>>> _userSearchFuture(String query) =>
+      _userSearchFutures.putIfAbsent(query, () => Supabase.instance.client
+          .from('public_profiles')
+          .select()
+          .ilike('userName', '%$query%')
+          .limit(30));
+
+  Future<List<Map<String, dynamic>>> _postSearchFuture(String query) =>
+      _postSearchFutures.putIfAbsent(query, () => Supabase.instance.client
+          .from(kPostsCollection)
+          .select()
+          .or('caption.ilike.%$query%,prompt.ilike.%$query%')
+          .order('timestamp', ascending: false)
+          .limit(60));
 
   BannerAd? _bannerAd;
   bool _isBannerAdLoaded = false;
@@ -40,7 +58,12 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void initState() {
     super.initState();
-    _resetAdTarget(); 
+    _resetAdTarget();
+    _postsStream = Supabase.instance.client
+        .from(kPostsCollection)
+        .stream(primaryKey: ['id'])
+        .order('timestamp', ascending: false)
+        .limit(60);
     _loadBannerAd();  
     _loadGridBannerAd(); // Grid ke andar dikhane ke liye Ad load karein
     
@@ -141,11 +164,7 @@ class _SearchPageState extends State<SearchPage> {
           Expanded(
             child: query.isEmpty
                 ? StreamBuilder<List<Map<String, dynamic>>>(
-                    stream: Supabase.instance.client
-                        .from(kPostsCollection)
-                        .stream(primaryKey: ['id'])
-                        .order('timestamp', ascending: false)
-                        .limit(60),
+                    stream: _postsStream,
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                       final rawDocs = snapshot.data!;
@@ -210,11 +229,7 @@ class _SearchPageState extends State<SearchPage> {
                     children: [
                       FutureBuilder<List<Map<String, dynamic>>>(
                         key: ValueKey('users_$query'),
-                        future: Supabase.instance.client
-                            .from('public_profiles')
-                            .select()
-                            .ilike('userName', '%$query%')
-                            .limit(30),
+                        future: _userSearchFuture(query),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState == ConnectionState.waiting) {
                             return const SizedBox.shrink();
@@ -281,12 +296,7 @@ class _SearchPageState extends State<SearchPage> {
                       ),
                       FutureBuilder<List<Map<String, dynamic>>>(
                         key: ValueKey(query),
-                        future: Supabase.instance.client
-                            .from(kPostsCollection)
-                            .select()
-                            .or('caption.ilike.%$query%,prompt.ilike.%$query%')
-                            .order('timestamp', ascending: false)
-                            .limit(60),
+                        future: _postSearchFuture(query),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState == ConnectionState.waiting) {
                             return const Center(child: CircularProgressIndicator());
@@ -296,7 +306,9 @@ class _SearchPageState extends State<SearchPage> {
                               error: snapshot.error,
                               genericMessage: "We couldn’t load search results. Check your connection and try again.",
                               offlineMessage: "You appear to be offline. Reconnect and retry your search.",
-                              onRetry: () => setState(() {}),
+                              onRetry: () => setState(() {
+                                _postSearchFutures.remove(query);
+                              }),
                             );
                           }
 
