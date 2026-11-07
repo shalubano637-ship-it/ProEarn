@@ -18,10 +18,17 @@ class AnalyticsPage extends StatefulWidget {
 }
 class _AnalyticsPageState extends State<AnalyticsPage> {
   String _selectedFilter = 'Newly Post'; // Default dropdown selection state
+  Stream<List<Map<String, dynamic>>>? _myPostsStream;
 
   @override
   Widget build(BuildContext context) {
     final currentUser = Supabase.instance.client.auth.currentUser;
+    _myPostsStream ??= currentUser == null
+        ? null
+        : Supabase.instance.client
+            .from(kPostsCollection)
+            .stream(primaryKey: ['id'])
+            .eq(kPostOwnerUidField, currentUser.id);
     final theme = Theme.of(context);
 
     if (currentUser == null) {
@@ -59,10 +66,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         ],
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: Supabase.instance.client
-            .from(kPostsCollection)
-            .stream(primaryKey: ['id'])
-            .eq(kPostOwnerUidField, currentUser.id),
+        stream: _myPostsStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
