@@ -3,15 +3,29 @@
 import 'package:flutter/material.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
 
 import '../models.dart';
 import '../theme/theme.dart';
 
 import 'comment_screen.dart';
 
-class CommentButton extends StatelessWidget {
+class CommentButton extends StatefulWidget {
   final String postId;
   const CommentButton({super.key, required this.postId});
+
+  @override
+  State<CommentButton> createState() => _CommentButtonState();
+}
+
+class _CommentButtonState extends State<CommentButton> {
+  late final Stream<List<Map<String, dynamic>>> _commentsStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _commentsStream = Supabase.instance.client.from(kCommentsCollection).stream(primaryKey: ['id']).eq('postId', widget.postId);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,16 +45,13 @@ class CommentButton extends StatelessWidget {
               ),
               builder: (context) => FractionallySizedBox(
                 heightFactor: 0.85,
-                child: CommentScreen(postId: postId),
+                child: CommentScreen(postId: widget.postId),
               ),
             );
           },
         ),
         StreamBuilder<List<Map<String, dynamic>>>(
-          stream: Supabase.instance.client
-              .from(kCommentsCollection)
-              .stream(primaryKey: ['id'])
-              .eq('postId', postId),
+          stream: _commentsStream,
           builder: (context, snapshot) {
             int count = snapshot.hasData ? snapshot.data!.length : 0;
             return Text(
