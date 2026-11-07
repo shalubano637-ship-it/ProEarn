@@ -400,18 +400,31 @@ class _ProfilePageState extends State<ProfilePage> {
                                             'p_follow': !isFollowing,
                                           });
 
-                                          if (!isFollowing) {
-                                            try {
-                                              await sendNotification(
-                                                targetOwnerId: targetUid,
-                                                type: 'follow',
-                                                message: 'started following you.',
-                                              );
-                                            } catch (notificationError) {
-                                              debugPrint("Follow notification failed: $notificationError");
-                                            }
+                                          // Update the relationship locally instead of reloading the
+                                          // entire profile and recreating its posts realtime stream.
+                                          final updatedFollowers = List<String>.from(userFollowersList);
+                                          if (isFollowing) {
+                                            updatedFollowers.remove(currentUser.id);
+                                          } else {
+                                            updatedFollowers.add(currentUser.id);
                                           }
-                                          await _refreshProfile();
+                                          final updatedProfile = Map<String, dynamic>.from(uData)
+                                            ..['followers'] = updatedFollowers;
+                                          if (mounted) {
+                                            setState(() {
+                                              _profileFuture = Future.value(updatedProfile);
+                                            });
+                                          }
+                                          if (!isFollowing) {
+                                            // Notifications must not delay the Follow button response.
+                                            sendNotification(
+                                              targetOwnerId: targetUid,
+                                              type: 'follow',
+                                              message: 'started following you.',
+                                            ).catchError((notificationError) {
+                                              debugPrint("Follow notification failed: $notificationError");
+                                            });
+                                          }
                                         } catch (e) {
                                           debugPrint("toggle_follow failed: $e");
                                           if (context.mounted) {
