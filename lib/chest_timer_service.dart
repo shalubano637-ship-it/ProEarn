@@ -113,6 +113,7 @@ class ChestTimerService extends ChangeNotifier {
   final ChestRepository _repo;
 
   Timer? _localTicker;
+  Future<void>? _initialization;
 
   int currentChestIndex = 0;
   int remainingSeconds = 60;
@@ -130,7 +131,20 @@ class ChestTimerService extends ChangeNotifier {
   @visibleForTesting
   bool get isTickingForTest => _localTicker?.isActive ?? false;
 
-  Future<void> initialize() async {
+  Future<void> initialize() {
+    // Navigation and the Rewards page can request initialization at nearly
+    // the same time. Share one in-flight read instead of hitting Supabase twice.
+    final inFlight = _initialization;
+    if (inFlight != null) return inFlight;
+
+    final future = _initializeInternal();
+    _initialization = future;
+    return future.whenComplete(() {
+      if (identical(_initialization, future)) _initialization = null;
+    });
+  }
+
+  Future<void> _initializeInternal() async {
     final uid = _repo.currentUserId;
     if (uid == null) return;
 
