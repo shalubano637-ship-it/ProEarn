@@ -161,7 +161,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
   Future<void> _initConversation() async {
     try {
-      final myUid = Supabase.instance.client.auth.currentUser!.id;
       final id = await Supabase.instance.client
           .rpc('get_or_create_conversation', params: {'p_other_uid': widget.otherUid});
 
