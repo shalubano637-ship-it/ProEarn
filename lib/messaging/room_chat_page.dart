@@ -109,7 +109,7 @@ class _RoomChatPageState extends State<RoomChatPage> {
     _memberCount = widget.memberCount;
     _loadMessages();
     _loadFavorite();
-    _timer = Timer.periodic(const Duration(seconds: 3), (_) => _loadMessages(silent: true));
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) => _loadMessages(silent: true));
   }
 
   Future<void> _scrollToMessage(String messageId) async {
