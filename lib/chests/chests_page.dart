@@ -339,6 +339,19 @@ class _GiftShopSection extends StatefulWidget {
 
 class _GiftShopSectionState extends State<_GiftShopSection> {
   bool _isPurchasing = false;
+  late Future<List<Map<String, dynamic>>> _giftsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _giftsFuture = _loadGifts();
+  }
+
+  Future<List<Map<String, dynamic>>> _loadGifts() => Supabase.instance.client
+      .from('gifts')
+      .select()
+      .eq('isActive', true)
+      .order('priceCoins', ascending: true);
 
   Future<void> _purchase(Map<String, dynamic> gift) async {
     final quantity = await showDialog<int>(
@@ -411,11 +424,7 @@ class _GiftShopSectionState extends State<_GiftShopSection> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: Supabase.instance.client
-          .from('gifts')
-          .select()
-          .eq('isActive', true)
-          .order('priceCoins', ascending: true),
+      future: _giftsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(
