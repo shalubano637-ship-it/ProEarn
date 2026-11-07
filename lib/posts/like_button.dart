@@ -22,7 +22,7 @@ class _LikeButtonState extends State<LikeButton> {
   @override
   void didUpdateWidget(covariant LikeButton oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_optimisticLiked != null && widget.initiallyLiked == _optimisticLiked && widget.initialLikeCount == _optimisticCount) {
+    if (_optimisticLiked != null && widget.initiallyLiked == _optimisticLiked) {
       _optimisticLiked = null;
       _optimisticCount = null;
     }
@@ -31,7 +31,7 @@ class _LikeButtonState extends State<LikeButton> {
   Future<void> _toggle(String userId, bool liked, int count) async {
     if (_requestInProgress) return;
     final nextLiked = !liked;
-    final nextCount = (count + (nextLiked ? 1 : -1)).clamp(0, 1 << 30);
+    final nextCount = (count + (nextLiked ? 1 : -1)).clamp(0, 1 << 30).toInt();
     setState(() { _requestInProgress = true; _optimisticLiked = nextLiked; _optimisticCount = nextCount; });
     try {
       await Supabase.instance.client.rpc('toggle_post_like', params: {'p_post_id': widget.postId, 'p_user_id': userId, 'p_like': nextLiked});
