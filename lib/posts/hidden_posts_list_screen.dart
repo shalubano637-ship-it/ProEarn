@@ -1,9 +1,5 @@
-
-
 import 'package:universal_io/universal_io.dart';
-
 import 'package:flutter/material.dart';
-
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models.dart';
@@ -29,16 +25,21 @@ class HiddenPostsListScreen extends StatelessWidget {
             .from(kUsersCollection)
             .stream(primaryKey: ['uid'])
             .eq('uid', currentUser.id),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+        builder: (context, userSnapshot) {
+          if (userSnapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("Couldn’t load hidden posts. Check your connection and try again."));
+          if (!userSnapshot.hasData || userSnapshot.data!.isEmpty) {
+            return const Center(
+              child: Text("Couldn’t load hidden posts. Check your connection and try again."),
+            );
           }
 
-          var userData = snapshot.data!.first;
-          List<dynamic> hiddenPostIds = userData['hiddenPosts'] ?? [];
+          final hiddenPostIds = (userSnapshot.data!.first['hiddenPosts'] as List?)
+                  ?.map((id) => id.toString())
+                  .where((id) => id.isNotEmpty)
+                  .toList() ??
+              const <String>[];
 
           if (hiddenPostIds.isEmpty) {
             return const Center(
@@ -49,25 +50,50 @@ class HiddenPostsListScreen extends StatelessWidget {
             );
           }
 
-          return ListView.builder(
-            itemCount: hiddenPostIds.length,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemBuilder: (context, index) {
-              String postId = hiddenPostIds[index];
+          // One server-filtered stream replaces one Realtime subscription per hidden post.
+          return StreamBuilder<List<Map<String, dynamic>>>(
+            stream: Supabase.instance.client
+                .from(kPostsCollection)
+                .stream(primaryKey: ['id'])
+                .inFilter('id', hiddenPostIds),
+            builder: (context, postsSnapshot) {
+              if (postsSnapshot.connectionState == ConnectionState.waiting &&
+                  !postsSnapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (postsSnapshot.hasError) {
+                return const Center(
+                  child: Text("Couldn’t load hidden posts. Check your connection and try again."),
+                );
+              }
 
-              return StreamBuilder<List<Map<String, dynamic>>>(
-                stream: Supabase.instance.client
-                    .from(kPostsCollection)
-                    .stream(primaryKey: ['id'])
-                    .eq('id', postId),
-                builder: (context, postSnapshot) {
-                  if (!postSnapshot.hasData || postSnapshot.data!.isEmpty) {
-                    return const SizedBox.shrink(); // Agar post delete ho gayi ho
-                  }
+              final postsById = <String, Map<String, dynamic>>{
+                for (final post in postsSnapshot.data ?? <Map<String, dynamic>>[])
+                  post['id'].toString(): post,
+              };
+              // Preserve the user's hiddenPosts ordering and skip posts already deleted.
+              final visiblePosts = hiddenPostIds
+                  .map((id) => postsById[id])
+                  .whereType<Map<String, dynamic>>()
+                  .toList();
 
-                  var postData = postSnapshot.data!.first;
-                  String imageUrl = postData['imageUrl'] ?? '';
-                  String caption = postData['caption'] ?? 'No Caption';
+              if (visiblePosts.isEmpty) {
+                return const Center(
+                  child: Text(
+                    "You haven't hidden any posts.",
+                    style: TextStyle(color: AppColors.textTertiary, fontSize: 14),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                itemCount: visiblePosts.length,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemBuilder: (context, index) {
+                  final postData = visiblePosts[index];
+                  final postId = postData['id'].toString();
+                  final imageUrl = postData['imageUrl']?.toString() ?? '';
+                  final caption = postData['caption']?.toString() ?? 'No Caption';
 
                   return ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -102,14 +128,15 @@ class HiddenPostsListScreen extends StatelessWidget {
                         shape: RoundedRectangleBorder(borderRadius: AppRadius.xlRadius),
                       ),
                       icon: const Icon(Icons.visibility, size: 16),
-                      label: const Text("Unhide", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      label: const Text(
+                        "Unhide",
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
                       onPressed: () async {
                         await Supabase.instance.client.rpc('unhide_post', params: {
                           'p_user_id': currentUser.id,
                           'p_post_id': postId,
                         });
-
-                        
                       },
                     ),
                   );
