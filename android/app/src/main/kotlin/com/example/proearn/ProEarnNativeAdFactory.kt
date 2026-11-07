@@ -12,12 +12,11 @@ import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdView
 import io.flutter.plugins.googlemobileads.GoogleMobileAdsPlugin.NativeAdFactory
 
-class ProEarnNativeAdFactory : NativeAdFactory {
+class ProEarnNativeAdFactory(private val context: android.content.Context) : NativeAdFactory {
     override fun createNativeAd(
         nativeAd: NativeAd,
         customOptions: Map<String, Any>?
     ): NativeAdView {
-        val context = activityContext
         val density = context.resources.displayMetrics.density
         fun dp(value: Int) = (value * density).toInt()
 
@@ -99,9 +98,5 @@ class ProEarnNativeAdFactory : NativeAdFactory {
 
         adView.setNativeAd(nativeAd)
         return adView
-    }
-
-    companion object {
-        lateinit var activityContext: android.content.Context
     }
 }
