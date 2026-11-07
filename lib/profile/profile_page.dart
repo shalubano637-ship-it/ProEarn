@@ -104,15 +104,14 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<Map<String, dynamic>?> _loadProfileData(String uid) async {
-    final profile = await Supabase.instance.client.from('public_profiles').select().eq('uid', uid).maybeSingle();
+    // These reads are independent; run them together to avoid serial network latency.
+    final results = await Future.wait([
+      Supabase.instance.client.from('public_profiles').select().eq('uid', uid).maybeSingle(),
+      Supabase.instance.client.rpc('get_follow_relationships', params: {'p_target_id': uid}),
+    ]);
+    final profile = results[0] as Map<String, dynamic>?;
     if (profile == null) return null;
-    // The public_profiles view intentionally contains profile-safe fields only.
-    // Follow relationships live on users, so load those arrays for both own and
-    // other profiles; otherwise the follow button and lists always appear empty.
-    final relationshipData = await Supabase.instance.client.rpc(
-      'get_follow_relationships',
-      params: {'p_target_id': uid},
-    );
+    final relationshipData = results[1];
     final relationships = relationshipData is Map
         ? Map<String, dynamic>.from(relationshipData)
         : <String, dynamic>{};
