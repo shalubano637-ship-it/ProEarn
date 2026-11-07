@@ -209,8 +209,16 @@ class _ReelsPageState extends State<ReelsPage> {
               _shuffledDocs = List.from(filteredDocs);
               _lastStreamDocIds = currentDocIds;
               _resetAdTarget();
+            } else {
+              // Preserve the user's current reel order while applying updated
+              // row fields from the single shared realtime subscription.
+              final latestById = <String, Map<String, dynamic>>{
+                for (final post in filteredDocs) post['id'].toString(): post,
+              };
+              _shuffledDocs = _shuffledDocs!
+                  .map((oldPost) => latestById[oldPost['id'].toString()] ?? oldPost)
+                  .toList(growable: false);
             }
-
             if (_shuffledDocs!.isEmpty) {
               return const Scaffold(
                 backgroundColor: AppColors.background,
@@ -379,7 +387,12 @@ class _ReelsPageState extends State<ReelsPage> {
                         bottom: 80 + MediaQuery.of(context).padding.bottom,
                         child: Column(
                           children: [
-                            LikeButton(postId: postId),
+                            LikeButton(
+                              postId: postId,
+                              ownerId: postOwner,
+                              initiallyLiked: (postData['likedBy'] as List? ?? const []).contains(currentUser.id),
+                              initialLikeCount: (postData['likedBy'] as List? ?? const []).length,
+                            ),
                             const SizedBox(height: 20),
                             CommentButton(postId: postId),
                             const SizedBox(height: 20),
