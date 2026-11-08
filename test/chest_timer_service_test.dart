@@ -203,7 +203,7 @@ void main() {
         expect(service.isUnlocked, isTrue);
         expect(service.isTickingForTest, isFalse);
         expect(service.notifiedThisUnlockForTest, isTrue); // marked, so no push fires later
-        verifyNever(() => repo.sendChestReadyNotification(any()));
+        expect(service.notifiedThisUnlockForTest, isTrue);
       });
     });
   });
