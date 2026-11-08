@@ -174,10 +174,45 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === "OPTIONS") return new Response(null, { status: 204 });
     const url = new URL(request.url);
-    const user = await getUser(request, env);
-    if (!user) return json({ error: "Unauthorized" }, 401);
 
     try {
+      // Internal media deletion uses a server-only token and must be routed
+      // before the end-user JWT check. The caller is the account-deletion Edge Function.
+      if (url.pathname === "/internal/delete-user-media" && request.method === "POST") {
+        const token = request.headers.get("x-internal-token") ?? "";
+        if (!token || token !== env.INTERNAL_DELETE_TOKEN) return json({ error: "Forbidden" }, 403);
+        const body = await request.json<{ userId?: string }>();
+        const userId = String(body.userId ?? "");
+        if (!/^[0-9a-f-]{36}$/i.test(userId)) return json({ error: "Invalid userId" }, 400);
+
+        let deleted = 0;
+        for (const prefix of [
+          "posts/" + userId + "/",
+          "profile/" + userId + "/",
+          "chat/" + userId + "/",
+          "comments/" + userId + "/",
+          "rooms/" + userId + "/",
+        ]) {
+          let cursor: string | undefined;
+          do {
+            const listed = await env.R2_BUCKET.list({ prefix, cursor, limit: 1000 });
+            const keys = listed.objects.map((object) => object.key);
+            for (let offset = 0; offset < keys.length; offset += 1000) {
+              const chunk = keys.slice(offset, offset + 1000);
+              if (chunk.length > 0) {
+                await env.R2_BUCKET.delete(chunk);
+                deleted += chunk.length;
+              }
+            }
+            cursor = listed.truncated ? listed.cursor : undefined;
+          } while (cursor);
+        }
+        return json({ success: true, deleted });
+      }
+
+      const user = await getUser(request, env);
+      if (!user) return json({ error: "Unauthorized" }, 401);
+
       if (url.pathname === "/v1/moderate-image" && request.method === "POST") {
         const body = await request.json<{ imageBase64?: string; contentType?: string }>();
         const imageBase64 = String(body.imageBase64 ?? "").replace(/^data:[^;]+;base64,/, "");
@@ -191,36 +226,17 @@ export default {
         } catch {
           return json({ error: "Invalid base64 image" }, 400);
         }
-        const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+        const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
         const moderation = await moderateBytes(env, bytes, contentType, user.id);
         if (!moderation.safe) {
           return json({ safe: false, reason: moderation.reason ?? "Content rejected" }, 422);
         }
-        return json({ safe: true, approvalToken: await makeModerationApprovalToken(env, user.id, bytes) });
+        return json({
+          safe: true,
+          approvalToken: await makeModerationApprovalToken(env, user.id, bytes),
+        });
       }
 
-      if (url.pathname === "/internal/delete-user-media" && request.method === "POST") {
-        const token = request.headers.get("x-internal-token") ?? "";
-        if (!token || token !== env.INTERNAL_DELETE_TOKEN) return json({ error: "Forbidden" }, 403);
-        const body = await request.json<{ userId?: string }>();
-        const userId = String(body.userId ?? "");
-        if (!/^[0-9a-f-]{36}$/i.test(userId)) return json({ error: "Invalid userId" }, 400);
-
-        let deleted = 0;
-        for (const prefix of ["posts/" + userId + "/", "profile/" + userId + "/", "chat/" + userId + "/", "comments/" + userId + "/", "rooms/" + userId + "/"]) {
-          let cursor: string | undefined;
-          do {
-            const listed = await env.R2_BUCKET.list({ prefix, cursor, limit: 1000 });
-            const keys = listed.objects.map((object) => object.key);
-            for (let i = 0; i < keys.length; i += 1000) {
-              const chunk = keys.slice(i, i + 1000);
-              if (chunk.length) { await env.R2_BUCKET.delete(chunk); deleted += chunk.length; }
-            }
-            cursor = listed.truncated ? listed.cursor : undefined;
-          } while (cursor);
-        }
-        return json({ success: true, deleted });
-      }
       return json({ error: "Not found" }, 404);
     } catch (error) {
       console.error(error);
