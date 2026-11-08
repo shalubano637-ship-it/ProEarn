@@ -123,7 +123,7 @@ Depending on the features you use, ProSN may process:
 - Technical information needed for security, reliability, crash reporting, abuse prevention, and advertising.
 
 2. SERVICE PROVIDERS
-ProSN uses third-party service providers to support account access, data storage, media delivery, notifications, app reliability, and advertising. Individual provider names are not listed in this policy. Providers may process information only as needed to deliver their services, subject to applicable terms and privacy requirements.
+ProSN uses Supabase for authentication and database services; Cloudflare R2 and Workers AI for media storage, delivery, and moderation; Firebase for push notifications; Google Mobile Ads (AdMob) for advertising; Sentry for diagnostics where enabled; and ImgBB for legacy or feature-specific image hosting where still used. These providers process information as needed to provide their services under their applicable terms and privacy policies.
 
 3. MEDIA MODERATION
 Uploaded media is first checked on the device. Media that passes the device check is sent through a server-side media gateway where an additional moderation check is performed before publication. Content can also be reviewed after a safety report or other moderation signal.
