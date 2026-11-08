@@ -119,11 +119,16 @@ Deno.serve(async (req) => {
     await deleteWhere("daily_like_counts", "uid", uid);
 
     // Preserve moderation history while removing the deleted account's identity.
-    const { error: reportError } = await admin
+    const { error: reporterError } = await admin
       .from("reports")
-      .update({ reportedBy: "deleted-user", reportedUserId: null })
-      .or(`reportedBy.eq.${uid},reportedUserId.eq.${uid}`);
-    assertNoError("Anonymize moderation reports", reportError);
+      .update({ reportedBy: "deleted-user" })
+      .eq("reportedBy", uid);
+    assertNoError("Anonymize reports submitted by deleted user", reporterError);
+    const { error: targetError } = await admin
+      .from("reports")
+      .update({ reportedUserId: null })
+      .eq("reportedUserId", uid);
+    assertNoError("Remove deleted user from report targets", targetError);
 
     await removeUserReferences(uid);
 
