@@ -205,6 +205,42 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
     }
   }
 
+  Future<void> _deleteChatMessage(Map<String, dynamic> report) async {
+    final messageId = report['targetMessageId'] as String?;
+    if (messageId == null || messageId.isEmpty) {
+      _showSnack("Is report ke saath koi chat message attached nahi hai.", isError: true);
+      return;
+    }
+    final confirmed = await _confirm(
+      title: "Remove this chat message?",
+      body: "Message dono participants ke chat se hide hoga. R2 attachment bhi delete ki jayegi.",
+    );
+    if (!confirmed) return;
+
+    try {
+      final response = await _client.functions.invoke(
+        'admin-moderate-report',
+        body: {'reportId': report['id']},
+      );
+      final data = response.data;
+      if (data is! Map || data['success'] != true) {
+        throw StateError("Moderation service did not confirm message removal");
+      }
+      if (!mounted) return;
+      setState(() {
+        report['status'] = 'actioned';
+        report['actionTaken'] = 'chat_message_removed';
+      });
+      _showSnack(
+        data['legacyMediaMayRemain'] == true
+            ? "Message removed. Older third-party media may still need provider-side cleanup."
+            : "Chat message removed.",
+      );
+    } catch (e) {
+      _showSnack("Couldn’t remove this chat message. Please retry.", isError: true);
+    }
+  }
+
   Future<bool> _confirm({required String title, required String body}) async {
     final result = await showDialog<bool>(
       context: context,
