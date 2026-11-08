@@ -490,7 +490,11 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                             'reportedBy': Supabase.instance.client.auth.currentUser!.id,
                             'reportedUserId': msg['senderId'],
                             'targetMessageId': msg['id'],
-                            'messageSnapshot': msg['text'],
+                            'messageSnapshot': jsonEncode({
+                              'text': msg['text'],
+                              'imageUrl': msg['imageUrl'],
+                              'voicePath': msg['voicePath'],
+                            }),
                             'reason': selectedReason,
                             'source': 'chat_message',
                           });
