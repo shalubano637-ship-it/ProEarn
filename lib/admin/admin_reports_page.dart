@@ -178,7 +178,7 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
       title: "Delete this comment?",
       body: "Comment aur uski R2 image delete ho jayegi. Replies ka parent link clear hoga.",
     );
-    if (!confirmed) return;
+    if (!confirmed || !mounted) return;
 
     try {
       final response = await _client.functions.invoke(
@@ -201,7 +201,7 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
             : "Comment deleted.",
       );
     } catch (e) {
-      _showSnack("Couldn’t delete this comment. Please retry.", isError: true);
+      if (mounted) _showSnack("Couldn’t delete this comment. Please retry.", isError: true);
     }
   }
 
@@ -215,7 +215,7 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
       title: "Remove this chat message?",
       body: "Message dono participants ke chat se hide hoga. R2 attachment bhi delete ki jayegi.",
     );
-    if (!confirmed) return;
+    if (!confirmed || !mounted) return;
 
     try {
       final response = await _client.functions.invoke(
@@ -237,7 +237,7 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
             : "Chat message removed.",
       );
     } catch (e) {
-      _showSnack("Couldn’t remove this chat message. Please retry.", isError: true);
+      if (mounted) _showSnack("Couldn’t remove this chat message. Please retry.", isError: true);
     }
   }
 
