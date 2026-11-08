@@ -43,7 +43,14 @@ android {
     }
 
     signingConfigs {
-        create("release") {
+        // The release config is populated only when the release variant is configured.
+        // Debug builds remain available without private signing material.
+        create("release")
+    }
+
+    buildTypes {
+        release {
+            // Never produce a debug-signed artifact under the release build type.
             val keyPropertiesFile = rootProject.file("key.properties")
             if (!keyPropertiesFile.isFile) {
                 throw GradleException(
@@ -55,22 +62,22 @@ android {
             }
             val storePath = properties.getProperty("storeFile")?.takeIf { it.isNotBlank() }
                 ?: throw GradleException("key.properties is missing storeFile")
-            storePassword = properties.getProperty("storePassword")?.takeIf { it.isNotBlank() }
+            val storePasswordValue = properties.getProperty("storePassword")?.takeIf { it.isNotBlank() }
                 ?: throw GradleException("key.properties is missing storePassword")
-            keyAlias = properties.getProperty("keyAlias")?.takeIf { it.isNotBlank() }
+            val keyAliasValue = properties.getProperty("keyAlias")?.takeIf { it.isNotBlank() }
                 ?: throw GradleException("key.properties is missing keyAlias")
-            keyPassword = properties.getProperty("keyPassword")?.takeIf { it.isNotBlank() }
+            val keyPasswordValue = properties.getProperty("keyPassword")?.takeIf { it.isNotBlank() }
                 ?: throw GradleException("key.properties is missing keyPassword")
-            storeFile = rootProject.file(storePath)
-            if (storeFile?.isFile != true) {
+            val releaseKeystore = rootProject.file(storePath)
+            if (!releaseKeystore.isFile) {
                 throw GradleException("Release keystore not found at: $storePath")
             }
-        }
-    }
-
-    buildTypes {
-        release {
-            // Never produce a debug-signed artifact under the release build type.
+            signingConfigs.getByName("release").apply {
+                storeFile = releaseKeystore
+                storePassword = storePasswordValue
+                keyAlias = keyAliasValue
+                keyPassword = keyPasswordValue
+            }
             signingConfig = signingConfigs.getByName("release")
 
             isMinifyEnabled = true
