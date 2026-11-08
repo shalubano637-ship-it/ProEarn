@@ -22,6 +22,18 @@ After merging the code, deploy these functions to project
 - `imgbb-upload` with JWT verification enabled (legacy client path; all image
   folders are now moderated).
 
+From the repository root, deploy the functions after merging:
+
+```bash
+supabase functions deploy delete-account --project-ref mltvpfqfhbhgkejcjpmq
+supabase functions deploy delete-account-request --project-ref mltvpfqfhbhgkejcjpmq
+supabase functions deploy r2-upload --project-ref mltvpfqfhbhgkejcjpmq
+supabase functions deploy imgbb-upload --project-ref mltvpfqfhbhgkejcjpmq
+```
+
+Keep JWT verification enabled for all four functions. The public deletion page
+obtains a Supabase Auth session before invoking the request function.
+
 The account deletion functions must have the standard Supabase environment
 variables available: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and
 `SUPABASE_SERVICE_ROLE_KEY`.
