@@ -123,6 +123,9 @@ Deno.serve(async (req) => {
 
       let legacyMediaMayRemain = false;
       if (message) {
+        if ((message.imageUrl || message.voicePath) && !r2PublicUrl) {
+          throw new Error("R2_PUBLIC_URL is not configured; refusing to hide a message before media cleanup can be checked");
+        }
         const keys = new Set<string>();
         for (const value of [message.imageUrl, message.voicePath]) {
           if (value == null || value === "") continue;
@@ -165,6 +168,9 @@ Deno.serve(async (req) => {
 
       let legacyMediaMayRemain = false;
       if (comment) {
+        if (comment.imageUrl && !r2PublicUrl) {
+          throw new Error("R2_PUBLIC_URL is not configured; refusing to remove a comment before media cleanup can be checked");
+        }
         if (comment.imageUrl) {
           const key = getOwnedR2Key(comment.imageUrl, comment.userId, "comments");
           if (key) {
