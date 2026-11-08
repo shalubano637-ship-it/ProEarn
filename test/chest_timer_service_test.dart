@@ -18,7 +18,7 @@ void main() {
   });
 
   group('timer start', () {
-    test('brand-new user (no existing row) starts chest 1 at 60s and begins ticking', () {
+    test('brand-new user has no active chest timer until explicitly started', () {
       when(() => repo.fetchProgress(uid)).thenAnswer((_) async => null);
 
       fakeAsync((async) {
@@ -29,10 +29,38 @@ void main() {
         expect(service.isLoaded, isTrue);
         expect(service.loadError, isNull);
         expect(service.currentChestIndex, 0);
-        expect(service.remainingSeconds, 60);
+        expect(service.remainingSeconds, 0);
         expect(service.isUnlocked, isFalse);
+        expect(service.isStarted, isFalse);
+        expect(service.isTickingForTest, isFalse);
+        verifyNever(() => repo.syncRemaining(any()));
+      });
+    });
+
+    test('explicitly starting a new chest loads server timer state and begins ticking', () {
+      when(() => repo.fetchProgress(uid)).thenAnswer((_) async => null);
+      when(() => repo.startTimer()).thenAnswer((_) async {});
+
+      fakeAsync((async) {
+        final service = ChestTimerService(repository: repo);
+        service.initialize();
+        async.flushMicrotasks();
+
+        when(() => repo.fetchProgress(uid)).thenAnswer(
+          (_) async => const ChestProgress(
+            currentChestIndex: 0,
+            remainingSeconds: 60,
+            isUnlocked: false,
+          ),
+        );
+
+        service.startTimer();
+        async.flushMicrotasks();
+
+        expect(service.isStarted, isTrue);
+        expect(service.remainingSeconds, 60);
         expect(service.isTickingForTest, isTrue);
-        verify(() => repo.syncRemaining(60)).called(1);
+        verify(() => repo.startTimer()).called(1);
       });
     });
 
@@ -54,7 +82,9 @@ void main() {
     });
 
     test('ticking actually counts down one second per tick', () {
-      when(() => repo.fetchProgress(uid)).thenAnswer((_) async => null);
+      when(() => repo.fetchProgress(uid)).thenAnswer(
+        (_) async => const ChestProgress(currentChestIndex: 0, remainingSeconds: 60, isUnlocked: false),
+      );
 
       fakeAsync((async) {
         final service = ChestTimerService(repository: repo);
@@ -70,7 +100,9 @@ void main() {
 
   group('pause/resume', () {
     test('pauseAndPersist stops the ticker and persists the exact remaining value', () {
-      when(() => repo.fetchProgress(uid)).thenAnswer((_) async => null);
+      when(() => repo.fetchProgress(uid)).thenAnswer(
+        (_) async => const ChestProgress(currentChestIndex: 0, remainingSeconds: 60, isUnlocked: false),
+      );
 
       fakeAsync((async) {
         final service = ChestTimerService(repository: repo);
@@ -284,7 +316,9 @@ void main() {
     });
 
     test('dispose() cancels any active ticker', () {
-      when(() => repo.fetchProgress(uid)).thenAnswer((_) async => null);
+      when(() => repo.fetchProgress(uid)).thenAnswer(
+        (_) async => const ChestProgress(currentChestIndex: 0, remainingSeconds: 60, isUnlocked: false),
+      );
 
       fakeAsync((async) {
         final service = ChestTimerService(repository: repo);
