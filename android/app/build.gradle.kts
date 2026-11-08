@@ -34,7 +34,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        // Keep this package aligned with google-services.json and the Play listing. Do not change it after the first Play upload.
         applicationId = "com.example.proearn"
         minSdk = 26
         targetSdk = flutter.targetSdkVersion
