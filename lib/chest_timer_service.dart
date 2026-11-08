@@ -204,7 +204,12 @@ class ChestTimerService extends ChangeNotifier {
     _localTicker?.cancel();
     if (!isStarted || isUnlocked) return;
     _localTicker = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (remainingSeconds > 0) {
+        remainingSeconds -= 1;
+      }
+
       if (remainingSeconds <= 0) {
+        remainingSeconds = 0;
         timer.cancel();
         isUnlocked = true;
         notifyListeners();
@@ -212,7 +217,7 @@ class ChestTimerService extends ChangeNotifier {
         _sendReadyNotificationOnce();
         return;
       }
-      remainingSeconds -= 1;
+
       notifyListeners();
     });
   }
