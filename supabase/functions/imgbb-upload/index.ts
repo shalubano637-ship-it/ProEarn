@@ -21,8 +21,8 @@ Deno.serve(async req=>{
   if(!["image/jpeg","image/png","image/webp"].includes(type))return json({error:"Unsupported image type"},415);
   if(!/^[A-Za-z0-9+/]*={0,2}$/.test(image))return json({error:"Invalid base64 image"},400);
 
-  // Public feed posts must pass server moderation. Retry transient gateway/network
-  // failures, but never upload a post when moderation cannot confirm it is safe.
+  // Legacy ImgBB uploads are retained for older clients. All user media categories
+  // must pass server moderation; fail closed if the gateway cannot confirm safety.
   {
    let mr:Response|undefined;
    let lastNetworkError:unknown;
