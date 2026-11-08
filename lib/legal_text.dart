@@ -113,7 +113,7 @@ This standard applies regardless of whether the app is marketed to children. Use
 
 const String kPrivacyPolicyText = '''
 ProSN — PRIVACY POLICY
-Last Updated: September 2026
+Last Updated: November 2026
 
 1. DATA WE PROCESS
 Depending on the features you use, ProSN may process:
