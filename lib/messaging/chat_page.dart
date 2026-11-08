@@ -36,7 +36,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   final Map<String, GlobalKey> _messageKeys = {};
   final Map<String, int> _messageFlatIndex = {}; // messageId -> its index in `groups`, refreshed every build
   int _lastGroupsCount = 0;
-  String? _lastSeenMessageId; // last message id we've already auto-scrolled for — see the check in build()
   String? _highlightedMessageId;
 
   Future<void> _scrollToMessage(String messageId) async {
@@ -771,31 +770,30 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                             return const Center(child: Text("Say hi 👋"));
                           }
 
-                          final String? latestId = messages.last['id'] as String?;
-                          if (latestId != _lastSeenMessageId) {
-                            _lastSeenMessageId = latestId;
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (_scrollController.hasClients) {
-                                _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-                              }
-                            });
-                          }
-
-                          final groups = _groupConsecutiveImages(messages);
+                          // Keep messages in chronological order in memory, but render newest
+                          // first with a reversed list. In a reversed chat, offset zero is
+                          // the latest-message position, so opening a conversation cannot
+                          // land on an estimated/incorrect maxScrollExtent.
+                          final chronologicalGroups = _groupConsecutiveImages(messages);
+                          final groups = chronologicalGroups.reversed.toList(growable: false);
                           _lastGroupsCount = groups.length;
 
                           return ListView.builder(
                             controller: _scrollController,
+                            reverse: true,
                             padding: const EdgeInsets.all(12),
                             itemCount: groups.length,
                             itemBuilder: (context, index) {
                               final group = groups[index];
                               final bool isAlbum = group.length > 1;
-                              final createdAt = DateTime.parse(group.first['createdAt'].toString());
-                              final prevCreatedAt = index == 0
+                              final createdAt = DateTime.parse(group.last['createdAt'].toString());
+                              // With newest-first rendering, the next item is the older
+                              // neighbor. Put a date separator at the boundary between days.
+                              final olderCreatedAt = index + 1 >= groups.length
                                   ? null
-                                  : DateTime.parse(groups[index - 1].last['createdAt'].toString());
-                              final showDateSeparator = prevCreatedAt == null || !_isSameDay(createdAt, prevCreatedAt);
+                                  : DateTime.parse(groups[index + 1].last['createdAt'].toString());
+                              final showDateSeparator = olderCreatedAt == null ||
+                                  !_isSameDay(createdAt, olderCreatedAt);
 
                               if (isAlbum) {
                                 final bool isMe = group.first['senderId'] == myUid;
