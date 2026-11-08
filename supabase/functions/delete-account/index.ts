@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-const mediaGatewayUrl = Deno.env.get("MEDIA_GATEWAY_URL") ?? "";
+const mediaGatewayUrl = Deno.env.get("MEDIA_GATEWAY_URL") ?? "https://proearn-media-gateway.0nasir07860.workers.dev";
 const mediaInternalToken = Deno.env.get("MEDIA_INTERNAL_TOKEN") ?? "";
 
 const cors = {
