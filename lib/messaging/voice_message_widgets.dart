@@ -78,7 +78,11 @@ class _VoiceRecorderButtonState extends State<VoiceRecorderButton> {
     try {
       await widget.onSend(path, duration, result);
     } finally {
-      await file.delete().catchError((_) {});
+      try {
+        await file.delete();
+      } catch (_) {
+        // Temporary voice files are best-effort cleanup.
+      }
     }
   }
 
