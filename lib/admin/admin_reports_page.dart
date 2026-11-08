@@ -176,54 +176,32 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
 
     final confirmed = await _confirm(
       title: "Delete this comment?",
-      body: "Ye action permanent hai — comment hamesha ke liye delete ho jayega.",
-    );
-    if (!confirmed) return;
-
-    try {
-      await _client.from(kCommentsCollection).delete().eq('id', commentId);
-      await _markStatus(report, 'actioned');
-      if (!mounted) return;
-      setState(() => _commentsById.remove(commentId));
-      _showSnack("Comment deleted.");
-    } catch (e) {
-      _showSnack("Delete fail: $e", isError: true);
-    }
-  }
-
-  Future<void> _deleteChatMessage(Map<String, dynamic> report) async {
-    final messageId = report['targetMessageId'] as String?;
-    if (messageId == null || messageId.isEmpty) {
-      _showSnack("Is report ke saath koi chat message attached nahi hai.", isError: true);
-      return;
-    }
-    final confirmed = await _confirm(
-      title: "Remove this chat message?",
-      body: "Message dono participants ke chat se hide hoga. R2 attachment bhi delete ki jayegi.",
+      body: "Comment aur uski R2 image delete ho jayegi. Replies ka parent link clear hoga.",
     );
     if (!confirmed) return;
 
     try {
       final response = await _client.functions.invoke(
         'admin-moderate-report',
-        body: {'reportId': report['id']},
+        body: {'reportId': report['id'], 'action': 'delete_comment'},
       );
       final data = response.data;
       if (data is! Map || data['success'] != true) {
-        throw StateError("Moderation service did not confirm message removal");
+        throw StateError("Moderation service did not confirm comment removal");
       }
       if (!mounted) return;
       setState(() {
+        _commentsById.remove(commentId);
         report['status'] = 'actioned';
-        report['actionTaken'] = 'chat_message_removed';
+        report['actionTaken'] = 'comment_removed';
       });
       _showSnack(
         data['legacyMediaMayRemain'] == true
-            ? "Message removed. Older third-party media may still need provider-side cleanup."
-            : "Chat message removed.",
+            ? "Comment removed. Older third-party media may still need provider-side cleanup."
+            : "Comment deleted.",
       );
     } catch (e) {
-      _showSnack("Couldn’t remove this chat message. Please retry.", isError: true);
+      _showSnack("Couldn’t delete this comment. Please retry.", isError: true);
     }
   }
 
