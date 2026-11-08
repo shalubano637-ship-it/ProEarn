@@ -540,7 +540,7 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
                         icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.warning),
                         label: const Text("Delete Post", style: TextStyle(color: AppColors.warning)),
                       ),
-                    if (r['targetCommentId'] != null && (r['targetCommentId'] as String).isNotEmpty)
+                    if (r['source'] == 'comment' && r['targetCommentId'] != null && (r['targetCommentId'] as String).isNotEmpty)
                       OutlinedButton.icon(
                         onPressed: () => _deleteComment(r),
                         icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.warning),
