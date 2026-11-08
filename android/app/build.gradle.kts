@@ -44,31 +44,34 @@ android {
 
     signingConfigs {
         create("release") {
-            val f = rootProject.file("key.properties")
-            if (f.exists()) {
-                val p = Properties().apply {
-                    load(FileInputStream(f))
-                }
-                storeFile = rootProject.file(p.getProperty("storeFile"))
-                storePassword = p.getProperty("storePassword")
-                keyAlias = p.getProperty("keyAlias")
-                keyPassword = p.getProperty("keyPassword")
+            val keyPropertiesFile = rootProject.file("key.properties")
+            if (!keyPropertiesFile.isFile) {
+                throw GradleException(
+                    "Release signing is not configured. Create android/key.properties from key.properties.example and provide the private upload keystore."
+                )
+            }
+            val properties = Properties().apply {
+                load(FileInputStream(keyPropertiesFile))
+            }
+            val storePath = properties.getProperty("storeFile")?.takeIf { it.isNotBlank() }
+                ?: throw GradleException("key.properties is missing storeFile")
+            storePassword = properties.getProperty("storePassword")?.takeIf { it.isNotBlank() }
+                ?: throw GradleException("key.properties is missing storePassword")
+            keyAlias = properties.getProperty("keyAlias")?.takeIf { it.isNotBlank() }
+                ?: throw GradleException("key.properties is missing keyAlias")
+            keyPassword = properties.getProperty("keyPassword")?.takeIf { it.isNotBlank() }
+                ?: throw GradleException("key.properties is missing keyPassword")
+            storeFile = rootProject.file(storePath)
+            if (storeFile?.isFile != true) {
+                throw GradleException("Release keystore not found at: $storePath")
             }
         }
     }
 
     buildTypes {
         release {
-            val f = rootProject.file("key.properties")
-
-            // FlutLab/CI may not have the private release keystore.
-            // Use the debug signing key only as a build fallback.
-            // A real release keystore is still required for Play Store publishing.
-            signingConfig = if (f.exists()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
-            }
+            // Never produce a debug-signed artifact under the release build type.
+            signingConfig = signingConfigs.getByName("release")
 
             isMinifyEnabled = true
             isShrinkResources = true
