@@ -224,7 +224,13 @@ class _SecurityPageState extends State<SecurityPage> {
     setState(() { isLoading = true; });
 
     try {
-      await FcmService.unlinkCurrentUserToken();
+      // The profile deletion also removes the stored FCM token. Treat unlinking
+      // this device as best-effort so a token update failure cannot block deletion.
+      try {
+        await FcmService.unlinkCurrentUserToken();
+      } catch (error) {
+        debugPrint('FCM token unlink skipped during account deletion: $error');
+      }
       await Supabase.instance.client.functions.invoke('delete-account');
       await Supabase.instance.client.auth.signOut();
       resetLocalUserState();
