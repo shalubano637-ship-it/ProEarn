@@ -205,7 +205,12 @@ class _SingleReelScreenState extends State<SingleReelScreen> {
                 bottom: 80 + MediaQuery.of(context).padding.bottom,
                 child: Column(
                   children: [
-                    LikeButton(postId: postId),
+                    LikeButton(
+                      postId: postId,
+                      ownerId: postOwner,
+                      initiallyLiked: (postData['likedBy'] as List? ?? const []).contains(currentUser.id),
+                      initialLikeCount: (postData['likedBy'] as List? ?? const []).length,
+                    ),
                     const SizedBox(height: 20),
                     CommentButton(postId: postId),
                     const SizedBox(height: 20),
