@@ -405,7 +405,7 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "\"\${comment['commentText'] ?? ''}\"",
+            "\"${comment['commentText'] ?? ''}\"",
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
