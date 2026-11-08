@@ -46,7 +46,8 @@ Deno.serve(async (request) => {
     return json({ error: "The verified email does not match this account" }, 403);
   }
 
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  // Prevent rapid duplicate submissions without locking out a retry after a stalled request.
+  const cutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
   const { data: recentRequest, error: recentError } = await admin
     .from("account_deletion_requests")
     .select("id,status")
