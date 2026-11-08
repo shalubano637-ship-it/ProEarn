@@ -35,6 +35,7 @@ jobs:
         run: |
           mkdir -p _site/policy
           cp web/policy/*.html _site/policy/
+          cp web/delete-account-request.html _site/delete-account-request.html
           cat > _site/index.html <<'EOF'
           <!doctype html>
           <html lang="en">
