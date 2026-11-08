@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -81,7 +83,7 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
       if (commentIds.isNotEmpty) {
         final comments = await _client
             .from(kCommentsCollection)
-            .select('id, commentText, userId, postId')
+            .select('id, commentText, userId, postId, imageUrl')
             .inFilter('id', commentIds.toList());
         for (final c in List<Map<String, dynamic>>.from(comments)) {
           commentsById[c['id'].toString()] = c;
@@ -186,6 +188,42 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
       _showSnack("Comment deleted.");
     } catch (e) {
       _showSnack("Delete fail: $e", isError: true);
+    }
+  }
+
+  Future<void> _deleteChatMessage(Map<String, dynamic> report) async {
+    final messageId = report['targetMessageId'] as String?;
+    if (messageId == null || messageId.isEmpty) {
+      _showSnack("Is report ke saath koi chat message attached nahi hai.", isError: true);
+      return;
+    }
+    final confirmed = await _confirm(
+      title: "Remove this chat message?",
+      body: "Message dono participants ke chat se hide hoga. R2 attachment bhi delete ki jayegi.",
+    );
+    if (!confirmed) return;
+
+    try {
+      final response = await _client.functions.invoke(
+        'admin-moderate-report',
+        body: {'reportId': report['id']},
+      );
+      final data = response.data;
+      if (data is! Map || data['success'] != true) {
+        throw StateError("Moderation service did not confirm message removal");
+      }
+      if (!mounted) return;
+      setState(() {
+        report['status'] = 'actioned';
+        report['actionTaken'] = 'chat_message_removed';
+      });
+      _showSnack(
+        data['legacyMediaMayRemain'] == true
+            ? "Message removed. Older third-party media may still need provider-side cleanup."
+            : "Chat message removed.",
+      );
+    } catch (e) {
+      _showSnack("Couldn’t remove this chat message. Please retry.", isError: true);
     }
   }
 
@@ -319,12 +357,41 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
       );
     }
     if (source == 'chat_message') {
-      final snapshot = report['messageSnapshot'] as String?;
-      return Text(
-        snapshot?.isNotEmpty == true ? "\"$snapshot\"" : "(message text unavailable)",
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+      final rawSnapshot = report['messageSnapshot'] as String?;
+      Map<String, dynamic> snapshot = {};
+      if (rawSnapshot != null && rawSnapshot.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(rawSnapshot);
+          snapshot = decoded is Map ? Map<String, dynamic>.from(decoded) : {'text': rawSnapshot};
+        } catch (_) {
+          snapshot = {'text': rawSnapshot};
+        }
+      }
+      final messageText = snapshot['text']?.toString().trim() ?? '';
+      final imageUrl = snapshot['imageUrl']?.toString();
+      final voicePath = snapshot['voicePath']?.toString();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            messageText.isNotEmpty ? messageText : "(attachment-only message)",
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+          ),
+          if (imageUrl != null && imageUrl.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: AppRadius.smRadius,
+              child: GlobalCachedImage(imageUrl: imageUrl, width: 88, height: 88, fit: BoxFit.cover),
+            ),
+          ],
+          if (voicePath != null && voicePath.isNotEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text("Voice attachment", style: TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+            ),
+        ],
       );
     }
     if (source == 'comment') {
@@ -333,11 +400,24 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
         return const Text("Comment ab exist nahi karti (delete ho chuki hai).",
             style: TextStyle(fontSize: 12, color: AppColors.textTertiary, fontStyle: FontStyle.italic));
       }
-      return Text(
-        "\"${comment['commentText'] ?? ''}\"",
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+      final imageUrl = comment['imageUrl'] as String?;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "\"\${comment['commentText'] ?? ''}\"",
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+          ),
+          if (imageUrl != null && imageUrl.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: AppRadius.smRadius,
+              child: GlobalCachedImage(imageUrl: imageUrl, width: 88, height: 88, fit: BoxFit.cover),
+            ),
+          ],
+        ],
       );
     }
     return const SizedBox.shrink();
@@ -451,6 +531,12 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
                         onPressed: () => _deleteComment(r),
                         icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.warning),
                         label: const Text("Delete Comment", style: TextStyle(color: AppColors.warning)),
+                      ),
+                    if (r['source'] == 'chat_message' && r['targetMessageId'] != null)
+                      OutlinedButton.icon(
+                        onPressed: () => _deleteChatMessage(r),
+                        icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.warning),
+                        label: const Text("Delete Chat Message", style: TextStyle(color: AppColors.warning)),
                       ),
                     if (r['status'] != 'dismissed')
                       TextButton(
