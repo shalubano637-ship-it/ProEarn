@@ -113,7 +113,7 @@ Deno.serve(async (request) => {
     const { error: updateError } = await admin
       .from("account_deletion_requests")
       .update({ status: "failed" })
-      .eq("email", verifiedEmail);
+      .eq("id", deletionRequest.id);
     if (updateError) console.error("Could not mark deletion request failed", updateError);
     const detail = await deleteResponse.text().catch(() => "");
     console.error("Verified account deletion failed", deleteResponse.status, detail.slice(0, 300));
@@ -122,8 +122,14 @@ Deno.serve(async (request) => {
 
   const { error: completeError } = await admin
     .from("account_deletion_requests")
-    .update({ status: "completed", processed_at: new Date().toISOString() })
-    .eq("id", deletionRequest.id);
+    .update({
+      status: "completed",
+      processed_at: new Date().toISOString(),
+      email: "deleted-account@invalid",
+      reason: "",
+      request_key: `completed:${deletionRequest.id}`,
+    })
+    .eq("email", verifiedEmail);
   if (completeError) {
     // Account is already deleted. Keep this operational warning for reconciliation.
     console.error("Account deleted but request audit status update failed", completeError);
