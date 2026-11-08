@@ -27,12 +27,15 @@ From the repository root, deploy the functions after merging:
 ```bash
 supabase functions deploy delete-account --project-ref mltvpfqfhbhgkejcjpmq
 supabase functions deploy delete-account-request --project-ref mltvpfqfhbhgkejcjpmq
+supabase functions deploy admin-moderate-report --project-ref mltvpfqfhbhgkejcjpmq
 supabase functions deploy r2-upload --project-ref mltvpfqfhbhgkejcjpmq
 supabase functions deploy imgbb-upload --project-ref mltvpfqfhbhgkejcjpmq
 ```
 
 Keep JWT verification enabled for all four functions. The public deletion page
 obtains a Supabase Auth session before invoking the request function.
+
+The account deletion and admin moderation functions need `MEDIA_GATEWAY_URL`, `MEDIA_INTERNAL_TOKEN`, and `R2_PUBLIC_URL` (the same public R2 base URL used by `r2-upload`).
 
 The account deletion functions must have the standard Supabase environment
 variables available: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and
