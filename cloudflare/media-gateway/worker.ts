@@ -210,6 +210,24 @@ export default {
         return json({ success: true, deleted });
       }
 
+      if (url.pathname === "/internal/delete-media-object" && request.method === "POST") {
+        const token = request.headers.get("x-internal-token") ?? "";
+        if (!token || token !== env.INTERNAL_DELETE_TOKEN) return json({ error: "Forbidden" }, 403);
+        const body = await request.json<{ userId?: string; objectKey?: string }>();
+        const userId = String(body.userId ?? "");
+        const objectKey = String(body.objectKey ?? "");
+        const expectedPrefix = `chat/${userId}/`;
+        if (!/^[0-9a-f-]{36}$/i.test(userId) ||
+            !objectKey.startsWith(expectedPrefix) ||
+            objectKey.length > 1024 ||
+            objectKey.includes("..") ||
+            objectKey.includes("\\\\")) {
+          return json({ error: "Invalid media object" }, 400);
+        }
+        await env.R2_BUCKET.delete(objectKey);
+        return json({ success: true });
+      }
+
       const user = await getUser(request, env);
       if (!user) return json({ error: "Unauthorized" }, 401);
 
