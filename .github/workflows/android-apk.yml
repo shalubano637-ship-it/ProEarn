@@ -63,6 +63,9 @@ jobs:
           deno check supabase/functions/r2-upload/index.ts
           deno check supabase/functions/imgbb-upload/index.ts
 
+      - name: Syntax-check Cloudflare media Worker
+        run: npx --yes esbuild cloudflare/media-gateway/worker.ts --bundle --platform=browser --target=es2022 --outfile=/tmp/prosn-media-worker.js
+
       - name: Analyze Flutter code
         run: flutter analyze --no-pub --no-fatal-warnings --no-fatal-infos
 
