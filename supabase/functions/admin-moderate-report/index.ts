@@ -28,20 +28,20 @@ const admin = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-function getOwnedR2Key(value: unknown, ownerUid: string): string | null {
+function getOwnedR2Key(value: unknown, ownerUid: string, folder: "chat" | "comments"): string | null {
   if (typeof value !== "string" || !value || !r2PublicUrl || !value.startsWith(`${r2PublicUrl}/`)) {
     return null;
   }
   try {
     const key = decodeURIComponent(value.slice(r2PublicUrl.length + 1).split(/[?#]/, 1)[0]);
-    if (!key.startsWith(`chat/${ownerUid}/`) || key.length > 1024 || key.includes("..")) return null;
+    if (!key.startsWith(`${folder}/${ownerUid}/`) || key.length > 1024 || key.includes("..")) return null;
     return key;
   } catch {
     return null;
   }
 }
 
-async function deleteChatObject(userId: string, objectKey: string) {
+async function deleteOwnedMediaObject(userId: string, objectKey: string) {
   if (!mediaInternalToken) throw new Error("Media deletion token is not configured");
   const response = await fetch(`${mediaGatewayUrl.replace(/\/$/, "")}/internal/delete-media-object`, {
     method: "POST",
@@ -53,8 +53,21 @@ async function deleteChatObject(userId: string, objectKey: string) {
   });
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
-    throw new Error(`Chat media cleanup failed (HTTP ${response.status}): ${detail.slice(0, 200)}`);
+    throw new Error(`Media cleanup failed (HTTP ${response.status}): ${detail.slice(0, 200)}`);
   }
+}
+
+async function markReportActioned(reportId: string, moderatorId: string, actionTaken: string) {
+  const { error } = await admin
+    .from("reports")
+    .update({
+      status: "actioned",
+      actionTaken,
+      reviewedAt: new Date().toISOString(),
+      reviewedBy: moderatorId,
+    })
+    .eq("id", reportId);
+  assertNoError("Update moderation report", error);
 }
 
 Deno.serve(async (req) => {
@@ -85,66 +98,100 @@ Deno.serve(async (req) => {
 
   const body = await req.json().catch(() => ({}));
   const reportId = String(body.reportId ?? "");
+  const action = String(body.action ?? "delete_chat_message");
   if (!reportId) return json({ error: "reportId required" }, 400);
 
   try {
     const { data: report, error: reportError } = await admin
       .from("reports")
-      .select("id,source,targetMessageId")
+      .select("id,source,targetMessageId,targetCommentId")
       .eq("id", reportId)
       .maybeSingle();
     assertNoError("Load moderation report", reportError);
-    if (!report || report.source !== "chat_message" || !report.targetMessageId) {
-      return json({ error: "This report is not linked to a chat message" }, 404);
-    }
+    if (!report) return json({ error: "Report not found" }, 404);
 
-    const { data: message, error: messageError } = await admin
-      .from("messages")
-      .select("id,senderId,imageUrl,voicePath")
-      .eq("id", report.targetMessageId)
-      .maybeSingle();
-    assertNoError("Load reported chat message", messageError);
-
-    let legacyMediaMayRemain = false;
-    if (message) {
-      const keys = new Set<string>();
-      for (const value of [message.imageUrl, message.voicePath]) {
-        if (value == null || value === "") continue;
-        const key = getOwnedR2Key(value, message.senderId);
-        if (key) keys.add(key);
-        else legacyMediaMayRemain = true;
+    if (action === "delete_chat_message") {
+      if (report.source !== "chat_message" || !report.targetMessageId) {
+        return json({ error: "This report is not linked to a chat message" }, 400);
       }
-      for (const key of keys) {
-        await deleteChatObject(message.senderId, key);
-      }
-
-      const { error: hideError } = await admin
+      const { data: message, error: messageError } = await admin
         .from("messages")
-        .update({
-          deletedForEveryone: true,
-          text: null,
-          imageUrl: null,
-          voicePath: null,
-          voiceDurationMs: null,
-        })
-        .eq("id", message.id);
-      assertNoError("Remove reported chat message", hideError);
+        .select("id,senderId,imageUrl,voicePath")
+        .eq("id", report.targetMessageId)
+        .maybeSingle();
+      assertNoError("Load reported chat message", messageError);
+
+      let legacyMediaMayRemain = false;
+      if (message) {
+        const keys = new Set<string>();
+        for (const value of [message.imageUrl, message.voicePath]) {
+          if (value == null || value === "") continue;
+          const key = getOwnedR2Key(value, message.senderId, "chat");
+          if (key) keys.add(key);
+          else legacyMediaMayRemain = true;
+        }
+        for (const key of keys) await deleteOwnedMediaObject(message.senderId, key);
+
+        const { error: hideError } = await admin
+          .from("messages")
+          .update({
+            deletedForEveryone: true,
+            text: null,
+            imageUrl: null,
+            voicePath: null,
+            voiceDurationMs: null,
+          })
+          .eq("id", message.id);
+        assertNoError("Remove reported chat message", hideError);
+      }
+      await markReportActioned(
+        reportId,
+        user.id,
+        message ? "chat_message_removed" : "chat_message_already_removed",
+      );
+      return json({ success: true, legacyMediaMayRemain });
     }
 
-    const { error: reportUpdateError } = await admin
-      .from("reports")
-      .update({
-        status: "actioned",
-        actionTaken: message ? "chat_message_removed" : "chat_message_already_removed",
-        reviewedAt: new Date().toISOString(),
-        reviewedBy: user.id,
-      })
-      .eq("id", reportId);
-    assertNoError("Update moderation report", reportUpdateError);
+    if (action === "delete_comment") {
+      if (report.source !== "comment" || !report.targetCommentId) {
+        return json({ error: "This report is not linked to a comment" }, 400);
+      }
+      const { data: comment, error: commentError } = await admin
+        .from("comments")
+        .select("id,userId,imageUrl")
+        .eq("id", report.targetCommentId)
+        .maybeSingle();
+      assertNoError("Load reported comment", commentError);
 
-    return json({ success: true, legacyMediaMayRemain });
+      let legacyMediaMayRemain = false;
+      if (comment) {
+        if (comment.imageUrl) {
+          const key = getOwnedR2Key(comment.imageUrl, comment.userId, "comments");
+          if (key) {
+            await deleteOwnedMediaObject(comment.userId, key);
+          } else {
+            legacyMediaMayRemain = true;
+          }
+        }
+        const { error: repliesError } = await admin
+          .from("comments")
+          .update({ parentCommentId: null })
+          .eq("parentCommentId", comment.id);
+        assertNoError("Detach replies to removed comment", repliesError);
+        const { error: removeError } = await admin.from("comments").delete().eq("id", comment.id);
+        assertNoError("Delete reported comment", removeError);
+      }
+      await markReportActioned(
+        reportId,
+        user.id,
+        comment ? "comment_removed" : "comment_already_removed",
+      );
+      return json({ success: true, legacyMediaMayRemain });
+    }
+
+    return json({ error: "Unsupported moderation action" }, 400);
   } catch (error) {
     console.error("admin-moderate-report failed", error);
-    return json({ error: "Could not remove the reported chat message. Retry or inspect the report." }, 500);
+    return json({ error: "Could not complete the moderation action. Retry or inspect the report." }, 500);
   }
 });
