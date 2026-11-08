@@ -162,7 +162,7 @@ Deno.serve(async (req) => {
     const { error: authDeleteError } = await admin.auth.admin.deleteUser(uid);
     assertNoError("Delete authentication account", authDeleteError);
 
-    return json({ success: true, mediaDeleted: true });
+    return json({ success: true, r2MediaDeleted: true });
   } catch (error) {
     console.error("delete-account failed", { userId: uid, error });
     return json({
