@@ -5,6 +5,15 @@ The Android package identifier is currently `com.example.proearn` and matches
 aligned. Do not change the application ID after the first Play Store upload:
 Google Play treats a different application ID as a different app.
 
+## Confirm the Play package and version
+
+Before the first upload, confirm the intended package ID in Play Console. The current
+ID is `com.example.proearn`, matching `google-services.json`; keep it unchanged
+if that is already the app's Play package. If this app has never been uploaded,
+choose its final unique package ID before the first upload and regenerate the
+matching Firebase Android app configuration. Also set the `pubspec.yaml` build
+number to a value greater than the highest version code already uploaded to Play.
+
 ## Create the upload keystore
 
 Run this on a trusted machine and store the keystore and passwords securely:
