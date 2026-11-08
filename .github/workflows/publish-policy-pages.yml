@@ -1,0 +1,61 @@
+name: Publish ProSN policy pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'web/policy/**'
+      - '.github/workflows/publish-policy-pages.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Prepare policy site
+        run: |
+          mkdir -p _site/policy
+          cp web/policy/*.html _site/policy/
+          cat > _site/index.html <<'EOF'
+          <!doctype html>
+          <html lang="en">
+          <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ProSN Policies</title></head>
+          <body style="font-family:system-ui;max-width:720px;margin:40px auto;padding:20px;line-height:1.6">
+            <h1>ProSN Policies</h1>
+            <ul>
+              <li><a href="policy/privacy-policy.html">Privacy Policy</a></li>
+              <li><a href="policy/account-deletion.html">Account deletion</a></li>
+              <li><a href="policy/community-guidelines.html">Community Guidelines</a></li>
+              <li><a href="policy/child-safety.html">Child Safety Standards</a></li>
+            </ul>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload policy site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy policy site
+        id: deployment
+        uses: actions/deploy-pages@v4
