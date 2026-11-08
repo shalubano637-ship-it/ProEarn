@@ -33,7 +33,7 @@ function getOwnedR2Key(value: unknown, ownerUid: string): string | null {
     return null;
   }
   try {
-    const key = decodeURIComponent(new URL(value).pathname.replace(/^\/+/, ""));
+    const key = decodeURIComponent(value.slice(r2PublicUrl.length + 1).split(/[?#]/, 1)[0]);
     if (!key.startsWith(`chat/${ownerUid}/`) || key.length > 1024 || key.includes("..")) return null;
     return key;
   } catch {
@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
   const { data: adminRecord, error: adminError } = await admin
     .from("admins")
     .select("email")
-    .eq("email", user.email.toLowerCase())
+    .ilike("email", user.email)
     .maybeSingle();
   if (adminError) {
     console.error("Admin authorization lookup failed", adminError);
