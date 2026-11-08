@@ -259,26 +259,6 @@ class GlobalCachedImage extends StatelessWidget {
     this.filterQuality = FilterQuality.high,
   });
 
-  static const String _imageProxyBase =
-      'https://proearn-media-gateway.0nasir07860.workers.dev/v1/image-proxy?url=';
-
-  String _resolvedImageUrl() {
-    final uri = Uri.tryParse(imageUrl);
-    if (uri == null) return imageUrl;
-    if (uri.scheme == 'https' &&
-        (uri.host == 'i.ibb.co' || uri.host == 'i.imgbb.com')) {
-      return _imageProxyBase + Uri.encodeComponent(imageUrl);
-    }
-    return imageUrl;
-  }
-
-  bool get _isImgBbUrl {
-    final uri = Uri.tryParse(imageUrl);
-    return uri != null &&
-        uri.scheme == 'https' &&
-        (uri.host == 'i.ibb.co' || uri.host == 'i.imgbb.com');
-  }
-
   static const Map<String, String> _imageHeaders = {
     'User-Agent': 'ProEarn/1.0 (Android)',
     'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
@@ -295,38 +275,6 @@ class GlobalCachedImage extends StatelessWidget {
     );
   }
 
-  Widget _directNetworkFallback(BuildContext context) {
-    // If the proxy fails, retry the original ImgBB URL. This is important
-    // for gift assets because existing gift rows may still contain direct
-    // ImgBB URLs.
-    final fallbackUrl = _isImgBbUrl ? imageUrl : _resolvedImageUrl();
-    return Image.network(
-      fallbackUrl,
-      headers: _imageHeaders,
-      width: width,
-      height: height,
-      fit: fit,
-      filterQuality: filterQuality,
-      gaplessPlayback: true,
-      errorBuilder: (context, error, stackTrace) {
-        // Last attempt: if the original failed, retry through the proxy.
-        if (_isImgBbUrl && fallbackUrl != _resolvedImageUrl()) {
-          return Image.network(
-            _resolvedImageUrl(),
-            headers: _imageHeaders,
-            width: width,
-            height: height,
-            fit: fit,
-            filterQuality: filterQuality,
-            gaplessPlayback: true,
-            errorBuilder: (context, error, stackTrace) =>
-                _error(context, error: error),
-          );
-        }
-        return _error(context, error: error);
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -339,7 +287,7 @@ class GlobalCachedImage extends StatelessWidget {
     // Direct browser/native pipeline on web.
     if (kIsWeb) {
       return Image.network(
-        _resolvedImageUrl(),
+        imageUrl,
         width: width,
         height: height,
         fit: fit,
@@ -365,18 +313,14 @@ class GlobalCachedImage extends StatelessWidget {
       );
     }
 
-    final resolvedUrl = _resolvedImageUrl();
-
     return CachedNetworkImage(
-      imageUrl: resolvedUrl,
+      imageUrl: imageUrl,
       httpHeaders: _imageHeaders,
       width: width,
       height: height,
       fit: fit,
       filterQuality: filterQuality,
-      // Keep disk caching, but use the package's default cache manager
-      // instead of the app-specific manager. This avoids stale/corrupt
-      // cache entries preventing otherwise valid ImgBB URLs from loading.
+      // Keep disk caching with the package's default cache manager.
       useOldImageOnUrlChange: true,
       placeholder: (context, url) => Container(
         width: width,
@@ -390,10 +334,7 @@ class GlobalCachedImage extends StatelessWidget {
           ),
         ),
       ),
-      errorWidget: (context, url, error) {
-        // Cache/proxy failure -> original ImgBB -> proxy retry -> placeholder.
-        return _directNetworkFallback(context);
-      },
+      errorWidget: (context, url, error) => _error(context, error: error),
     );
   }
 }
