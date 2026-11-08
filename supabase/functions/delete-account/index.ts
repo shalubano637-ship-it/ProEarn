@@ -160,6 +160,12 @@ Deno.serve(async (req) => {
 
     await deleteWhere("cooldowns", "userId", uid);
     await deleteWhere("room_messages", "sender_id", uid);
+    const { error: presenceError } = await admin
+      .from("user_presence")
+      .update({ chattingWithUid: null })
+      .eq("chattingWithUid", uid);
+    assertNoError("Clear other users' active chat presence", presenceError);
+
     await deleteWhere("notifications", "senderId", uid);
     await deleteWhere("notification_delivery_dedup", "senderId", uid);
     await deleteWhere("notification_delivery_dedup", "targetOwnerId", uid);
