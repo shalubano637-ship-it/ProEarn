@@ -103,8 +103,8 @@ Deno.serve(async (req) => {
     const bytes = decodeBase64(encoded);
     if (bytes.length === 0 || bytes.length > MAX_BYTES) return json({ error: "Image is too large" }, 413);
 
-    // Feed posts must pass the Cloudflare Workers AI moderation gateway before storage.
-    if (folder === "posts") {
+    // Every user-visible image category must pass server-side moderation before storage.
+    {
       const moderationResponse = await fetch(
         `${MEDIA_GATEWAY_URL.replace(/\/$/, "")}/v1/moderate-image`,
         {
