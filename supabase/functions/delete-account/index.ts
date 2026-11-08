@@ -32,6 +32,53 @@ async function deleteWhere(table: string, column: string, value: string) {
   assertNoError(`Delete ${table} by ${column}`, error);
 }
 
+async function removePostLikes(uid: string) {
+  // Repeatedly read the first page because each successful update removes rows
+  // from the contains() result set; offset pagination could otherwise skip rows.
+  while (true) {
+    const { data, error } = await admin
+      .from("posts")
+      .select("id,likedBy")
+      .contains("likedBy", [uid])
+      .order("id", { ascending: true })
+      .limit(500);
+    assertNoError("Read post likes", error);
+    const rows = data ?? [];
+    if (rows.length === 0) break;
+    for (let i = 0; i < rows.length; i += 20) {
+      await Promise.all(rows.slice(i, i + 20).map(async (row: Record<string, unknown>) => {
+        const likedBy = Array.isArray(row.likedBy) ? row.likedBy : [];
+        const { error: updateError } = await admin
+          .from("posts")
+          .update({ likedBy: likedBy.filter((entry) => entry !== uid) })
+          .eq("id", row.id);
+        assertNoError("Remove deleted user from post likes", updateError);
+      }));
+    }
+  }
+}
+
+async function removeCommentReferences(uid: string) {
+  const { data: ownComments, error: readError } = await admin
+    .from("comments")
+    .select("id")
+    .eq("userId", uid);
+  assertNoError("Read comments authored by deleted user", readError);
+  const commentIds = (ownComments ?? []).map((row: { id: string }) => row.id).filter(Boolean);
+  if (commentIds.length > 0) {
+    const { error: parentError } = await admin
+      .from("comments")
+      .update({ parentCommentId: null, replyToUserId: null, replyToUsername: null })
+      .in("parentCommentId", commentIds);
+    assertNoError("Clear replies to deleted comments", parentError);
+  }
+  const { error: replyUserError } = await admin
+    .from("comments")
+    .update({ replyToUserId: null, replyToUsername: null })
+    .eq("replyToUserId", uid);
+  assertNoError("Clear reply references to deleted user", replyUserError);
+}
+
 async function removeUserReferences(uid: string) {
   let offset = 0;
   const pageSize = 500;
@@ -85,11 +132,13 @@ Deno.serve(async (req) => {
   try {
     // Remove non-FK content first. Every operation is checked and safe to retry
     // if a later step fails.
+    await removeCommentReferences(uid);
     const { error: commentError } = await admin.from("comments").delete().eq("userId", uid);
     assertNoError("Delete user's comments", commentError);
 
     const { error: postError } = await admin.from("posts").delete().eq("userName", uid);
     assertNoError("Delete user's posts", postError);
+    await removePostLikes(uid);
 
     const { data: conversations, error: conversationReadError } = await admin
       .from("conversations")
