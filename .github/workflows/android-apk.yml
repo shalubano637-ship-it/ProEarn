@@ -60,6 +60,7 @@ jobs:
         run: |
           deno check supabase/functions/delete-account/index.ts
           deno check supabase/functions/delete-account-request/index.ts
+          deno check supabase/functions/admin-moderate-report/index.ts
           deno check supabase/functions/r2-upload/index.ts
           deno check supabase/functions/imgbb-upload/index.ts
 
