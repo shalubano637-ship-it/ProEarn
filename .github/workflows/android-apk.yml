@@ -7,6 +7,7 @@ on:
       - 'lib/**'
       - 'android/**'
       - 'supabase/**'
+      - 'cloudflare/**'
       - 'web/**'
       - 'test/**'
       - 'pubspec.yaml'
