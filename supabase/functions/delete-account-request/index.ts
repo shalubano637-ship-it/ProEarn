@@ -46,20 +46,59 @@ Deno.serve(async (request) => {
     return json({ error: "The verified email does not match this account" }, 403);
   }
 
-  const { data: deletionRequest, error: insertError } = await admin
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: recentRequest, error: recentError } = await admin
     .from("account_deletion_requests")
-    .insert({
-      email: verifiedEmail,
-      reason: String(body.reason ?? "").slice(0, 1000),
-      status: "processing",
-      request_key: user.id,
-    })
-    .select("id")
-    .single();
-  if (insertError || !deletionRequest) {
-    console.error("Could not record verified deletion request", insertError);
-    return json({ error: "Could not record the verified deletion request" }, 500);
+    .select("id,status")
+    .eq("request_key", user.id)
+    .gt("created_at", cutoff)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (recentError) {
+    console.error("Could not inspect recent deletion requests", recentError);
+    return json({ error: "Could not start the deletion request" }, 500);
   }
+  if (recentRequest?.status === "processing") {
+    return json({ error: "A deletion request is already being processed" }, 429);
+  }
+
+  let deletionRequest: { id: string } | null = null;
+  if (recentRequest?.id && recentRequest.status === "failed") {
+    const { data, error } = await admin
+      .from("account_deletion_requests")
+      .update({
+        email: verifiedEmail,
+        reason: String(body.reason ?? "").slice(0, 1000),
+        status: "processing",
+        processed_at: null,
+      })
+      .eq("id", recentRequest.id)
+      .select("id")
+      .single();
+    if (error) {
+      console.error("Could not retry deletion request", error);
+      return json({ error: "Could not retry the deletion request" }, 500);
+    }
+    deletionRequest = data;
+  } else {
+    const { data, error } = await admin
+      .from("account_deletion_requests")
+      .insert({
+        email: verifiedEmail,
+        reason: String(body.reason ?? "").slice(0, 1000),
+        status: "processing",
+        request_key: user.id,
+      })
+      .select("id")
+      .single();
+    if (error) {
+      console.error("Could not record verified deletion request", error);
+      return json({ error: "Could not record the verified deletion request" }, 500);
+    }
+    deletionRequest = data;
+  }
+  if (!deletionRequest) return json({ error: "Could not start the deletion request" }, 500);
 
   const deleteResponse = await fetch(`${supabaseUrl}/functions/v1/delete-account`, {
     method: "POST",
