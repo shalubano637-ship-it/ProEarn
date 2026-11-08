@@ -43,41 +43,25 @@ android {
     }
 
     signingConfigs {
-        // The release config is populated only when the release variant is configured.
-        // Debug builds remain available without private signing material.
-        create("release")
+        create("release") {
+            val keyPropertiesFile = rootProject.file("key.properties")
+            if (keyPropertiesFile.isFile) {
+                val properties = Properties().apply {
+                    load(FileInputStream(keyPropertiesFile))
+                }
+                val storePath = properties.getProperty("storeFile")
+                if (!storePath.isNullOrBlank()) storeFile = rootProject.file(storePath)
+                storePassword = properties.getProperty("storePassword")
+                keyAlias = properties.getProperty("keyAlias")
+                keyPassword = properties.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
         release {
-            // Never produce a debug-signed artifact under the release build type.
-            val keyPropertiesFile = rootProject.file("key.properties")
-            if (!keyPropertiesFile.isFile) {
-                throw GradleException(
-                    "Release signing is not configured. Create android/key.properties from key.properties.example and provide the private upload keystore."
-                )
-            }
-            val properties = Properties().apply {
-                load(FileInputStream(keyPropertiesFile))
-            }
-            val storePath = properties.getProperty("storeFile")?.takeIf { it.isNotBlank() }
-                ?: throw GradleException("key.properties is missing storeFile")
-            val storePasswordValue = properties.getProperty("storePassword")?.takeIf { it.isNotBlank() }
-                ?: throw GradleException("key.properties is missing storePassword")
-            val keyAliasValue = properties.getProperty("keyAlias")?.takeIf { it.isNotBlank() }
-                ?: throw GradleException("key.properties is missing keyAlias")
-            val keyPasswordValue = properties.getProperty("keyPassword")?.takeIf { it.isNotBlank() }
-                ?: throw GradleException("key.properties is missing keyPassword")
-            val releaseKeystore = rootProject.file(storePath)
-            if (!releaseKeystore.isFile) {
-                throw GradleException("Release keystore not found at: $storePath")
-            }
-            signingConfigs.getByName("release").apply {
-                storeFile = releaseKeystore
-                storePassword = storePasswordValue
-                keyAlias = keyAliasValue
-                keyPassword = keyPasswordValue
-            }
+            // Never fall back to the debug key. The task-graph check below
+            // fails only release builds when the private upload keystore is absent.
             signingConfig = signingConfigs.getByName("release")
 
             isMinifyEnabled = true
@@ -92,4 +76,32 @@ android {
 
 flutter {
     source = "../.."
+}
+
+
+// Gradle configures all build types even for a debug build. Validate signing only
+// when a release task is actually requested so debug CI remains usable.
+gradle.taskGraph.whenReady {
+    val releaseRequested = allTasks.any { it.name.contains("Release", ignoreCase = true) }
+    if (releaseRequested) {
+        val keyPropertiesFile = rootProject.file("key.properties")
+        if (!keyPropertiesFile.isFile) {
+            throw GradleException(
+                "Release signing is not configured. Create android/key.properties from key.properties.example and provide the private upload keystore."
+            )
+        }
+        val properties = Properties().apply {
+            load(FileInputStream(keyPropertiesFile))
+        }
+        val storePath = properties.getProperty("storeFile")?.takeIf { it.isNotBlank() }
+            ?: throw GradleException("key.properties is missing storeFile")
+        for (property in listOf("storePassword", "keyAlias", "keyPassword")) {
+            if (properties.getProperty(property).isNullOrBlank()) {
+                throw GradleException("key.properties is missing $property")
+            }
+        }
+        if (!rootProject.file(storePath).isFile) {
+            throw GradleException("Release keystore not found at: $storePath")
+        }
+    }
 }
