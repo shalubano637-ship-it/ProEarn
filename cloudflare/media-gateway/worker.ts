@@ -181,7 +181,7 @@ export default {
       if (url.pathname === "/internal/delete-user-media" && request.method === "POST") {
         const token = request.headers.get("x-internal-token") ?? "";
         if (!token || token !== env.INTERNAL_DELETE_TOKEN) return json({ error: "Forbidden" }, 403);
-        const body = await request.json<{ userId?: string }>();
+        const body = await request.json() as { userId?: string };
         const userId = String(body.userId ?? "");
         if (!/^[0-9a-f-]{36}$/i.test(userId)) return json({ error: "Invalid userId" }, 400);
 
@@ -213,7 +213,7 @@ export default {
       if (url.pathname === "/internal/delete-media-object" && request.method === "POST") {
         const token = request.headers.get("x-internal-token") ?? "";
         if (!token || token !== env.INTERNAL_DELETE_TOKEN) return json({ error: "Forbidden" }, 403);
-        const body = await request.json<{ userId?: string; objectKey?: string }>();
+        const body = await request.json() as { userId?: string; objectKey?: string };
         const userId = String(body.userId ?? "");
         const objectKey = String(body.objectKey ?? "");
         const allowedPrefixes = [`chat/${userId}/`, `comments/${userId}/`];
