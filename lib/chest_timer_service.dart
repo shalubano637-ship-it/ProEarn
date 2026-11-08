@@ -160,7 +160,7 @@ class ChestTimerService extends ChangeNotifier {
       } else {
         currentChestIndex = existing.currentChestIndex;
         _unlockAt = existing.unlockAt;
-        isStarted = existing.unlockAt != null || existing.isUnlocked;
+        isStarted = existing.unlockAt != null || existing.isUnlocked || existing.remainingSeconds > 0;
         if (_unlockAt != null) {
           final serverRemaining = _unlockAt!.difference(DateTime.now()).inSeconds;
           remainingSeconds = math.max(0, serverRemaining);
@@ -176,9 +176,15 @@ class ChestTimerService extends ChangeNotifier {
       _notifiedThisUnlock = false;
       notifyListeners();
 
-      if (isUnlocked && _unlockAt != null) {
-        await _sendReadyNotificationOnce(checkDatabase: true);
-      } else if (!isUnlocked && isStarted) {
+      if (isUnlocked) {
+        if (_unlockAt != null) {
+          await _sendReadyNotificationOnce(checkDatabase: true);
+        } else {
+          // Legacy unlocked rows without an unlockAt have no notification
+          // event to replay. Mark this state handled to avoid duplicate pushes.
+          _notifiedThisUnlock = true;
+        }
+      } else if (isStarted) {
         _startTicking();
       }
     } catch (e) {
