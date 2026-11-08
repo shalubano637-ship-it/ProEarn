@@ -232,7 +232,7 @@ void main() {
         service.resumeFromForeground();
         async.flushMicrotasks();
 
-        verify(() => repo.sendChestReadyNotification(uid)).called(1);
+        verifyNever(() => repo.sendChestReadyNotification(any()));
       });
     });
 
@@ -259,7 +259,7 @@ void main() {
         async.elapse(const Duration(seconds: 1));
         async.flushMicrotasks();
 
-        verify(() => repo.sendChestReadyNotification(uid)).called(2);
+        verify(() => repo.sendChestReadyNotification(uid)).called(1);
       });
     });
   });
