@@ -2,7 +2,6 @@
 
 The Worker provides:
 - Authenticated image moderation through Workers AI.
-- Legacy image URL proxying so images already stored in the database continue to render.
 - Internal per-user R2 cleanup during account deletion.
 
 New image uploads are handled by the Supabase `r2-upload` Edge Function. That function uses the R2 credentials stored as Supabase Edge Function secrets and writes objects to the `proearn-videos` bucket.
