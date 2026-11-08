@@ -113,7 +113,7 @@ Deno.serve(async (request) => {
     const { error: updateError } = await admin
       .from("account_deletion_requests")
       .update({ status: "failed" })
-      .eq("id", deletionRequest.id);
+      .eq("email", verifiedEmail);
     if (updateError) console.error("Could not mark deletion request failed", updateError);
     const detail = await deleteResponse.text().catch(() => "");
     console.error("Verified account deletion failed", deleteResponse.status, detail.slice(0, 300));
