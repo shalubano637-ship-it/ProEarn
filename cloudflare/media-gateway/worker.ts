@@ -221,7 +221,7 @@ export default {
             !allowedPrefixes.some((prefix) => objectKey.startsWith(prefix)) ||
             objectKey.length > 1024 ||
             objectKey.includes("..") ||
-            objectKey.includes("\\\\")) {
+            objectKey.includes(String.fromCharCode(92))) {
           return json({ error: "Invalid media object" }, 400);
         }
         await env.R2_BUCKET.delete(objectKey);
