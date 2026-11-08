@@ -216,9 +216,9 @@ export default {
         const body = await request.json<{ userId?: string; objectKey?: string }>();
         const userId = String(body.userId ?? "");
         const objectKey = String(body.objectKey ?? "");
-        const expectedPrefix = `chat/${userId}/`;
+        const allowedPrefixes = [`chat/${userId}/`, `comments/${userId}/`];
         if (!/^[0-9a-f-]{36}$/i.test(userId) ||
-            !objectKey.startsWith(expectedPrefix) ||
+            !allowedPrefixes.some((prefix) => objectKey.startsWith(prefix)) ||
             objectKey.length > 1024 ||
             objectKey.includes("..") ||
             objectKey.includes("\\\\")) {
