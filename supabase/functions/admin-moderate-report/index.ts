@@ -1,203 +1,127 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { AwsClient } from "npm:aws4fetch@1.0.20";
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const mediaGatewayUrl = Deno.env.get("MEDIA_GATEWAY_URL") ?? "https://proearn-media-gateway.0nasir07860.workers.dev";
-const mediaInternalToken = Deno.env.get("MEDIA_INTERNAL_TOKEN") ?? "";
-const r2PublicUrl = (Deno.env.get("R2_PUBLIC_URL") ?? "").replace(/\/$/, "");
+const URL = Deno.env.get("SUPABASE_URL") ?? "";
+const ANON = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const R2_ACCOUNT_ID = Deno.env.get("R2_ACCOUNT_ID") ?? "";
+const R2_ACCESS_KEY_ID = Deno.env.get("R2_ACCESS_KEY_ID") ?? "";
+const R2_SECRET_ACCESS_KEY = Deno.env.get("R2_SECRET_ACCESS_KEY") ?? "";
+const R2_BUCKET_NAME = Deno.env.get("R2_BUCKET_NAME") ?? "";
+const R2_PUBLIC_URL = (Deno.env.get("R2_PUBLIC_URL") ?? "").replace(/\/$/, "");
 
-const cors = {
+const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...cors, "content-type": "application/json", "cache-control": "no-store" },
-  });
-}
-
-function assertNoError(operation: string, error: { message: string } | null) {
-  if (error) throw new Error(`${operation}: ${error.message}`);
-}
-
-const admin = createClient(supabaseUrl, serviceRoleKey, {
-  auth: { persistSession: false, autoRefreshToken: false },
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+  status, headers: { ...CORS, "Content-Type": "application/json", "Cache-Control": "no-store" },
 });
-
-function getOwnedR2Key(value: unknown, ownerUid: string, folder: "chat" | "comments"): string | null {
-  if (typeof value !== "string" || !value || !r2PublicUrl || !value.startsWith(`${r2PublicUrl}/`)) {
-    return null;
-  }
-  try {
-    const key = decodeURIComponent(value.slice(r2PublicUrl.length + 1).split(/[?#]/, 1)[0]);
-    if (!key.startsWith(`${folder}/${ownerUid}/`) || key.length > 1024 || key.includes("..")) return null;
-    return key;
-  } catch {
-    return null;
-  }
+const admin = createClient(URL, SERVICE, { auth: { persistSession: false, autoRefreshToken: false } });
+const r2 = new AwsClient({
+  accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY,
+  service: "s3", region: "auto",
+});
+function objectKeyFromUrl(value: unknown, allowedPrefix: string): string | null {
+  if (typeof value !== "string" || !R2_PUBLIC_URL || !value.startsWith(R2_PUBLIC_URL + "/")) return null;
+  const key = value.slice(R2_PUBLIC_URL.length + 1).split("?")[0];
+  if (!key.startsWith(allowedPrefix) || key.includes("..") || key.startsWith("/")) return null;
+  return key;
 }
-
-async function deleteOwnedMediaObject(userId: string, objectKey: string) {
-  if (!mediaInternalToken) throw new Error("Media deletion token is not configured");
-  const response = await fetch(`${mediaGatewayUrl.replace(/\/$/, "")}/internal/delete-media-object`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-internal-token": mediaInternalToken,
-    },
-    body: JSON.stringify({ userId, objectKey }),
-  });
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(`Media cleanup failed (HTTP ${response.status}): ${detail.slice(0, 200)}`);
+async function removeR2(key: string | null) {
+  if (!key) return;
+  if (![R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME].every(Boolean)) {
+    throw new Error("R2 deletion is not configured");
   }
+  const encoded = key.split("/").map(encodeURIComponent).join("/");
+  const url = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${R2_BUCKET_NAME}/${encoded}`;
+  const response = await r2.fetch(url, { method: "DELETE" });
+  if (!response.ok && response.status !== 404) throw new Error(`R2 object deletion failed: ${response.status}`);
 }
-
-async function markReportActioned(reportId: string, moderatorId: string, actionTaken: string) {
-  const { error } = await admin
-    .from("reports")
-    .update({
-      status: "actioned",
-      actionTaken,
-      reviewedAt: new Date().toISOString(),
-      reviewedBy: moderatorId,
-    })
-    .eq("id", reportId);
-  assertNoError("Update moderation report", error);
-}
-
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
-  if (!supabaseUrl || !anonKey || !serviceRoleKey) return json({ error: "Moderation service is not configured" }, 503);
-
+  if (![URL, ANON, SERVICE].every(Boolean)) return json({ error: "Moderation service is not configured" }, 503);
   const authorization = req.headers.get("Authorization") ?? "";
   if (!authorization.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
-  const userClient = createClient(supabaseUrl, anonKey, {
+  const caller = createClient(URL, ANON, {
     global: { headers: { Authorization: authorization } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data: authData, error: authError } = await userClient.auth.getUser();
-  const user = authData.user;
-  if (authError || !user?.email) return json({ error: "Unauthorized" }, 401);
-
-  const { data: adminRecord, error: adminError } = await admin
-    .from("admins")
-    .select("email")
-    .ilike("email", user.email)
-    .maybeSingle();
-  if (adminError) {
-    console.error("Admin authorization lookup failed", adminError);
-    return json({ error: "Could not verify moderator access" }, 500);
-  }
-  if (!adminRecord) return json({ error: "Forbidden" }, 403);
+  const { data: auth, error: authError } = await caller.auth.getUser();
+  if (authError || !auth.user?.email) return json({ error: "Unauthorized" }, 401);
+  const { data: adminRow, error: adminError } = await admin.from("admins")
+    .select("email").eq("email", auth.user.email.toLowerCase()).maybeSingle();
+  if (adminError || !adminRow) return json({ error: "Forbidden" }, 403);
 
   const body = await req.json().catch(() => ({}));
   const reportId = String(body.reportId ?? "");
-  const action = String(body.action ?? "delete_chat_message");
-  if (!reportId) return json({ error: "reportId required" }, 400);
+  const action = String(body.action ?? "remove_message");
+  if (!reportId) return json({ error: "reportId is required" }, 400);
+  const { data: report, error: reportError } = await admin.from("reports")
+    .select("id,targetCommentId,targetMessageId,targetPostId,source,reason,status")
+    .eq("id", reportId).maybeSingle();
+  if (reportError || !report) return json({ error: "Report not found" }, 404);
 
   try {
-    const { data: report, error: reportError } = await admin
-      .from("reports")
-      .select("id,source,targetMessageId,targetCommentId")
-      .eq("id", reportId)
-      .maybeSingle();
-    assertNoError("Load moderation report", reportError);
-    if (!report) return json({ error: "Report not found" }, 404);
-
-    if (action === "delete_chat_message") {
-      if (report.source !== "chat_message" || !report.targetMessageId) {
-        return json({ error: "This report is not linked to a chat message" }, 400);
-      }
-      const { data: message, error: messageError } = await admin
-        .from("messages")
-        .select("id,senderId,imageUrl,voicePath")
-        .eq("id", report.targetMessageId)
-        .maybeSingle();
-      assertNoError("Load reported chat message", messageError);
-
-      let legacyMediaMayRemain = false;
-      if (message) {
-        if ((message.imageUrl || message.voicePath) && !r2PublicUrl) {
-          throw new Error("R2_PUBLIC_URL is not configured; refusing to hide a message before media cleanup can be checked");
-        }
-        const keys = new Set<string>();
-        for (const value of [message.imageUrl, message.voicePath]) {
-          if (value == null || value === "") continue;
-          const key = getOwnedR2Key(value, message.senderId, "chat");
-          if (key) keys.add(key);
-          else legacyMediaMayRemain = true;
-        }
-        for (const key of keys) await deleteOwnedMediaObject(message.senderId, key);
-
-        const { error: hideError } = await admin
-          .from("messages")
-          .update({
-            deletedForEveryone: true,
-            text: null,
-            imageUrl: null,
-            voicePath: null,
-            voiceDurationMs: null,
-          })
-          .eq("id", message.id);
-        assertNoError("Remove reported chat message", hideError);
-      }
-      await markReportActioned(
-        reportId,
-        user.id,
-        message ? "chat_message_removed" : "chat_message_already_removed",
-      );
-      return json({ success: true, legacyMediaMayRemain });
-    }
-
     if (action === "delete_comment") {
-      if (report.source !== "comment" || !report.targetCommentId) {
-        return json({ error: "This report is not linked to a comment" }, 400);
-      }
-      const { data: comment, error: commentError } = await admin
-        .from("comments")
-        .select("id,userId,imageUrl")
-        .eq("id", report.targetCommentId)
-        .maybeSingle();
-      assertNoError("Load reported comment", commentError);
-
-      let legacyMediaMayRemain = false;
+      const commentId = String(report.targetCommentId ?? "");
+      if (!commentId) return json({ error: "Report has no comment target" }, 400);
+      const { data: comment, error } = await admin.from("comments")
+        .select("id,imageUrl").eq("id", commentId).maybeSingle();
+      if (error) throw error;
       if (comment) {
-        if (comment.imageUrl && !r2PublicUrl) {
-          throw new Error("R2_PUBLIC_URL is not configured; refusing to remove a comment before media cleanup can be checked");
-        }
-        if (comment.imageUrl) {
-          const key = getOwnedR2Key(comment.imageUrl, comment.userId, "comments");
-          if (key) {
-            await deleteOwnedMediaObject(comment.userId, key);
-          } else {
-            legacyMediaMayRemain = true;
-          }
-        }
-        const { error: repliesError } = await admin
-          .from("comments")
-          .update({ parentCommentId: null })
-          .eq("parentCommentId", comment.id);
-        assertNoError("Detach replies to removed comment", repliesError);
-        const { error: removeError } = await admin.from("comments").delete().eq("id", comment.id);
-        assertNoError("Delete reported comment", removeError);
+        await removeR2(objectKeyFromUrl(comment.imageUrl, "comments/"));
+        const { error: repliesError } = await admin.from("comments")
+          .update({ parentCommentId: null, replyToUserId: null, replyToUsername: null })
+          .eq("parentCommentId", commentId);
+        if (repliesError) throw repliesError;
+        const { error: deleteError } = await admin.from("comments").delete().eq("id", commentId);
+        if (deleteError) throw deleteError;
       }
-      await markReportActioned(
-        reportId,
-        user.id,
-        comment ? "comment_removed" : "comment_already_removed",
-      );
-      return json({ success: true, legacyMediaMayRemain });
+      const { error: updateError } = await admin.from("reports").update({
+        status: "actioned", actionTaken: "comment_removed", reviewedAt: new Date().toISOString(),
+        reviewedBy: auth.user.id,
+      }).eq("id", reportId);
+      if (updateError) throw updateError;
+      return json({ success: true, actionTaken: "comment_removed" });
     }
 
+    if (action === "remove_message" || action === "delete_message") {
+      const messageId = String(report.targetMessageId ?? "");
+      if (!messageId) return json({ error: "Report has no message target" }, 400);
+      const { data: message, error } = await admin.from("messages")
+        .select("id,imageUrl,voicePath").eq("id", messageId).maybeSingle();
+      if (error) throw error;
+      if (message) {
+        await removeR2(objectKeyFromUrl(message.imageUrl, "chat/"));
+        await removeR2(objectKeyFromUrl(message.voicePath, "chat/"));
+        const { error: updateMessageError } = await admin.from("messages").update({
+          text: "[Message removed by moderation]", imageUrl: null, voicePath: null,
+          deletedForEveryone: true,
+        }).eq("id", messageId);
+        if (updateMessageError) throw updateMessageError;
+      }
+      const { error: updateError } = await admin.from("reports").update({
+        status: "actioned", actionTaken: "chat_message_removed", reviewedAt: new Date().toISOString(),
+        reviewedBy: auth.user.id,
+      }).eq("id", reportId);
+      if (updateError) throw updateError;
+      return json({ success: true, actionTaken: "chat_message_removed" });
+    }
+
+    if (action === "dismiss") {
+      const { error } = await admin.from("reports").update({
+        status: "dismissed", actionTaken: "dismissed", reviewedAt: new Date().toISOString(),
+        reviewedBy: auth.user.id,
+      }).eq("id", reportId);
+      if (error) throw error;
+      return json({ success: true, actionTaken: "dismissed" });
+    }
     return json({ error: "Unsupported moderation action" }, 400);
   } catch (error) {
-    console.error("admin-moderate-report failed", error);
-    return json({ error: "Could not complete the moderation action. Retry or inspect the report." }, 500);
+    console.error("admin-moderate-report failed", { reportId, action, error });
+    return json({ error: "Moderation action failed. No success was recorded." }, 500);
   }
 });
