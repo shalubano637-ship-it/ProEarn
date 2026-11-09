@@ -198,6 +198,7 @@ class _LoginPageState extends State<LoginPage> {
   bool hidePassword = true;
   bool hideConfirmPassword = true;
   bool acceptTerms = false;
+  bool confirmAdult = false;
   bool showTerms = false;
   bool showResetFields = false;
   bool isSendingReset = false;
@@ -220,6 +221,10 @@ class _LoginPageState extends State<LoginPage> {
           isGoogleAuthStarting &&
           mounted) {
         isGoogleAuthStarting = false;
+        await Supabase.instance.client.auth.updateUser(UserAttributes(data: {
+          'adultAgeConfirmed': true,
+          'adultAgeConfirmedAt': DateTime.now().toUtc().toIso8601String(),
+        }));
         // Ask for notification permission immediately after Google sign-in.
         await FcmService.enableForCurrentUser();
         if (!mounted) return;
@@ -293,9 +298,9 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> handleGoogleAuth() async {
-    if (!acceptTerms) {
+    if (!acceptTerms || !confirmAdult) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Accept Terms & Privacy Policy")),
+        const SnackBar(content: Text("Confirm you are 18 or older and accept the Terms & Privacy Policy.")),
       );
       return;
     }
@@ -386,6 +391,10 @@ class _LoginPageState extends State<LoginPage> {
             return;
           }
 
+          await Supabase.instance.client.auth.updateUser(UserAttributes(data: {
+            'adultAgeConfirmed': true,
+            'adultAgeConfirmedAt': DateTime.now().toUtc().toIso8601String(),
+          }));
           currentUserEmail = email;
           currentUserName = email.split("@")[0];
           currentUserId = signedInUser!.id;
@@ -463,6 +472,8 @@ class _LoginPageState extends State<LoginPage> {
             'userName': signupUsername,
             'termsAcceptedAt': DateTime.now().toUtc().toIso8601String(),
             'termsVersion': kCurrentTermsVersion,
+            'adultAgeConfirmed': true,
+            'adultAgeConfirmedAt': DateTime.now().toUtc().toIso8601String(),
             'referralCode': referralCodeController.text.trim().toUpperCase(),
           },
         );
@@ -701,6 +712,13 @@ if (showTerms)
                       ),
                     ],
                   ),
+                ),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: confirmAdult,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  onChanged: (value) => setState(() => confirmAdult = value ?? false),
+                  title: const Text('I confirm that I am 18 years of age or older. ProSN is not for children.', style: TextStyle(fontSize: 13)),
                 ),
                 const SizedBox(height: 20),
                 SizedBox(
