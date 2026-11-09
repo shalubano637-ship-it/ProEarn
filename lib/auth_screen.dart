@@ -51,6 +51,16 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
         final user = Supabase.instance.client.auth.currentUser;
 
         if (user != null && user.emailConfirmedAt != null) {
+          // Existing sessions must pass the same adult-only age screen as new sign-ins.
+          if (user.userMetadata?['adultAgeConfirmed'] != true) {
+            await Supabase.instance.client.auth.signOut();
+            if (!mounted) return;
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginPage()),
+            );
+            return;
+          }
           final termsOk = await _ensureCurrentTermsAccepted(user.id);
           if (!mounted) return;
           if (!termsOk) {
@@ -338,7 +348,7 @@ class _LoginPageState extends State<LoginPage> {
 
     if (!acceptTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Accept Terms & Privacy Policy")),
+        const SnackBar(content: Text("Confirm you are 18 or older and accept the Terms & Privacy Policy.")),
       );
       return;
     }
