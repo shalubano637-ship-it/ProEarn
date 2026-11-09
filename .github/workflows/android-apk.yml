@@ -25,6 +25,7 @@ on:
       - 'test/**'
       - 'pubspec.yaml'
       - 'pubspec.lock'
+      - 'assets/icon/**'
       - '.github/workflows/**'
 
 permissions:
