@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'push_notification_page.dart';
 import 'security_page.dart';
@@ -29,6 +30,10 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final currentEmail =
+        Supabase.instance.client.auth.currentUser?.email?.toLowerCase().trim();
+    final isAdmin = currentEmail == kAdminEmail.toLowerCase();
+
     return Scaffold(
       body: ListView(
         children: [
