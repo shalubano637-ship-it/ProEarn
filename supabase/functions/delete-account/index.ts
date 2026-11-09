@@ -33,25 +33,17 @@ async function deleteWhere(table: string, column: string, value: string) {
 }
 
 async function removePostLikes(uid: string) {
-  // Repeatedly read the first page because each successful update removes rows
-  // from the contains() result set; offset pagination could otherwise skip rows.
   while (true) {
-    const { data, error } = await admin
-      .from("posts")
-      .select("id,likedBy")
-      .contains("likedBy", [uid])
-      .order("id", { ascending: true })
-      .limit(500);
+    const { data, error } = await admin.from("posts").select("id,likedBy")
+      .contains("likedBy", [uid]).order("id", { ascending: true }).limit(500);
     assertNoError("Read post likes", error);
     const rows = data ?? [];
     if (rows.length === 0) break;
     for (let i = 0; i < rows.length; i += 20) {
       await Promise.all(rows.slice(i, i + 20).map(async (row: Record<string, unknown>) => {
         const likedBy = Array.isArray(row.likedBy) ? row.likedBy : [];
-        const { error: updateError } = await admin
-          .from("posts")
-          .update({ likedBy: likedBy.filter((entry) => entry !== uid) })
-          .eq("id", row.id);
+        const { error: updateError } = await admin.from("posts")
+          .update({ likedBy: likedBy.filter((entry) => entry !== uid) }).eq("id", row.id);
         assertNoError("Remove deleted user from post likes", updateError);
       }));
     }
@@ -59,23 +51,18 @@ async function removePostLikes(uid: string) {
 }
 
 async function removeCommentReferences(uid: string) {
-  const { data: ownComments, error: readError } = await admin
-    .from("comments")
-    .select("id")
-    .eq("userId", uid);
+  const { data: ownComments, error: readError } = await admin.from("comments")
+    .select("id").eq("userId", uid);
   assertNoError("Read comments authored by deleted user", readError);
   const commentIds = (ownComments ?? []).map((row: { id: string }) => row.id).filter(Boolean);
   if (commentIds.length > 0) {
-    const { error: parentError } = await admin
-      .from("comments")
+    const { error: parentError } = await admin.from("comments")
       .update({ parentCommentId: null, replyToUserId: null, replyToUsername: null })
       .in("parentCommentId", commentIds);
     assertNoError("Clear replies to deleted comments", parentError);
   }
-  const { error: replyUserError } = await admin
-    .from("comments")
-    .update({ replyToUserId: null, replyToUsername: null })
-    .eq("replyToUserId", uid);
+  const { error: replyUserError } = await admin.from("comments")
+    .update({ replyToUserId: null, replyToUsername: null }).eq("replyToUserId", uid);
   assertNoError("Clear reply references to deleted user", replyUserError);
 }
 
@@ -83,12 +70,9 @@ async function removeUserReferences(uid: string) {
   let offset = 0;
   const pageSize = 500;
   while (true) {
-    const { data, error } = await admin
-      .from("users")
+    const { data, error } = await admin.from("users")
       .select("uid,followers,following,blockedUsers,hiddenPosts,mutedUsers,referredBy")
-      .neq("uid", uid)
-      .order("uid", { ascending: true })
-      .range(offset, offset + pageSize - 1);
+      .neq("uid", uid).order("uid", { ascending: true }).range(offset, offset + pageSize - 1);
     assertNoError("Read user references", error);
     const rows = data ?? [];
     for (let i = 0; i < rows.length; i += 20) {
@@ -96,9 +80,7 @@ async function removeUserReferences(uid: string) {
         const patch: Record<string, unknown> = {};
         for (const field of ["followers", "following", "blockedUsers", "hiddenPosts", "mutedUsers"]) {
           const value = row[field];
-          if (Array.isArray(value) && value.includes(uid)) {
-            patch[field] = value.filter((entry) => entry !== uid);
-          }
+          if (Array.isArray(value) && value.includes(uid)) patch[field] = value.filter((entry) => entry !== uid);
         }
         if (row.referredBy === uid) patch.referredBy = null;
         if (Object.keys(patch).length === 0) return;
@@ -114,36 +96,25 @@ async function removeUserReferences(uid: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
-  if (!supabaseUrl || !serviceRoleKey || !anonKey) {
-    return json({ error: "Account deletion service is not configured" }, 503);
-  }
-
+  if (!supabaseUrl || !serviceRoleKey || !anonKey) return json({ error: "Account deletion service is not configured" }, 503);
   const authorization = req.headers.get("Authorization") ?? "";
   if (!authorization.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
-
   const userClient = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authorization } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data: authData, error: authError } = await userClient.auth.getUser();
   if (authError || !authData.user) return json({ error: "Unauthorized" }, 401);
-
   const uid = authData.user.id;
   try {
-    // Remove non-FK content first. Every operation is checked and safe to retry
-    // if a later step fails.
     await removeCommentReferences(uid);
     const { error: commentError } = await admin.from("comments").delete().eq("userId", uid);
     assertNoError("Delete user's comments", commentError);
-
     const { error: postError } = await admin.from("posts").delete().eq("userName", uid);
     assertNoError("Delete user's posts", postError);
     await removePostLikes(uid);
-
-    const { data: conversations, error: conversationReadError } = await admin
-      .from("conversations")
-      .select("id")
-      .or(`participantA.eq.${uid},participantB.eq.${uid}`);
+    const { data: conversations, error: conversationReadError } = await admin.from("conversations")
+      .select("id").or(`participantA.eq.${uid},participantB.eq.${uid}`);
     assertNoError("Find user's conversations", conversationReadError);
     const conversationIds = (conversations ?? []).map((row: { id: string }) => row.id).filter(Boolean);
     if (conversationIds.length > 0) {
@@ -157,58 +128,32 @@ Deno.serve(async (req) => {
     await deleteWhere("messages", "senderId", uid);
     await deleteWhere("message_requests", "senderId", uid);
     await deleteWhere("message_requests", "recipientId", uid);
-
     await deleteWhere("cooldowns", "userId", uid);
     await deleteWhere("room_messages", "sender_id", uid);
-    const { error: presenceError } = await admin
-      .from("user_presence")
-      .update({ chattingWithUid: null })
-      .eq("chattingWithUid", uid);
+    const { error: presenceError } = await admin.from("user_presence")
+      .update({ chattingWithUid: null }).eq("chattingWithUid", uid);
     assertNoError("Clear other users' active chat presence", presenceError);
-
     await deleteWhere("notifications", "senderId", uid);
     await deleteWhere("notification_delivery_dedup", "senderId", uid);
     await deleteWhere("notification_delivery_dedup", "targetOwnerId", uid);
     await deleteWhere("follow_action_log", "actorUid", uid);
     await deleteWhere("ad_gift_claims", "uid", uid);
     await deleteWhere("daily_like_counts", "uid", uid);
-
-    // Preserve moderation history while removing the deleted account's identity.
-    const { error: reporterError } = await admin
-      .from("reports")
-      .update({ reportedBy: "deleted-user" })
-      .eq("reportedBy", uid);
+    const { error: reporterError } = await admin.from("reports").update({ reportedBy: "deleted-user" }).eq("reportedBy", uid);
     assertNoError("Anonymize reports submitted by deleted user", reporterError);
-    const { error: targetError } = await admin
-      .from("reports")
-      .update({ reportedUserId: null })
-      .eq("reportedUserId", uid);
+    const { error: targetError } = await admin.from("reports").update({ reportedUserId: null }).eq("reportedUserId", uid);
     assertNoError("Remove deleted user from report targets", targetError);
-
     await removeUserReferences(uid);
-
-    if (!mediaGatewayUrl || !mediaInternalToken) {
-      throw new Error("Media deletion service is not configured");
-    }
-    const mediaResponse = await fetch(
-      `${mediaGatewayUrl.replace(/\/$/, "")}/internal/delete-user-media`,
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-internal-token": mediaInternalToken,
-        },
-        body: JSON.stringify({ userId: uid }),
-      },
-    );
+    if (!mediaGatewayUrl || !mediaInternalToken) throw new Error("Media deletion service is not configured");
+    const mediaResponse = await fetch(`${mediaGatewayUrl.replace(/\/$/, "")}/internal/delete-user-media`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-internal-token": mediaInternalToken },
+      body: JSON.stringify({ userId: uid }),
+    });
     if (!mediaResponse.ok) {
       const detail = await mediaResponse.text().catch(() => "");
       throw new Error(`Media deletion failed (HTTP ${mediaResponse.status}): ${detail.slice(0, 200)}`);
     }
-
-    // This FK cascades the profile and remaining relational rows. Clear
-    // users.referredBy above to avoid the self-reference NO ACTION constraint.
-    // Delete Auth last so failure leaves the user able to retry.
     const email = authData.user.email?.toLowerCase();
     if (email) {
       const { error: adminCleanupError } = await admin.from("admins").delete().eq("email", email);
@@ -216,12 +161,9 @@ Deno.serve(async (req) => {
     }
     const { error: authDeleteError } = await admin.auth.admin.deleteUser(uid);
     assertNoError("Delete authentication account", authDeleteError);
-
     return json({ success: true, r2MediaDeleted: true });
   } catch (error) {
     console.error("delete-account failed", { userId: uid, error });
-    return json({
-      error: "Account deletion could not be completed. Your sign-in remains available so you can retry.",
-    }, 500);
+    return json({ error: "Account deletion could not be completed. Your sign-in remains available so you can retry." }, 500);
   }
 });
