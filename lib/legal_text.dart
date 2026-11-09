@@ -119,7 +119,7 @@ Last Updated: November 2026
 
 1. DATA WE PROCESS
 Depending on the features you use, ProSN may process:
-- Account information such as email, user ID, username, profile information, and verification state.
+- Account information such as email, user ID, username, profile information, verification state, and an adult age-eligibility confirmation timestamp. The date of birth entered for the age check is not stored.
 - User-generated content such as posts, comments, messages, profile images, and report information.
 - Social activity such as follows, likes, shares, notifications, and in-app coin/gift activity.
 - Technical information needed for security, reliability, crash reporting, abuse prevention, and advertising.
