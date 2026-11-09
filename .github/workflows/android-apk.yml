@@ -12,6 +12,7 @@ on:
       - 'test/**'
       - 'pubspec.yaml'
       - 'pubspec.lock'
+      - 'assets/icon/**'
       - '.github/workflows/**'
   push:
     branches:
@@ -49,8 +50,19 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Install SVG rasterizer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin
+
+      - name: Generate launcher icon PNG from final SVG
+        run: rsvg-convert -w 1024 -h 1024 assets/icon/app_icon.svg -o assets/icon/app_icon.png
+
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Generate Android launcher icons
+        run: dart run flutter_launcher_icons
 
       - name: Set up Deno
         uses: denoland/setup-deno@v2
