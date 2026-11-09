@@ -208,7 +208,15 @@ class _LoginPageState extends State<LoginPage> {
   bool hidePassword = true;
   bool hideConfirmPassword = true;
   bool acceptTerms = false;
-  bool confirmAdult = false;
+  DateTime? _dateOfBirth;
+
+  bool get _isAdult {
+    final dob = _dateOfBirth;
+    if (dob == null) return false;
+    final now = DateTime.now();
+    final adultCutoff = DateTime(now.year - 18, now.month, now.day);
+    return !dob.isAfter(adultCutoff);
+  }
   bool showTerms = false;
   bool showResetFields = false;
   bool isSendingReset = false;
@@ -307,10 +315,24 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _selectDateOfBirth() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(now.year - 18, now.month, now.day),
+      firstDate: DateTime(1900),
+      lastDate: now,
+      helpText: 'Confirm your age',
+    );
+    if (picked != null && mounted) {
+      setState(() => _dateOfBirth = DateTime(picked.year, picked.month, picked.day));
+    }
+  }
+
   Future<void> handleGoogleAuth() async {
-    if (!acceptTerms || !confirmAdult) {
+    if (!acceptTerms || !_isAdult) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Confirm you are 18 or older and accept the Terms & Privacy Policy.")),
+        const SnackBar(content: Text("Enter a date of birth showing you are at least 18, then accept the Terms & Privacy Policy.")),
       );
       return;
     }
@@ -723,13 +745,26 @@ if (showTerms)
                     ],
                   ),
                 ),
-                CheckboxListTile(
+                ListTile(
                   contentPadding: EdgeInsets.zero,
-                  value: confirmAdult,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  onChanged: (value) => setState(() => confirmAdult = value ?? false),
-                  title: const Text('I confirm that I am 18 years of age or older. ProSN is not for children.', style: TextStyle(fontSize: 13)),
+                  leading: const Icon(Icons.cake_outlined),
+                  title: const Text('Date of birth'),
+                  subtitle: Text(
+                    _dateOfBirth == null
+                        ? 'Select your date of birth to confirm you are 18 or older.'
+                        : 'Selected: ${_dateOfBirth!.toIso8601String().split('T').first}',
+                  ),
+                  trailing: const Icon(Icons.calendar_month_outlined),
+                  onTap: _selectDateOfBirth,
                 ),
+                if (_dateOfBirth != null)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12, bottom: 8),
+                    child: Text(
+                      _isAdult ? 'Age requirement met. Your date of birth is not stored.' : 'You must be at least 18 years old to use ProSN.',
+                      style: TextStyle(fontSize: 12, color: _isAdult ? AppColors.success : AppColors.error),
+                    ),
+                  ),
                 const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
