@@ -1,4 +1,4 @@
-const String kCurrentTermsVersion = '2026-09';
+const String kCurrentTermsVersion = '2026-11';
 
 const String kTermsAndConditionsText = '''
 ProSN — TERMS OF USE
@@ -7,6 +7,8 @@ Last Updated: September 2026
 By creating an account or using ProSN, you agree to these Terms of Use and the Community Guidelines.
 
 1. ELIGIBILITY AND ACCOUNTS
+- ProSN is intended only for adults aged 18 or older. Children must not create or use an account.
+- Confirm that you are at least 18 before signing up or signing in. Do not misrepresent your age.
 - Provide accurate account information and keep your account secure.
 - Do not create or operate accounts through bots, scripts, credential stuffing, or other automated abuse.
 - We may suspend or terminate accounts that violate these Terms or applicable law.
@@ -56,7 +58,7 @@ We may update these Terms. Material changes will be communicated through the app
 const String kCommunityGuidelinesText = '''
 ProSN — COMMUNITY GUIDELINES
 
-ProSN is a social platform. The following behavior is not allowed:
+ProSN is an adults-only social platform for people aged 18 or older. Children must not create or use an account. The following behavior is not allowed:
 
 - Child sexual abuse or exploitation, CSAM, grooming, sexual solicitation of minors, or sextortion.
 - Pornography, explicit sexual acts, or sexual content involving minors.
@@ -86,7 +88,7 @@ Safety contact: support.prosn@gmail.com
 const String kChildSafetyStandardsText = '''
 ProSN — CHILD SAFETY STANDARDS
 
-ProSN strictly prohibits child sexual abuse and exploitation (CSAE).
+ProSN is intended only for adults aged 18 or older. Children must not create or use an account. ProSN strictly prohibits child sexual abuse and exploitation (CSAE).
 
 Prohibited content and behavior include:
 - Child sexual abuse material (CSAM), including visual depictions involving minors in sexually explicit conduct.
@@ -117,7 +119,7 @@ Last Updated: November 2026
 
 1. DATA WE PROCESS
 Depending on the features you use, ProSN may process:
-- Account information such as email, user ID, username, profile information, and verification state.
+- Account information such as email, user ID, username, profile information, verification state, and an adult age-eligibility confirmation timestamp. The date of birth entered for the age check is not stored.
 - User-generated content such as posts, comments, messages, profile images, and report information.
 - Social activity such as follows, likes, shares, notifications, and in-app coin/gift activity.
 - Technical information needed for security, reliability, crash reporting, abuse prevention, and advertising.
