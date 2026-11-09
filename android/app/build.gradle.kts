@@ -37,7 +37,7 @@ android {
         // Keep this package aligned with google-services.json and the Play listing. Do not change it after the first Play upload.
         applicationId = "com.example.proearn"
         minSdk = 26
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36 // Google Play new-app and update requirement from 31 August 2026.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

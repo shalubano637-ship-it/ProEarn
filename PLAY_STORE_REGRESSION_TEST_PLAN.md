@@ -49,6 +49,20 @@ account for destructive deletion tests.
 - [ ] Test rewarded ads only grant in-app virtual rewards, never direct cash or monetary items.
 - [ ] Confirm daily ad reward caps are enforced server-side.
 
+
+## Google Play Console and Android policy checks
+
+- [ ] Confirm the release AAB targets Android 16 / API 36. Do not infer this from compileSdk; inspect the built artifact or Play Console's App Bundle Explorer.
+- [ ] Inspect the merged release manifest. Legacy READ_EXTERNAL_STORAGE is limited to API 32 and WRITE_EXTERNAL_STORAGE to API 28; confirm no broad all-files or unnecessary photo/video permissions are added by dependencies.
+- [ ] Confirm the Play listing package name is exactly `com.example.proearn` (or update the app configuration and Firebase registration together if the actual Play package differs).
+- [ ] In Play Console → App content → App access, provide a working reviewer account and exact sign-in instructions. Keep the test account active, seeded with usable content, and accessible for the full review. If email/OTP verification is required, explain the reviewer path and provide the required access details through Play Console's secure fields.
+- [ ] Complete the Data safety form from the actual production SDK configuration and data flows. Review account identifiers, email, user content/messages, photos, device/diagnostic data, push tokens, advertising identifiers, and data shared with Supabase, Cloudflare, Firebase, AdMob, Sentry, and any remaining ImgBB flow.
+- [ ] Set Target Audience and Content Rating truthfully for the actual intended audience and app features. Do not select an age group merely to bypass child-safety requirements.
+- [ ] Verify the public Privacy Policy, Account Deletion, Community Guidelines, and Child Safety Standards pages load in a signed-out/incognito browser and contain the current support contact.
+- [ ] Confirm the public account-deletion flow works end-to-end with a disposable account, including email ownership verification, server-side deletion, and honest success/failure messages.
+- [ ] Confirm the app's in-app report/block controls and the published UGC/child-safety rules match the production moderation and support process.
+- [ ] Do not submit until the physical-device regression checklist above is completed and the release AAB has passed CI.
+
 ## Release validation
 
 - [ ] Confirm applicationId matches the Play Console app and google-services.json.
