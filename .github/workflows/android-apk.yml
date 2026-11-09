@@ -146,6 +146,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Generate Android launcher icons
+        run: dart run flutter_launcher_icons
+
       - name: Build signed Play Store App Bundle
         run: flutter build appbundle --release
 
