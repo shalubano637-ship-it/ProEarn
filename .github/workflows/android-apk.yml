@@ -63,7 +63,6 @@ jobs:
           deno check supabase/functions/delete-account-request/index.ts
           deno check supabase/functions/admin-moderate-report/index.ts
           deno check supabase/functions/r2-upload/index.ts
-          deno check supabase/functions/imgbb-upload/index.ts
 
       - name: Syntax-check Cloudflare media Worker
         run: npx --yes esbuild cloudflare/media-gateway/worker.ts --bundle --platform=browser --target=es2022 --outfile=/tmp/prosn-media-worker.js
