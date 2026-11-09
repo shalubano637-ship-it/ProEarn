@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PrivacyPage extends StatefulWidget {
   const PrivacyPage({super.key});
@@ -18,6 +19,13 @@ class _PrivacyPageState extends State<PrivacyPage> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  Future<void> _openPolicy(String url) async {
+    final opened = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open this policy page. Please try again.')));
+    }
   }
 
   Future<void> _load() async {
@@ -137,6 +145,11 @@ class _PrivacyPageState extends State<PrivacyPage> {
                   'No one',
                   'Nobody can start a new conversation with you.',
                 ),
+                const Divider(height: 24),
+                const ListTile(title: Text('Legal and safety information'), subtitle: Text('Read ProSN policies and how your information is handled.')),
+                ListTile(leading: const Icon(Icons.privacy_tip_outlined), title: const Text('Privacy Policy'), trailing: const Icon(Icons.open_in_new, size: 18), onTap: () => _openPolicy('https://shalubano637-ship-it.github.io/ProEarn/policy/privacy-policy.html')),
+                ListTile(leading: const Icon(Icons.rule_outlined), title: const Text('Community Guidelines'), trailing: const Icon(Icons.open_in_new, size: 18), onTap: () => _openPolicy('https://shalubano637-ship-it.github.io/ProEarn/policy/community-guidelines.html')),
+                ListTile(leading: const Icon(Icons.shield_outlined), title: const Text('Child Safety Standards'), trailing: const Icon(Icons.open_in_new, size: 18), onTap: () => _openPolicy('https://shalubano637-ship-it.github.io/ProEarn/policy/child-safety.html')),
               ],
             ),
     );
