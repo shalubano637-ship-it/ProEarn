@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Delete your ProSN account</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:680px;margin:36px auto;padding:0 20px;line-height:1.6;color:#202124}
+    h1{font-size:25px}.card{border:1px solid #ddd;border-radius:12px;padding:20px;margin-top:22px}
+    label{display:block;font-weight:600;margin:14px 0 5px}input,textarea{width:100%;box-sizing:border-box;padding:12px;border:1px solid #bbb;border-radius:7px;font:inherit}
+    button{margin-top:18px;padding:12px 18px;border:0;border-radius:7px;background:#202124;color:#fff;font:inherit;cursor:pointer}
+    button:disabled{opacity:.55;cursor:wait}.hidden{display:none}#status{margin-top:16px;white-space:pre-wrap}
+    .muted{color:#5f6368;font-size:14px}
+  </style>
+</head>
+<body>
+  <h1>Delete your ProSN account and data</h1>
+  <p>This page verifies that you own the account email before submitting a permanent deletion. You can also delete your account in the app under <strong>Settings → Security → Delete Account</strong>.</p>
+  <div class="card">
+    <form id="emailForm">
+      <label for="email">Account email</label>
+      <input id="email" type="email" autocomplete="email" required>
+      <button id="sendCode" type="submit">Send verification code</button>
+    </form>
+    <form id="verifyForm" class="hidden">
+      <label for="code">Email verification code</label>
+      <input id="code" inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="8" required>
+      <label for="reason">Reason (optional)</label>
+      <textarea id="reason" rows="3" maxlength="1000"></textarea>
+      <button id="deleteButton" type="submit">Verify and permanently delete account</button>
+    </form>
+    <div id="status" role="status" aria-live="polite"></div>
+  </div>
+  <p class="muted">After verification, the account deletion process removes the account profile, posts, comments, conversations, notifications, rewards records and user media stored by ProSN. Limited safety records may be anonymized and retained where necessary for abuse prevention or legal compliance. Deletion cannot be undone.</p>
+  <p>Older media hosted by third-party services such as ImgBB may not be removable automatically. Contact support if you need help with legacy media cleanup.</p>
+  <p class="muted"><a href="privacy-policy.html">Privacy Policy</a></p>
+  <p class="muted">Need help? <a href="mailto:support.prosn@gmail.com">support.prosn@gmail.com</a></p>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    const supabase = createClient(
+      'https://mltvpfqfhbhgkejcjpmq.supabase.co',
+      'sb_publishable_3c2SHzm3Y8u_pjbmpWNSXw_5Rwkn5b_',
+      { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }
+    );
+    const emailForm = document.getElementById('emailForm');
+    const verifyForm = document.getElementById('verifyForm');
+    const status = document.getElementById('status');
+    const sendButton = document.getElementById('sendCode');
+    const deleteButton = document.getElementById('deleteButton');
+    let verifiedEmail = '';
+
+    emailForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      verifiedEmail = document.getElementById('email').value.trim().toLowerCase();
+      sendButton.disabled = true;
+      status.textContent = 'Sending a verification code…';
+      try {
+        const { error } = await supabase.auth.signInWithOtp({
+          email: verifiedEmail,
+          options: { shouldCreateUser: false }
+        });
+        if (error) throw error;
+        verifyForm.classList.remove('hidden');
+        status.textContent = 'If this email belongs to an existing account, a verification code has been sent. Enter it below.';
+      } catch (error) {
+        status.textContent = error?.message || 'Could not send the verification code. Please try again.';
+      } finally {
+        sendButton.disabled = false;
+      }
+    });
+
+    verifyForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      deleteButton.disabled = true;
+      status.textContent = 'Verifying email ownership…';
+      try {
+        const token = document.getElementById('code').value.trim();
+        const { data, error } = await supabase.auth.verifyOtp({
+          email: verifiedEmail,
+          token,
+          type: 'email'
+        });
+        if (error || !data.session || data.user?.email?.toLowerCase() !== verifiedEmail) {
+          throw error || new Error('Email verification could not be confirmed.');
+        }
+        const { error: deletionError } = await supabase.functions.invoke('delete-account-request', {
+          body: {
+            email: verifiedEmail,
+            reason: document.getElementById('reason').value.trim()
+          }
+        });
+        if (deletionError) throw deletionError;
+        await supabase.auth.signOut({ scope: 'local' });
+        emailForm.classList.add('hidden');
+        verifyForm.classList.add('hidden');
+        status.textContent = 'Your email was verified and your ProSN account deletion was completed.';
+      } catch (error) {
+        status.textContent = error?.message || 'Deletion failed. Your account has not been confirmed as deleted. Please retry or contact support.';
+        deleteButton.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

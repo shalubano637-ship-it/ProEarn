@@ -54,7 +54,8 @@ async function putObject(key: string, bytes: Uint8Array, contentType: string) {
   const response = await r2.fetch(r2ObjectUrl(key), {
     method: "PUT",
     headers: { "Content-Type": contentType },
-    body: bytes,
+    // Deno fetch accepts Uint8Array bodies; this cast bridges the DOM BodyInit typings.
+    body: bytes as unknown as BodyInit,
   });
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
@@ -103,8 +104,8 @@ Deno.serve(async (req) => {
     const bytes = decodeBase64(encoded);
     if (bytes.length === 0 || bytes.length > MAX_BYTES) return json({ error: "Image is too large" }, 413);
 
-    // Feed posts must pass the Cloudflare Workers AI moderation gateway before storage.
-    if (folder === "posts") {
+    // Every user-visible image category must pass server-side moderation before storage.
+    {
       const moderationResponse = await fetch(
         `${MEDIA_GATEWAY_URL.replace(/\/$/, "")}/v1/moderate-image`,
         {

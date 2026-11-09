@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models.dart';
 import '../auth_screen.dart';
@@ -224,7 +225,13 @@ class _SecurityPageState extends State<SecurityPage> {
     setState(() { isLoading = true; });
 
     try {
-      await FcmService.unlinkCurrentUserToken();
+      // The profile deletion also removes the stored FCM token. Treat unlinking
+      // this device as best-effort so a token update failure cannot block deletion.
+      try {
+        await FcmService.unlinkCurrentUserToken();
+      } catch (error) {
+        debugPrint('FCM token unlink skipped during account deletion: $error');
+      }
       await Supabase.instance.client.functions.invoke('delete-account');
       await Supabase.instance.client.auth.signOut();
       resetLocalUserState();
@@ -557,6 +564,22 @@ StreamBuilder<List<Map<String, dynamic>>>(
                   onPressed: deleteAccountFlow,
                   child: const Text("DELETE ACCOUNT"),
                 ),
+              ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: () async {
+                  final uri = Uri.parse(
+                    'https://shalubano637-ship-it.github.io/ProEarn/policy/account-deletion.html',
+                  );
+                  final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  if (!opened && mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Could not open the account-deletion page.')),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.open_in_new, size: 16),
+                label: const Text('Delete account from the website'),
               ),
             ],
           ),

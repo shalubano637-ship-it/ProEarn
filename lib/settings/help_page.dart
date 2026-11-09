@@ -78,7 +78,7 @@ class HelpPage extends StatelessWidget {
 
             _buildLegalTab(_getTermsAndConditionsText()),
 
-            _buildLegalTab(_getPrivacyPolicyText()),
+            _buildPrivacyPolicyTab(context),
 
             _buildLegalTab(kCommunityGuidelinesText),
 
@@ -183,6 +183,45 @@ class HelpPage extends StatelessWidget {
       ],
     );
   }
+  Widget _buildPrivacyPolicyTab(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _getPrivacyPolicyText(),
+            style: const TextStyle(
+              color: Color(0xDEFFFFFF),
+              fontSize: 13,
+              height: 1.6,
+              fontFamily: null,
+            ),
+          ),
+          const SizedBox(height: 18),
+          OutlinedButton.icon(
+            onPressed: () => _openPolicyUrl(
+              context,
+              'https://shalubano637-ship-it.github.io/ProEarn/policy/privacy-policy.html',
+            ),
+            icon: const Icon(Icons.open_in_new),
+            label: const Text('Open public Privacy Policy'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openPolicyUrl(BuildContext context, String value) async {
+    final uri = Uri.parse(value);
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the public policy page.')),
+      );
+    }
+  }
+
   Widget _buildLegalTab(String text) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),

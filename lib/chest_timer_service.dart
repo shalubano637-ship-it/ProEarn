@@ -3,7 +3,6 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'service.dart';
 
 class ChestProgress {
   final int currentChestIndex;
@@ -160,7 +159,7 @@ class ChestTimerService extends ChangeNotifier {
       } else {
         currentChestIndex = existing.currentChestIndex;
         _unlockAt = existing.unlockAt;
-        isStarted = existing.unlockAt != null || existing.isUnlocked;
+        isStarted = existing.unlockAt != null || existing.isUnlocked || existing.remainingSeconds > 0;
         if (_unlockAt != null) {
           final serverRemaining = _unlockAt!.difference(DateTime.now()).inSeconds;
           remainingSeconds = math.max(0, serverRemaining);
@@ -176,9 +175,15 @@ class ChestTimerService extends ChangeNotifier {
       _notifiedThisUnlock = false;
       notifyListeners();
 
-      if (isUnlocked && _unlockAt != null) {
-        await _sendReadyNotificationOnce(checkDatabase: true);
-      } else if (!isUnlocked && isStarted) {
+      if (isUnlocked) {
+        if (_unlockAt != null) {
+          await _sendReadyNotificationOnce(checkDatabase: true);
+        } else {
+          // Legacy unlocked rows without an unlockAt have no notification
+          // event to replay. Mark this state handled to avoid duplicate pushes.
+          _notifiedThisUnlock = true;
+        }
+      } else if (isStarted) {
         _startTicking();
       }
     } catch (e) {
@@ -199,7 +204,12 @@ class ChestTimerService extends ChangeNotifier {
     _localTicker?.cancel();
     if (!isStarted || isUnlocked) return;
     _localTicker = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (remainingSeconds > 0) {
+        remainingSeconds -= 1;
+      }
+
       if (remainingSeconds <= 0) {
+        remainingSeconds = 0;
         timer.cancel();
         isUnlocked = true;
         notifyListeners();
@@ -207,7 +217,7 @@ class ChestTimerService extends ChangeNotifier {
         _sendReadyNotificationOnce();
         return;
       }
-      remainingSeconds -= 1;
+
       notifyListeners();
     });
   }
