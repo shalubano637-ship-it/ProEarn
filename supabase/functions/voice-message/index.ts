@@ -1,7 +1,10 @@
-import { withSupabase } from "npm:@supabase/server@^1";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { AwsClient } from "npm:aws4fetch@1.0.20";
 
 const MAX_BYTES = 8 * 1024 * 1024;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const R2_ACCOUNT_ID = Deno.env.get("R2_ACCOUNT_ID") ?? "";
 const R2_ACCESS_KEY_ID = Deno.env.get("R2_ACCESS_KEY_ID") ?? "";
 const R2_SECRET_ACCESS_KEY = Deno.env.get("R2_SECRET_ACCESS_KEY") ?? "";
@@ -56,12 +59,29 @@ async function signedVoiceUrl(key: string) {
   return signed.url.toString();
 }
 
-export default {
-  fetch: withSupabase({ auth: "user" }, async (req, ctx) => {
+Deno.serve(async (req) => {
     if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
     if (req.method !== "POST") return response({ error: "Method not allowed" }, 405);
     try {
       assertR2Configured();
+      if (![SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY].every(Boolean)) {
+        console.error("voice-message is missing Supabase environment configuration");
+        return response({ error: "Voice messaging is not configured" }, 503);
+      }
+      const authorization = req.headers.get("Authorization") ?? "";
+      if (!authorization.startsWith("Bearer ")) return response({ error: "Unauthorized" }, 401);
+      const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: authorization } },
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const { data: authData, error: authError } = await userClient.auth.getUser();
+      if (authError || !authData.user) {
+        console.error("voice-message authentication failed", authError?.message ?? "No user");
+        return response({ error: "Unauthorized" }, 401);
+      }
+      const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
       const body = await req.json().catch(() => ({}));
       const mode = String(body.mode ?? "");
 
@@ -79,14 +99,14 @@ export default {
         if ((!conversationId && !roomId) || (conversationId && roomId)) return response({ error: "Invalid destination" }, 400);
         const bytes = decodeBase64(audioBase64);
         if (!bytes.length || bytes.length > MAX_BYTES) return response({ error: "Audio is too large" }, 400);
-        const uid = String(ctx.userClaims?.sub ?? "");
+        const uid = authData.user.id;
         if (!uid) return response({ error: "Unauthorized" }, 401);
         const key = `voice/${uid}/${crypto.randomUUID()}.m4a`;
         await putVoiceObject(key, bytes);
         try {
           let messageId: string;
           if (conversationId) {
-            const { data, error } = await ctx.supabase.rpc("send_voice_message", {
+            const { data, error } = await userClient.rpc("send_voice_message", {
               p_conversation_id: conversationId, p_voice_path: key,
               p_voice_duration_ms: Math.round(durationMs), p_voice_listen_limit: listenLimit,
               p_reply_to_message_id: replyToMessageId,
@@ -94,7 +114,7 @@ export default {
             if (error) throw error;
             messageId = String(data);
           } else {
-            const { data, error } = await ctx.supabase.rpc("send_room_voice_message", {
+            const { data, error } = await userClient.rpc("send_room_voice_message", {
               p_room_id: roomId, p_voice_path: key,
               p_voice_duration_ms: Math.round(durationMs), p_voice_listen_limit: listenLimit,
               p_reply_to_message_id: replyToMessageId || null,
@@ -114,8 +134,8 @@ export default {
         const room = body.room === true;
         if (!messageId) return response({ error: "messageId is required" }, 400);
         const rpc = room
-          ? await ctx.supabase.rpc("consume_room_voice_message", { p_message_id: messageId })
-          : await ctx.supabase.rpc("consume_voice_message", { p_message_id: messageId });
+          ? await userClient.rpc("consume_room_voice_message", { p_message_id: messageId })
+          : await userClient.rpc("consume_voice_message", { p_message_id: messageId });
         if (rpc.error || !rpc.data?.length) return response({ error: rpc.error?.message ?? "Voice message is no longer available" }, 410);
         const row = rpc.data[0];
         const key = String(row.voice_path ?? "");
@@ -133,17 +153,17 @@ export default {
         const messageId = String(body.messageId ?? "");
         const room = body.room === true;
         if (!messageId) return response({ error: "messageId is required" }, 400);
-        const allowed = await ctx.supabase.rpc("cleanup_voice_message", { p_message_id: messageId, p_room: room });
+        const allowed = await userClient.rpc("cleanup_voice_message", { p_message_id: messageId, p_room: room });
         if (allowed.error || allowed.data !== true) return response({ cleaned: false });
         const table = room ? "room_messages" : "messages";
         const pathColumn = room ? "voice_path" : "voicePath";
-        const { data: row, error } = await ctx.supabaseAdmin.from(table).select(pathColumn).eq("id", messageId).maybeSingle();
+        const { data: row, error } = await adminClient.from(table).select(pathColumn).eq("id", messageId).maybeSingle();
         if (error || !row) return response({ cleaned: false });
         const key = String(row[pathColumn] ?? "");
         if (key) {
           if (!key.startsWith("voice/") || key.includes("..")) return response({ cleaned: false }, 500);
           await deleteVoiceObject(key);
-          await ctx.supabaseAdmin.from(table).update({ [pathColumn]: null }).eq("id", messageId);
+          await adminClient.from(table).update({ [pathColumn]: null }).eq("id", messageId);
         }
         return response({ cleaned: true });
       }
@@ -152,5 +172,4 @@ export default {
       console.error("voice-message error", error);
       return response({ error: String((error as Error)?.message ?? error) }, 500);
     }
-  }),
-};
+});
