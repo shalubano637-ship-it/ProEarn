@@ -8,13 +8,13 @@ import 'widgets/coin_icon.dart';
 class CoinShopPage extends StatelessWidget {
   const CoinShopPage({super.key});
 
-  static const _packs = <({int coins, int bonus, int originalPrice, int offerPrice, String gift, String tag})>[
-    (coins: 100, bonus: 0, originalPrice: 29, offerPrice: 9, gift: 'Mini Gift', tag: 'FIRST BUY'),
-    (coins: 250, bonus: 25, originalPrice: 49, offerPrice: 19, gift: 'Love Gift', tag: ''),
-    (coins: 600, bonus: 100, originalPrice: 99, offerPrice: 39, gift: 'Star Gift', tag: 'POPULAR'),
-    (coins: 1400, bonus: 300, originalPrice: 199, offerPrice: 79, gift: 'Super Gift', tag: ''),
-    (coins: 3000, bonus: 800, originalPrice: 399, offerPrice: 149, gift: 'Royal Gift', tag: 'BEST VALUE'),
-    (coins: 7000, bonus: 2200, originalPrice: 799, offerPrice: 299, gift: 'Mega Gift', tag: ''),
+  static const _packs = <({int coins, int bonus, int originalPrice, int offerPrice, String tag})>[
+    (coins: 100, bonus: 0, originalPrice: 29, offerPrice: 9, tag: 'FIRST BUY'),
+    (coins: 250, bonus: 25, originalPrice: 49, offerPrice: 19, tag: ''),
+    (coins: 600, bonus: 100, originalPrice: 99, offerPrice: 39, tag: 'POPULAR'),
+    (coins: 1400, bonus: 300, originalPrice: 199, offerPrice: 79, tag: ''),
+    (coins: 3000, bonus: 800, originalPrice: 399, offerPrice: 149, tag: 'BEST VALUE'),
+    (coins: 7000, bonus: 2200, originalPrice: 799, offerPrice: 299, tag: ''),
   ];
 
   void _paymentNotice(BuildContext context) {
@@ -66,15 +66,15 @@ class CoinShopPage extends StatelessWidget {
                   const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('PRO EARN VAULT', style: TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 1.8, fontWeight: FontWeight.w700)),
                     SizedBox(height: 4),
-                    Text('More coins. More gifts.', style: TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w900)),
+                    Text('More coins. More value.', style: TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w900)),
                   ])),
                 ]),
                 const SizedBox(height: 18),
                 Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(color: Colors.white.withOpacity(.08), borderRadius: BorderRadius.circular(14)),
                   child: const Row(children: [
-                    Icon(Icons.card_giftcard_rounded, color: AppColors.accent, size: 22), SizedBox(width: 9),
-                    Expanded(child: Text('Every pack comes with a bonus gift', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+                    Icon(Icons.monetization_on_rounded, color: AppColors.accent, size: 22), SizedBox(width: 9),
+                    Expanded(child: Text('Coin packs include coins only. No gifts are included.', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
                   ])),
                 const SizedBox(height: 12),
                 const Text('FIRST PURCHASE DEALS: UP TO 70% OFF', style: TextStyle(color: AppColors.accent, fontSize: 15, fontWeight: FontWeight.w900)),
@@ -135,10 +135,6 @@ class CoinShopPage extends StatelessWidget {
                         if (pack.bonus > 0) Padding(padding: const EdgeInsets.only(top: 4),
                           child: Text('+ ${pack.bonus} bonus', style: const TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.w800))),
                         const SizedBox(height: 7),
-                        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                          const Icon(Icons.card_giftcard_rounded, color: AppColors.accent, size: 14), const SizedBox(width: 4),
-                          Flexible(child: Text(pack.gift, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700))),
-                        ]),
                       ]))),
                     Padding(padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
                       child: Column(children: [
