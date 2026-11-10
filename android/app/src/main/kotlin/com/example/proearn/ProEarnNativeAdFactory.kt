@@ -1,4 +1,4 @@
-package com.example.proearn
+package com.prosn.app
 
 import android.graphics.Color
 import android.graphics.Typeface
