@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
       const { error: adminCleanupError } = await admin.from("admins").delete().eq("email", email);
       assertNoError("Remove admin mapping", adminCleanupError);
     }
-    const { error: authDeleteError } = await admin.auth.admin.deleteUser(uid);
+    // Remove the public profile explicitly: this schema does not cascade public.users from auth.users.\n    await deleteWhere("users", "uid", uid);\n    const { error: authDeleteError } = await admin.auth.admin.deleteUser(uid);
     assertNoError("Delete authentication account", authDeleteError);
     return json({ success: true, r2MediaDeleted: true });
   } catch (error) {
