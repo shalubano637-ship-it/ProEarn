@@ -15,7 +15,7 @@ dependencies {
 }
 
 android {
-    namespace = "com.example.proearn"
+    namespace = "com.prosn.app"
     compileSdk = 36
     ndkVersion = "28.2.13676358"
 
@@ -35,9 +35,9 @@ android {
 
     defaultConfig {
         // Keep this package aligned with google-services.json and the Play listing. Do not change it after the first Play upload.
-        applicationId = "com.example.proearn"
+        applicationId = "com.prosn.app"
         minSdk = 26
-        targetSdk = 36 // Google Play new-app and update requirement from 31 August 2026.
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -60,10 +60,7 @@ android {
 
     buildTypes {
         release {
-            // Never fall back to the debug key. The task-graph check below
-            // fails only release builds when the private upload keystore is absent.
             signingConfig = signingConfigs.getByName("release")
-
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -78,9 +75,7 @@ flutter {
     source = "../.."
 }
 
-
-// Gradle configures all build types even for a debug build. Validate signing only
-// when a release task is actually requested so debug CI remains usable.
+// Validate signing only when a release task is requested.
 gradle.taskGraph.whenReady {
     val releaseRequested = allTasks.any { it.name.contains("Release", ignoreCase = true) }
     if (releaseRequested) {
