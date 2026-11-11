@@ -105,9 +105,14 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<Map<String, dynamic>?> _loadProfileData(String uid) async {
     // These reads are independent; run them together to avoid serial network latency.
+    final viewerUid = Supabase.instance.client.auth.currentUser?.id;
     final results = await Future.wait<dynamic>([
       Supabase.instance.client.from('public_profiles').select().eq('uid', uid).maybeSingle(),
       Supabase.instance.client.rpc('get_follow_relationships', params: {'p_target_id': uid}),
+      if (viewerUid != null && viewerUid != uid)
+        Supabase.instance.client.rpc('is_blocked_by_user', params: {'p_target_uid': uid})
+      else
+        Future.value(false),
     ]);
     final profile = results[0] as Map<String, dynamic>?;
     if (profile == null) return null;
@@ -119,7 +124,9 @@ class _ProfilePageState extends State<ProfilePage> {
       ...profile,
       'followers': relationships['followers'] ?? const [],
       'following': relationships['following'] ?? const [],
-      'canViewRelationships': relationships['can_view'] ?? true,
+      // A target who blocked the viewer hides relationship lists. A block
+      // made by the viewer does not hide the target's followers/following.
+      'canViewRelationships': (relationships['can_view'] ?? true) && results[2] != true,
     };
   }
 
@@ -279,6 +286,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
           final bool viewerIsFollowing = currentUser != null && userFollowersList.contains(currentUser.id);
           final bool canSeePrivateProfile = widget.isOwnProfile || !isPrivateAccount || viewerIsFollowing;
+          final bool canViewRelationships = widget.isOwnProfile ||
+              (userSnapshot.data?['canViewRelationships'] != false);
 
           return RefreshIndicator(
             onRefresh: _refreshProfile,
@@ -305,7 +314,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             const SizedBox(height: 15),
                             Row(
                               children: [
-                                if (canSeePrivateProfile) ...[
+                                if (canSeePrivateProfile && canViewRelationships) ...[
                                   GestureDetector(
                                     onTap: () => Navigator.push(
                                       context,
@@ -336,9 +345,9 @@ class _ProfilePageState extends State<ProfilePage> {
                                     ),
                                   ),
                                 ],
-                                if (!canSeePrivateProfile)
-                                  const Text(
-                                    'Private account',
+                                if (!canSeePrivateProfile || !canViewRelationships)
+                                  Text(
+                                    !canViewRelationships ? 'Followers and following are unavailable' : 'Private account',
                                     style: TextStyle(color: AppColors.textTertiary),
                                   ),
                               ],
@@ -393,6 +402,26 @@ class _ProfilePageState extends State<ProfilePage> {
                                       onPressed: _followActionInProgress ? null : () async {
                                         setState(() => _followActionInProgress = true);
                                         try {
+                                          final blockStatus = await Future.wait<dynamic>([
+                                            Supabase.instance.client
+                                                .from(kUsersCollection)
+                                                .select('blockedUsers')
+                                                .eq('uid', currentUser.id)
+                                                .maybeSingle(),
+                                            Supabase.instance.client.rpc(
+                                              'is_blocked_by_user',
+                                              params: {'p_target_uid': targetUid},
+                                            ),
+                                          ]);
+                                          final myBlocked = (blockStatus[0]?['blockedUsers'] as List?)?.cast<String>() ?? const <String>[];
+                                          if (!isFollowing && (myBlocked.contains(targetUid) || blockStatus[1] == true)) {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('You blocked this user. Please unblock them first.')),
+                                              );
+                                            }
+                                            return;
+                                          }
                                           await Supabase.instance.client.rpc('toggle_follow', params: {
                                             'p_follower_id': currentUser.id,
                                             'p_target_id': targetUid,
