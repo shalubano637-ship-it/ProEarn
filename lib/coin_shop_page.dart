@@ -138,7 +138,7 @@ class _CoinShopPageState extends State<CoinShopPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'PRO EARN VAULT',
+                              'PROSN VAULT',
                               style: TextStyle(
                                 color: Colors.white70,
                                 fontSize: 11,
