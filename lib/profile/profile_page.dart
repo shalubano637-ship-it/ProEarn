@@ -113,6 +113,10 @@ class _ProfilePageState extends State<ProfilePage> {
         Supabase.instance.client.rpc('is_blocked_by_user', params: {'p_target_uid': uid})
       else
         Future.value(false),
+      if (viewerUid != null && viewerUid != uid)
+        Supabase.instance.client.from(kUsersCollection).select('blockedUsers').eq('uid', viewerUid).maybeSingle()
+      else
+        Future.value(null),
     ]);
     final profile = results[0] as Map<String, dynamic>?;
     if (profile == null) return null;
@@ -126,7 +130,8 @@ class _ProfilePageState extends State<ProfilePage> {
       'following': relationships['following'] ?? const [],
       // A target who blocked the viewer hides relationship lists. A block
       // made by the viewer does not hide the target's followers/following.
-      'canViewRelationships': (relationships['can_view'] ?? true) && results[2] != true,
+      'canViewRelationships': results[2] != true,
+      'viewerBlockedTarget': ((results[3]?['blockedUsers'] as List?)?.cast<String>() ?? const <String>[]).contains(uid),
     };
   }
 
@@ -285,7 +290,8 @@ class _ProfilePageState extends State<ProfilePage> {
           }
 
           final bool viewerIsFollowing = currentUser != null && userFollowersList.contains(currentUser.id);
-          final bool canSeePrivateProfile = widget.isOwnProfile || !isPrivateAccount || viewerIsFollowing;
+          final bool viewerBlockedTarget = userSnapshot.data?['viewerBlockedTarget'] == true;
+          final bool canSeePrivateProfile = widget.isOwnProfile || !isPrivateAccount || viewerIsFollowing || viewerBlockedTarget;
           final bool canViewRelationships = widget.isOwnProfile ||
               (userSnapshot.data?['canViewRelationships'] != false);
 
@@ -414,10 +420,18 @@ class _ProfilePageState extends State<ProfilePage> {
                                             ),
                                           ]);
                                           final myBlocked = (blockStatus[0]?['blockedUsers'] as List?)?.cast<String>() ?? const <String>[];
-                                          if (!isFollowing && (myBlocked.contains(targetUid) || blockStatus[1] == true)) {
+                                          if (!isFollowing && myBlocked.contains(targetUid)) {
                                             if (context.mounted) {
                                               ScaffoldMessenger.of(context).showSnackBar(
                                                 const SnackBar(content: Text('You blocked this user. Please unblock them first.')),
+                                              );
+                                            }
+                                            return;
+                                          }
+                                          if (!isFollowing && blockStatus[1] == true) {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text("You can't follow this user.")),
                                               );
                                             }
                                             return;
