@@ -238,7 +238,7 @@ class _CoinShopPageState extends State<CoinShopPage> {
               context: context,
               productId: 'ad_free_monthly',
               title: 'Monthly Pass',
-              duration: '30 days',
+              duration: '1 month',
               tag: 'BEST VALUE',
             ),
             const SizedBox(height: 20),
