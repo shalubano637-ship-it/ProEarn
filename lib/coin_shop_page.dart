@@ -258,7 +258,7 @@ class _CoinShopPageState extends State<CoinShopPage> {
                   border: Border.all(color: AppColors.accent.withOpacity(.55)),
                 ),
                 child: const Text(
-                  'FIRST PURCHASE DEALS: UP TO 70% OFF\\nOriginal prices are crossed out. Choose any one discounted coin pack; later purchases use regular prices.',
+                  'FIRST PURCHASE DEALS: UP TO 70% OFF\nOriginal prices are crossed out. Choose any one discounted coin pack; later purchases use regular prices.',
                   style: TextStyle(fontWeight: FontWeight.w800, height: 1.35),
                 ),
               ),
