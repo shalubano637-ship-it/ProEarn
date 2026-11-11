@@ -85,6 +85,10 @@ class PlayBillingService {
   }
 
   Future<void> buy(String productId) async {
+    if (Supabase.instance.client.auth.currentUser == null) {
+      message.value = 'Please sign in before making a purchase.';
+      return;
+    }
     if (!available.value) {
       message.value = 'Google Play billing is not available.';
       return;
