@@ -13,6 +13,8 @@ const CORS = {
 const COINS: Record<string, number> = {
   coins_100: 100, coins_275: 275, coins_700: 700,
   coins_1700: 1700, coins_3800: 3800, coins_9200: 9200,
+  coins_100_first: 100, coins_275_first: 275, coins_700_first: 700,
+  coins_1700_first: 1700, coins_3800_first: 3800, coins_9200_first: 9200,
 };
 const SUBS = new Set(["ad_free_weekly", "ad_free_monthly"]);
 function json(body: unknown, status = 200) {
@@ -93,6 +95,14 @@ Deno.serve(async (req) => {
     const action = String(body.action ?? "verify");
     let productId = String(body.productId ?? "");
     let purchaseToken = String(body.purchaseToken ?? "");
+
+    if (action === "coin_offer_status") {
+      const { data, error } = await admin.from("play_purchase_events")
+        .select("purchase_token").eq("user_id", userId)
+        .eq("purchase_type", "coin_pack").limit(1);
+      if (error) throw error;
+      return json({ success: true, eligible: !data || data.length === 0 });
+    }
 
     if (action === "refresh_subscription") {
       const { data, error } = await admin.from("play_subscriptions")
