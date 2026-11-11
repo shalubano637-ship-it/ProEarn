@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+
+import '../ad_free_access.dart';
 import '../ad_unit_ids.dart';
 
 /// A reserved, non-overlapping banner placement for secondary screens.
@@ -17,13 +19,30 @@ class _AdBannerSlotState extends State<AdBannerSlot> {
   @override
   void initState() {
     super.initState();
+    AdFreeAccess.active.addListener(_onEntitlementChanged);
+    if (!AdFreeAccess.isActive) _loadAd();
+  }
+
+  void _onEntitlementChanged() {
+    if (AdFreeAccess.isActive) {
+      _ad?.dispose();
+      _ad = null;
+      _loaded = false;
+    } else if (_ad == null) {
+      _loadAd();
+    }
+    if (mounted) setState(() {});
+  }
+
+  void _loadAd() {
+    if (AdFreeAccess.isActive || _ad != null) return;
     _ad = BannerAd(
       adUnitId: AdUnitIds.banner,
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
-          if (!mounted) {
+          if (!mounted || AdFreeAccess.isActive) {
             ad.dispose();
             return;
           }
@@ -32,6 +51,7 @@ class _AdBannerSlotState extends State<AdBannerSlot> {
         onAdFailedToLoad: (ad, error) {
           debugPrint('Banner placement failed: $error');
           ad.dispose();
+          if (identical(_ad, ad)) _ad = null;
         },
       ),
     )..load();
@@ -39,13 +59,16 @@ class _AdBannerSlotState extends State<AdBannerSlot> {
 
   @override
   void dispose() {
+    AdFreeAccess.active.removeListener(_onEntitlementChanged);
     _ad?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_loaded || _ad == null) return const SizedBox.shrink();
+    if (AdFreeAccess.isActive || !_loaded || _ad == null) {
+      return const SizedBox.shrink();
+    }
     return SafeArea(
       top: false,
       child: SizedBox(
