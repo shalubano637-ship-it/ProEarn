@@ -63,12 +63,9 @@ class PlayBillingService {
         return;
       }
       final response = await _iap.queryProductDetails(productIds);
-      if (response.error != null) {
-        message.value = response.error!.message;
-      }
+      if (response.error != null) message.value = response.error!.message;
       products.value = {
-        for (final product in response.productDetails)
-          product.id: product,
+        for (final product in response.productDetails) product.id: product,
       };
       if (response.notFoundIDs.isNotEmpty) {
         debugPrint('Play products not created or not active: ${response.notFoundIDs}');
@@ -94,10 +91,7 @@ class PlayBillingService {
     try {
       final purchaseParam = PurchaseParam(productDetails: product);
       final launched = coinProducts.containsKey(productId)
-          ? await _iap.buyConsumable(
-              purchaseParam: purchaseParam,
-              autoConsume: false,
-            )
+          ? await _iap.buyConsumable(purchaseParam: purchaseParam, autoConsume: false)
           : await _iap.buyNonConsumable(purchaseParam: purchaseParam);
       if (!launched) message.value = 'Google Play could not start the purchase.';
     } catch (error) {
@@ -117,27 +111,21 @@ class PlayBillingService {
   }
 
   Future<void> refreshSubscription() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
+    if (Supabase.instance.client.auth.currentUser == null) return;
     try {
       await Supabase.instance.client.functions.invoke(
         'play-billing',
         body: {'action': 'refresh_subscription'},
       );
     } catch (error) {
-      // A missing Play service-account secret is a deployment setup issue.
       debugPrint('Subscription refresh skipped: $error');
     }
-    // Even if Google reports an expired subscription, this clears the local
-    // entitlement and keeps the daily coin claim idempotent.
     await claimDailySubscriptionCoins();
   }
 
   Future<void> claimDailySubscriptionCoins() async {
     try {
-      final result = await Supabase.instance.client.rpc(
-        'claim_ad_free_daily_coins',
-      );
+      final result = await Supabase.instance.client.rpc('claim_ad_free_daily_coins');
       final granted = result is Map ? result['coinsGranted'] : null;
       if (granted is num && granted > 0) {
         message.value = 'Your daily 150 subscription coins have been added.';
@@ -147,30 +135,7 @@ class PlayBillingService {
     }
   }
 
-  Future<void> _unusedOldClaimBlock() async {
-    } catch (error) {
-      // A missing Play service-account secret is a deployment setup issue.
-      debugPrint('Subscription refresh skipped: $error');
-    }
-  }
-
-  Future<void> claimDailySubscriptionCoins() async {
-    try {
-      final result = await Supabase.instance.client.rpc(
-        'claim_ad_free_daily_coins',
-      );
-      final granted = result is Map ? result['coinsGranted'] : null;
-      if (granted is num && granted > 0) {
-        message.value = 'Your daily 150 subscription coins have been added.';
-      }
-    } catch (error) {
-      debugPrint('Daily subscription coin claim failed: $error');
-    }
-  }
-
-  Future<void> _handlePurchaseUpdates(
-    List<PurchaseDetails> purchases,
-  ) async {
+  Future<void> _handlePurchaseUpdates(List<PurchaseDetails> purchases) async {
     for (final purchase in purchases) {
       if (purchase.status == PurchaseStatus.pending) {
         message.value = 'Waiting for Google Play payment confirmation…';
@@ -178,22 +143,16 @@ class PlayBillingService {
       }
       if (purchase.status == PurchaseStatus.error) {
         message.value = purchase.error?.message ?? 'Purchase failed.';
-        if (purchase.pendingCompletePurchase) {
-          await _iap.completePurchase(purchase);
-        }
+        if (purchase.pendingCompletePurchase) await _iap.completePurchase(purchase);
         continue;
       }
       if (purchase.status == PurchaseStatus.canceled) {
         message.value = 'Purchase cancelled.';
-        if (purchase.pendingCompletePurchase) {
-          await _iap.completePurchase(purchase);
-        }
+        if (purchase.pendingCompletePurchase) await _iap.completePurchase(purchase);
         continue;
       }
       if (purchase.status != PurchaseStatus.purchased &&
-          purchase.status != PurchaseStatus.restored) {
-        continue;
-      }
+          purchase.status != PurchaseStatus.restored) continue;
 
       final token = purchase.verificationData.serverVerificationData;
       if (token.isEmpty) {
@@ -218,24 +177,33 @@ class PlayBillingService {
           throw StateError(error?.toString() ?? 'Purchase verification failed.');
         }
 
-        if (subscriptionProducts.contains(purchase.productID)) {
-          await claimDailySubscriptionCoins();
-        } else {
-          final coins = coinProducts[purchase.productID] ?? 0;
-          message.value = coins > 0
-              ? '$coins coins have been added to your wallet.'
-              : 'Purchase verified successfully.';
-        }
+        // Acknowledge with the Flutter billing plugin first. Consumable coins
+        // are then consumed server-side so the same pack can be bought again.
+        if (purchase.pendingCompletePurchase) await _iap.completePurchase(purchase);
 
-        if (purchase.pendingCompletePurchase) {
-          await _iap.completePurchase(purchase);
-        }
-        if (data['consumePending'] == true) {
-          message.value = 'Purchase verified. Google Play is finishing the transaction.';
+        if (coinProducts.containsKey(purchase.productID)) {
+          final consume = await Supabase.instance.client.functions.invoke(
+            'play-billing',
+            body: {
+              'action': 'consume',
+              'productId': purchase.productID,
+              'purchaseToken': token,
+            },
+          );
+          if (consume.status < 200 || consume.status >= 300 ||
+              consume.data is! Map || consume.data['success'] != true) {
+            message.value = 'Coins added. Google Play is finishing the transaction.';
+          } else {
+            final coins = coinProducts[purchase.productID] ?? 0;
+            message.value = '$coins coins have been added to your wallet.';
+          }
+        } else {
+          await claimDailySubscriptionCoins();
+          message.value = 'Your Ad-Free Pass is active.';
         }
       } catch (error) {
-        // Leave the transaction unfinished so the store can redeliver it safely.
-        message.value = 'Payment received, but verification is pending. Please reopen the app.';
+        // Keep any unacknowledged purchase pending so Google Play can redeliver it.
+        message.value = 'Payment verification is pending. Please reopen the app.';
         debugPrint('Purchase verification pending: $error');
       } finally {
         _processingTokens.remove(token);
