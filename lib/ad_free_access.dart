@@ -35,7 +35,7 @@ class AdFreeAccess {
     try {
       final row = await client
           .from(kUsersCollection)
-          .select('"isAdFree","adFreeUntil"')
+          .select('isAdFree,adFreeUntil')
           .eq('uid', uid)
           .maybeSingle();
       _setFromRow(row);
