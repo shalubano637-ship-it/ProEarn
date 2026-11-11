@@ -156,8 +156,18 @@ Deno.serve(async (req) => {
       "SUBSCRIPTION_STATE_ACTIVE", "SUBSCRIPTION_STATE_IN_GRACE_PERIOD",
       "SUBSCRIPTION_STATE_CANCELED",
     ]);
-    if (!item || !expiry || expiry.getTime() <= Date.now() ||
-        !validStates.has(String(sub.subscriptionState))) {
+    const subscriptionIsActive = !!item && !!expiry &&
+      expiry.getTime() > Date.now() &&
+      validStates.has(String(sub.subscriptionState));
+    if (!subscriptionIsActive) {
+      if (action === "refresh_subscription") {
+        const { error: revokeError } = await admin.rpc("revoke_play_subscription", {
+          p_user_id: userId,
+          p_purchase_token: purchaseToken,
+        });
+        if (revokeError) throw revokeError;
+        return json({ success: true, active: false });
+      }
       return json({ error: "Subscription is not currently active" }, 409);
     }
     const { data, error } = await admin.rpc("record_verified_play_purchase", {
