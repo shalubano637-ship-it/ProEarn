@@ -118,6 +118,13 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
         });
       }
       if (_isBlockOn && !_isAlreadyBlocked) {
+        final myUid = Supabase.instance.client.auth.currentUser!.id;
+        // Blocking also removes the existing follow relationship.
+        await Supabase.instance.client.rpc('toggle_follow', params: {
+          'p_follower_id': myUid,
+          'p_target_id': widget.otherUid,
+          'p_follow': false,
+        });
         await Supabase.instance.client.rpc('block_user_and_hide_post', params: {
           'p_blocker_id': Supabase.instance.client.auth.currentUser!.id,
           'p_target_owner_id': widget.otherUid,
