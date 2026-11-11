@@ -948,14 +948,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                       ),
           ),
           if (_replyingTo != null) _ReplyComposerBar(message: _replyingTo!, onCancel: _cancelReply),
-          if (_iBlockedThem || _theyBlockedMe)
-            _BlockedBanner(
-              theyBlockedMe: _theyBlockedMe,
-              otherUserName: widget.otherUserName,
-              isUnblocking: _isUnblocking,
-              onUnblock: _iBlockedThem ? _unblock : null,
-            )
-          else
+          if (!(_iBlockedThem || _theyBlockedMe))
             SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -1004,6 +997,14 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
             ),
         ],
       ),
+      bottomNavigationBar: (_iBlockedThem || _theyBlockedMe)
+          ? _BlockedBanner(
+              theyBlockedMe: _theyBlockedMe,
+              otherUserName: widget.otherUserName,
+              isUnblocking: _isUnblocking,
+              onUnblock: _iBlockedThem ? _unblock : null,
+            )
+          : null,
     );
   }
 }
@@ -1163,9 +1164,11 @@ class _BlockedBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.only(bottom: 8),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         decoration: const BoxDecoration(
           color: AppColors.surface,
           border: Border(top: BorderSide(color: AppColors.border)),
@@ -1191,7 +1194,7 @@ class _BlockedBanner extends StatelessWidget {
               const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
-                height: 40,
+                height: 48,
                 child: OutlinedButton(
                   onPressed: isUnblocking ? null : onUnblock,
                   style: OutlinedButton.styleFrom(
