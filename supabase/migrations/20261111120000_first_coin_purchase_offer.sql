@@ -15,7 +15,7 @@ declare
   v_type text;
   v_inserted integer := 0;
   v_existing public.play_purchase_events%rowtype;
-  v_first_offer boolean := p_product_id like '%_first';
+  v_first_offer boolean := right(p_product_id, 6) = '_first';
 begin
   if p_user_id is null or p_purchase_token is null or length(p_purchase_token) < 20 then
     raise exception 'Invalid purchase';
