@@ -60,7 +60,13 @@ class PlayBillingService {
       },
     );
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((state) {
-      if (state.session?.user != null) unawaited(refreshSubscription());
+      if (state.session?.user != null) {
+        unawaited(refreshCoinOfferStatus());
+        unawaited(refreshSubscription());
+      } else {
+        firstCoinOfferAvailable.value = false;
+        products.value = {...products.value};
+      }
     });
     await loadProducts();
     await refreshCoinOfferStatus();
