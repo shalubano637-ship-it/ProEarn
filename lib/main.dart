@@ -21,6 +21,8 @@ import 'theme/theme.dart';
 import 'theme/theme_controller.dart';
 import 'chest_timer_service.dart';
 import 'ad_preloader.dart';
+import 'ad_free_access.dart';
+import 'play_billing_service.dart';
 
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -138,6 +140,13 @@ Future<void> _initializeDeferredServices() async {
 
   chestTimerService.initialize();
   unawaited(loadUserDataOnStartup());
+  try {
+    await AdFreeAccess.initialize();
+    unawaited(PlayBillingService.instance.initialize());
+  } catch (e, st) {
+    debugPrint('Billing entitlement initialization failed: $e');
+    Sentry.captureException(e, stackTrace: st);
+  }
   try {
     await MobileAds.instance.initialize();
     RewardedAdPreloader.preload();
