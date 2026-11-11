@@ -188,7 +188,9 @@ class _AppLifecycleObserver extends WidgetsBindingObserver {
     } else if (state == AppLifecycleState.resumed) {
       chestTimerService.resumeFromForeground();
       unawaited(AdFreeAccess.initialize());
-      unawaited(PlayBillingService.instance.refreshSubscription());
+      unawaited(PlayBillingService.instance.refreshSubscription().then((_) {
+        RewardedAdPreloader.preload();
+      }));
     }
   }
 }
