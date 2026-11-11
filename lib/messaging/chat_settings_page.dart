@@ -23,6 +23,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
 
   bool _isReportOn = false;
   bool _isBlockOn = false;
+  bool _isAlreadyBlocked = false;
   String? _selectedReason;
 
   static const List<String> _reportReasons = [
@@ -47,11 +48,16 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
       if (myUid == null) return;
       final row = await Supabase.instance.client
           .from(kUsersCollection)
-          .select('mutedUsers')
+          .select('mutedUsers,blockedUsers')
           .eq('uid', myUid)
           .maybeSingle();
       final muted = (row?['mutedUsers'] as List?)?.cast<String>() ?? [];
-      if (mounted) setState(() { _muted = muted.contains(widget.otherUid); });
+      final blocked = (row?['blockedUsers'] as List?)?.cast<String>() ?? [];
+      if (mounted) setState(() {
+        _muted = muted.contains(widget.otherUid);
+        _isAlreadyBlocked = blocked.contains(widget.otherUid);
+        _isBlockOn = _isAlreadyBlocked;
+      });
     } catch (_) {
       if (mounted) setState(() { _muted = false; });
     }
@@ -111,7 +117,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
           'source': 'chat_settings',
         });
       }
-      if (_isBlockOn) {
+      if (_isBlockOn && !_isAlreadyBlocked) {
         await Supabase.instance.client.rpc('block_user_and_hide_post', params: {
           'p_blocker_id': Supabase.instance.client.auth.currentUser!.id,
           'p_target_owner_id': widget.otherUid,
@@ -181,7 +187,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
               onChanged: (v) {
                 setState(() {
                   _isReportOn = v;
-                  if (v) _isBlockOn = true; // Report always blocks too.
+                  if (v) _isBlockOn = true; // Reporting also blocks; existing blocks are not duplicated.
                 });
               },
               activeColor: AppColors.error,
@@ -204,12 +210,14 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
             const Divider(height: 1),
             SwitchListTile(
               title: const Text("Block", style: TextStyle(color: AppColors.warning, fontWeight: FontWeight.w600)),
-              subtitle: Text(_isReportOn
-                  ? "Mandatory while reporting"
-                  : "They won't be able to message you or see your posts"),
+              subtitle: Text(_isAlreadyBlocked
+                  ? "Already blocked. This user is in your Blocked Users list."
+                  : _isReportOn
+                      ? "Mandatory while reporting"
+                      : "They won't be able to message you or see your posts"),
               secondary: const Icon(Icons.block, color: AppColors.warning),
               value: _isBlockOn,
-              onChanged: (v) {
+              onChanged: _isAlreadyBlocked ? null : (v) {
                 if (!v && _isReportOn) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("Block ko off karne ke liye pehle Report off karo.")),
@@ -233,7 +241,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
                     foregroundColor: AppColors.textPrimary,
                     shape: RoundedRectangleBorder(borderRadius: AppRadius.mdRadius),
                   ),
-                  onPressed: (_isReportOn || _isBlockOn) ? _confirmAction : null,
+                  onPressed: (_isReportOn || (_isBlockOn && !_isAlreadyBlocked)) ? _confirmAction : null,
                   child: const Text("CONFIRM", style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
