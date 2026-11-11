@@ -156,10 +156,8 @@ Deno.serve(async (req) => {
       "SUBSCRIPTION_STATE_ACTIVE", "SUBSCRIPTION_STATE_IN_GRACE_PERIOD",
       "SUBSCRIPTION_STATE_CANCELED",
     ]);
-    const subscriptionIsActive = !!item && !!expiry &&
-      expiry.getTime() > Date.now() &&
-      validStates.has(String(sub.subscriptionState));
-    if (!subscriptionIsActive) {
+    if (!item || !expiry || expiry.getTime() <= Date.now() ||
+        !validStates.has(String(sub.subscriptionState))) {
       if (action === "refresh_subscription") {
         const { error: revokeError } = await admin.rpc("revoke_play_subscription", {
           p_user_id: userId,
