@@ -38,6 +38,8 @@ The deployed `play-billing` Edge Function authenticates the signed-in user, veri
 
 ## Testing
 
+Do not test purchases from a sideloaded APK. Use a Play Store-installed internal test build signed with the same Play app signing identity.
+
 1. Upload an AAB to an internal testing track.
 2. Add tester Google accounts to the track and license testing.
 3. Install the app from the Play Store opt-in link (not by sideloading).
