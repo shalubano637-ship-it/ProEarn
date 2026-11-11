@@ -2,6 +2,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'ad_unit_ids.dart';
+import 'ad_free_access.dart';
 
 class RewardedAdPreloader {
   RewardedAdPreloader._();
@@ -12,6 +13,7 @@ class RewardedAdPreloader {
   static bool get isReady => _ad != null;
 
   static void preload() {
+    if (AdFreeAccess.isActive) return;
     if (_ad != null || _isLoading) return;
     _isLoading = true;
     RewardedAd.load(
@@ -32,6 +34,11 @@ class RewardedAdPreloader {
   }
 
   static RewardedAd? takeReadyAd() {
+    if (AdFreeAccess.isActive) {
+      _ad?.dispose();
+      _ad = null;
+      return null;
+    }
     final ad = _ad;
     _ad = null;
     preload();
