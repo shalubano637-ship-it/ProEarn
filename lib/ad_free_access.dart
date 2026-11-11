@@ -12,6 +12,7 @@ class AdFreeAccess {
   static final ValueNotifier<bool> active = ValueNotifier(false);
   static StreamSubscription<AuthState>? _authSubscription;
   static StreamSubscription<List<Map<String, dynamic>>>? _userSubscription;
+  static Timer? _expiryTimer;
 
   static bool get isActive => active.value;
 
@@ -26,6 +27,7 @@ class AdFreeAccess {
   static Future<void> _watchUser(String? uid) async {
     await _userSubscription?.cancel();
     _userSubscription = null;
+    _expiryTimer?.cancel();
     if (uid == null) {
       active.value = false;
       return;
@@ -53,12 +55,18 @@ class AdFreeAccess {
   }
 
   static void _setFromRow(Map<String, dynamic>? row) {
+    _expiryTimer?.cancel();
     final expiryValue = row?['adFreeUntil'];
     final expiry = expiryValue == null
         ? null
         : DateTime.tryParse(expiryValue.toString());
-    active.value = row?['isAdFree'] == true &&
+    final enabled = row?['isAdFree'] == true &&
         expiry != null &&
         expiry.isAfter(DateTime.now().toUtc());
+    active.value = enabled;
+    if (enabled && expiry != null) {
+      final remaining = expiry.toUtc().difference(DateTime.now().toUtc());
+      _expiryTimer = Timer(remaining, () => active.value = false);
+    }
   }
 }
