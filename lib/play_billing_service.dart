@@ -124,7 +124,30 @@ class PlayBillingService {
         'play-billing',
         body: {'action': 'refresh_subscription'},
       );
-      await claimDailySubscriptionCoins();
+    } catch (error) {
+      // A missing Play service-account secret is a deployment setup issue.
+      debugPrint('Subscription refresh skipped: $error');
+    }
+    // Even if Google reports an expired subscription, this clears the local
+    // entitlement and keeps the daily coin claim idempotent.
+    await claimDailySubscriptionCoins();
+  }
+
+  Future<void> claimDailySubscriptionCoins() async {
+    try {
+      final result = await Supabase.instance.client.rpc(
+        'claim_ad_free_daily_coins',
+      );
+      final granted = result is Map ? result['coinsGranted'] : null;
+      if (granted is num && granted > 0) {
+        message.value = 'Your daily 150 subscription coins have been added.';
+      }
+    } catch (error) {
+      debugPrint('Daily subscription coin claim failed: $error');
+    }
+  }
+
+  Future<void> _unusedOldClaimBlock() async {
     } catch (error) {
       // A missing Play service-account secret is a deployment setup issue.
       debugPrint('Subscription refresh skipped: $error');
