@@ -15,6 +15,9 @@ class PlayBillingService {
     'coins_1700': 1700,
     'coins_3800': 3800,
     'coins_9200': 9200,
+    'coins_100_first': 100, 'coins_275_first': 275,
+    'coins_700_first': 700, 'coins_1700_first': 1700,
+    'coins_3800_first': 3800, 'coins_9200_first': 9200,
   };
   static const subscriptionProducts = <String>{
     'ad_free_weekly',
@@ -27,6 +30,8 @@ class PlayBillingService {
     'coins_1700',
     'coins_3800',
     'coins_9200',
+    'coins_100_first', 'coins_275_first', 'coins_700_first',
+    'coins_1700_first', 'coins_3800_first', 'coins_9200_first',
     'ad_free_weekly',
     'ad_free_monthly',
   };
@@ -36,6 +41,7 @@ class PlayBillingService {
       ValueNotifier(<String, ProductDetails>{});
   final ValueNotifier<bool> available = ValueNotifier(false);
   final ValueNotifier<bool> loading = ValueNotifier(false);
+  final ValueNotifier<bool> firstCoinOfferAvailable = ValueNotifier(false);
   final ValueNotifier<String?> message = ValueNotifier(null);
 
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
@@ -57,6 +63,7 @@ class PlayBillingService {
       if (state.session?.user != null) unawaited(refreshSubscription());
     });
     await loadProducts();
+    await refreshCoinOfferStatus();
     await refreshSubscription();
   }
 
@@ -117,6 +124,23 @@ class PlayBillingService {
     } catch (error) {
       message.value = 'Could not restore purchases. Please try again.';
       debugPrint('Restore purchases failed: $error');
+    }
+  }
+
+  Future<void> refreshCoinOfferStatus() async {
+    if (Supabase.instance.client.auth.currentUser == null) {
+      firstCoinOfferAvailable.value = false;
+      return;
+    }
+    try {
+      final response = await Supabase.instance.client.functions.invoke(
+        'play-billing', body: {'action': 'coin_offer_status'},
+      );
+      firstCoinOfferAvailable.value = response.status == 200 &&
+          response.data is Map && response.data['eligible'] == true;
+    } catch (error) {
+      debugPrint('Coin offer status unavailable: $error');
+      firstCoinOfferAvailable.value = false;
     }
   }
 
@@ -206,6 +230,7 @@ class PlayBillingService {
           } else {
             final coins = coinProducts[purchase.productID] ?? 0;
             message.value = '$coins coins have been added to your wallet.';
+            await refreshCoinOfferStatus();
           }
         } else {
           await claimDailySubscriptionCoins();
@@ -225,6 +250,7 @@ class PlayBillingService {
     await _purchaseSubscription?.cancel();
     await _authSubscription?.cancel();
     products.dispose();
+    firstCoinOfferAvailable.dispose();
     available.dispose();
     loading.dispose();
     message.dispose();
