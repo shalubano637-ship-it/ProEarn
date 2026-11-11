@@ -263,7 +263,10 @@ class _CoinShopPageState extends State<CoinShopPage> {
                   ),
                   itemBuilder: (context, index) {
                     final pack = _packs[index];
-                    final product = products[pack.id];
+                    final isFirstOffer = _billing.firstCoinOfferAvailable.value;
+                    final purchaseId = isFirstOffer ? '${pack.id}_first' : pack.id;
+                    final product = products[purchaseId];
+                    final originalProduct = products[pack.id];
                     final highlighted = index == 0 || pack.tag == 'BEST VALUE';
                     return Container(
                       decoration: BoxDecoration(
@@ -340,6 +343,19 @@ class _CoinShopPageState extends State<CoinShopPage> {
                               ),
                             ),
                           ),
+                          if (isFirstOffer && originalProduct != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text(
+                                originalProduct.price,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  decoration: TextDecoration.lineThrough,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
                           Padding(
                             padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
                             child: SizedBox(
@@ -359,7 +375,7 @@ class _CoinShopPageState extends State<CoinShopPage> {
                                 ),
                                 onPressed: product == null || _buyingProduct != null
                                     ? null
-                                    : () => _buy(pack.id),
+                                    : () => _buy(purchaseId),
                                 child: Text(
                                   product?.price ?? 'Not available',
                                   style: const TextStyle(
