@@ -138,6 +138,7 @@ class PlayBillingService {
       );
       firstCoinOfferAvailable.value = response.status == 200 &&
           response.data is Map && response.data['eligible'] == true;
+      products.value = {...products.value};
     } catch (error) {
       debugPrint('Coin offer status unavailable: $error');
       firstCoinOfferAvailable.value = false;
