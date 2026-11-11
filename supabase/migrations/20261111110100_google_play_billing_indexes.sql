@@ -1,0 +1,1 @@
+create index if not exists play_subscription_daily_claims_purchase_token_idx on public.play_subscription_daily_claims(purchase_token);
