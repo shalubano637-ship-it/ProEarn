@@ -103,7 +103,34 @@ Deno.serve(async (req) => {
       productId = String(data.product_id);
       purchaseToken = String(data.purchase_token);
     }
+
     if (!purchaseToken || purchaseToken.length < 20) return json({ error: "Invalid purchase token" }, 400);
+
+    // Consuming is a separate authenticated step after the Flutter plugin has
+    // acknowledged the transaction. The ledger prevents token reuse by another user.
+    if (action === "consume") {
+      if (!COINS[productId]) return json({ error: "Only coin products can be consumed" }, 400);
+      const { data: ledger, error } = await admin.from("play_purchase_events")
+        .select("user_id,product_id,purchase_type")
+        .eq("purchase_token", purchaseToken).maybeSingle();
+      if (error) throw error;
+      if (!ledger || ledger.user_id !== userId || ledger.product_id !== productId ||
+          ledger.purchase_type !== "coin_pack") return json({ error: "Purchase not owned by this account" }, 403);
+      const purchase = await playApi("purchases/products/" + encodeURIComponent(productId) +
+        "/tokens/" + encodeURIComponent(purchaseToken));
+      if (Number(purchase.purchaseState) !== 0 || purchase.productId !== productId) {
+        return json({ error: "Google Play purchase is not valid" }, 409);
+      }
+      if (Number(purchase.consumptionState) !== 1) {
+        await playApi("purchases/products/" + encodeURIComponent(productId) +
+          "/tokens/" + encodeURIComponent(purchaseToken) + ":consume", "POST", {});
+      }
+      return json({ success: true, consumed: true });
+    }
+
+    if (action !== "verify" && action !== "refresh_subscription") {
+      return json({ error: "Unknown action" }, 400);
+    }
     if (!COINS[productId] && !SUBS.has(productId)) return json({ error: "Unknown product" }, 400);
 
     if (COINS[productId]) {
@@ -117,18 +144,8 @@ Deno.serve(async (req) => {
         p_order_id: purchase.orderId ?? null, p_expires_at: null,
       });
       if (error) throw error;
-      let consumePending = false;
-      if (Number(purchase.consumptionState) !== 1) {
-        try {
-          await playApi("purchases/products/" + encodeURIComponent(productId) +
-            "/tokens/" + encodeURIComponent(purchaseToken) + ":consume", "POST", {});
-        } catch (error) {
-          console.error("Play consume pending; safe to retry", error);
-          consumePending = true;
-        }
-      }
       return json({ success: true, type: "coin_pack", coins: COINS[productId],
-        duplicate: data?.duplicate === true, consumePending });
+        duplicate: data?.duplicate === true });
     }
 
     const sub = await playApi("purchases/subscriptionsv2/tokens/" + encodeURIComponent(purchaseToken));
@@ -148,18 +165,8 @@ Deno.serve(async (req) => {
       p_order_id: sub.latestOrderId ?? null, p_expires_at: expiry.toISOString(),
     });
     if (error) throw error;
-    let acknowledgementPending = false;
-    if (sub.acknowledgementState === "ACKNOWLEDGEMENT_STATE_PENDING") {
-      try {
-        await playApi("purchases/subscriptions/" + encodeURIComponent(productId) +
-          "/tokens/" + encodeURIComponent(purchaseToken) + ":acknowledge", "POST", { developerPayload: "ProSN" });
-      } catch (error) {
-        console.error("Subscription acknowledgement pending", error);
-        acknowledgementPending = true;
-      }
-    }
     return json({ success: true, type: "subscription", active: true,
-      expiresAt: expiry.toISOString(), duplicate: data?.duplicate === true, acknowledgementPending });
+      expiresAt: expiry.toISOString(), duplicate: data?.duplicate === true });
   } catch (error) {
     console.error("play-billing error", error);
     const message = error instanceof Error ? error.message : "Billing verification failed";
