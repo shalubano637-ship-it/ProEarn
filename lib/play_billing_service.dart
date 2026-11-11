@@ -21,8 +21,14 @@ class PlayBillingService {
     'ad_free_monthly',
   };
   static const productIds = <String>{
-    ...coinProducts.keys,
-    ...subscriptionProducts,
+    'coins_100',
+    'coins_275',
+    'coins_700',
+    'coins_1700',
+    'coins_3800',
+    'coins_9200',
+    'ad_free_weekly',
+    'ad_free_monthly',
   };
 
   final InAppPurchase _iap = InAppPurchase.instance;
