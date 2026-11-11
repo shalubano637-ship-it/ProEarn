@@ -92,10 +92,10 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(_isBlockOn ? "Block ${widget.otherUserName}?" : "Report ${widget.otherUserName}?"),
-        content: Text(_isBlockOn
-            ? "They won't be able to message you or see your posts anymore."
-            : "We'll review your report against ${widget.otherUserName}."),
+        title: Text(_isReportOn ? "Report ${widget.otherUserName}?" : "Block ${widget.otherUserName}?"),
+        content: Text(_isReportOn
+            ? "We'll review your report against ${widget.otherUserName}.${_isAlreadyBlocked ? " This user is already blocked." : " This user will also be blocked."}"
+            : "They won't be able to message you or see your posts anymore."),
         actions: [
           TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text("Cancel")),
           TextButton(
