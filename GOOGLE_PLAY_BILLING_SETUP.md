@@ -8,12 +8,12 @@ Create these as **one-time in-app products** (consumable). These standard IDs ca
 
 | Product ID | Coins credited | Intended India price |
 |---|---:|---:|
-| `coins_100` | 100 | ₹9 |
-| `coins_275` | 275 | ₹19 |
-| `coins_700` | 700 | ₹39 |
-| `coins_1700` | 1,700 | ₹79 |
-| `coins_3800` | 3,800 | ₹149 |
-| `coins_9200` | 9,200 | ₹299 |
+| `coins_100` | 100 | ₹29 |
+| `coins_275` | 275 | ₹49 |
+| `coins_700` | 700 | ₹99 |
+| `coins_1700` | 1,700 | ₹199 |
+| `coins_3800` | 3,800 | ₹399 |
+| `coins_9200` | 9,200 | ₹799 |
 
 Create these as **auto-renewing subscriptions**:
 
