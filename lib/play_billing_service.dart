@@ -33,6 +33,7 @@ class PlayBillingService {
   final ValueNotifier<String?> message = ValueNotifier(null);
 
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
+  StreamSubscription<AuthState>? _authSubscription;
   final Set<String> _processingTokens = <String>{};
   bool _initialized = false;
 
@@ -46,6 +47,9 @@ class PlayBillingService {
         debugPrint('Purchase stream error: $error');
       },
     );
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((state) {
+      if (state.session?.user != null) unawaited(refreshSubscription());
+    });
     await loadProducts();
     await refreshSubscription();
   }
@@ -218,6 +222,7 @@ class PlayBillingService {
 
   Future<void> dispose() async {
     await _purchaseSubscription?.cancel();
+    await _authSubscription?.cancel();
     products.dispose();
     available.dispose();
     loading.dispose();
