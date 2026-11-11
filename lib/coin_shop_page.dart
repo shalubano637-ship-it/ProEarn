@@ -248,6 +248,20 @@ class _CoinShopPageState extends State<CoinShopPage> {
               style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 12),
+            if (_billing.firstCoinOfferAvailable.value)
+              Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withOpacity(.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.accent.withOpacity(.55)),
+                ),
+                child: const Text(
+                  'FIRST PURCHASE DEALS: UP TO 70% OFF\nOriginal prices are crossed out. Choose any one discounted coin pack; later purchases use regular prices.',
+                  style: TextStyle(fontWeight: FontWeight.w800, height: 1.35),
+                ),
+              ),
             ValueListenableBuilder<Map<String, ProductDetails>>(
               valueListenable: _billing.products,
               builder: (context, products, _) {
@@ -263,7 +277,10 @@ class _CoinShopPageState extends State<CoinShopPage> {
                   ),
                   itemBuilder: (context, index) {
                     final pack = _packs[index];
-                    final product = products[pack.id];
+                    final isFirstOffer = _billing.firstCoinOfferAvailable.value;
+                    final purchaseId = isFirstOffer ? '${pack.id}_first' : pack.id;
+                    final product = products[purchaseId];
+                    final originalProduct = products[pack.id];
                     final highlighted = index == 0 || pack.tag == 'BEST VALUE';
                     return Container(
                       decoration: BoxDecoration(
@@ -340,6 +357,19 @@ class _CoinShopPageState extends State<CoinShopPage> {
                               ),
                             ),
                           ),
+                          if (isFirstOffer && originalProduct != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text(
+                                originalProduct.price,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  decoration: TextDecoration.lineThrough,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
                           Padding(
                             padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
                             child: SizedBox(
@@ -359,7 +389,7 @@ class _CoinShopPageState extends State<CoinShopPage> {
                                 ),
                                 onPressed: product == null || _buyingProduct != null
                                     ? null
-                                    : () => _buy(pack.id),
+                                    : () => _buy(purchaseId),
                                 child: Text(
                                   product?.price ?? 'Not available',
                                   style: const TextStyle(
