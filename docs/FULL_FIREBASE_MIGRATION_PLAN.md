@@ -181,3 +181,19 @@ Limitations:
 - Firestore rules remain deny-all. The new callable uses Admin SDK and can provision records despite those client rules, but app-side profile reads/ban checks remain unavailable until secure read rules or callables are added.
 - The app UI and startup are still on Supabase. Do not switch signup/login yet.
 - Terms acceptance is a client attestation; the callable verifies it matches the server-configured current version, but legal consent UI must remain explicit and auditable.
+
+
+## Trusted account-state endpoints and rules tests (2026-11-13)
+
+Added:
+- `getMyAccountState`: authenticated callable returning only the caller's ban flag and current Terms acceptance state; private email/legal metadata are not returned.
+- `acceptCurrentTerms`: authenticated callable that records explicit re-acceptance against the server-configured Terms version.
+- Flutter profile adapter now uses callable endpoints for account-state and Terms operations. Ban-check errors propagate, so callers must fail closed.
+- Firestore rules emulator tests assert that unauthenticated and authenticated clients cannot read/write `users` or `userPrivate`, cannot set moderation/admin fields, and that Admin SDK seeding is possible while client rules remain closed.
+- Added rules-unit-testing dependencies and test script under `functions/package.json`.
+
+Important:
+- The rules tests have been authored but not executed in this environment; Firebase Emulator Suite and npm install/build are not available here.
+- The rules remain deny-all intentionally. This is a safe pre-deployment posture, not the final app access policy.
+- These endpoints are scaffolding only until the Firebase project is provisioned, the current Terms version is configured, Functions are deployed, and emulator/live tests pass.
+- Do not wire the app's startup/login gates to these callables until these prerequisites and migration/rollback tests are complete.
