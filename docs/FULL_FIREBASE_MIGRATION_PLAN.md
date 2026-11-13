@@ -86,3 +86,34 @@ Use staging first. Freeze writes for final export, import, verify counts, deploy
 - Do not claim migration or APK completion until a Firebase-only build is installed and all acceptance tests pass.
 - Do not upload to Google Play; requested deliverable is a test APK only.
 - Firebase Console configuration and deployment require authorized project access. If unavailable through connected tools, provide exact manual setup steps rather than claiming those changes were made.
+
+
+## Initial file-by-file dependency inventory (verified from branch source)
+
+This is a concrete first pass, not yet a complete repository-wide inventory. Search indexing did not return code matches, so additional Dart files, Android sources, SQL migrations, and function source folders still need enumeration before implementation.
+
+| File | Current Supabase dependency | Firebase replacement required |
+|---|---|---|
+| `pubspec.yaml` | `supabase_flutter` present; Firebase Core/Messaging only | Add and pin Auth, Firestore, Storage, Functions packages only when their adapters are ready; retain Supabase temporarily |
+| `lib/main.dart` | Initializes Supabase; lifecycle calls `clear_my_conversations` RPC; app startup assumes Supabase initialization | Initialize Firebase before Firebase-backed services; replace lifecycle RPC with tested Cloud Function/Firestore operation; remove Supabase startup only at cutover |
+| `lib/auth_screen.dart` | Supabase email/password, OAuth Google, password reset, auth-state stream, email-confirmation fields, user table terms lookup/update | Firebase Auth email/password, verification, Google credential flow, reset, auth-state stream; Firestore terms acceptance; test provider linking |
+| `lib/fcm_service.dart` | Reads Supabase current user/auth stream and writes FCM token/preferences to `users` | Firebase Auth UID and Firestore token/preferences; token cleanup on sign-out/account switch |
+| `lib/service.dart` | User creation/profile/ban reads and writes; `notify` Edge Function; Supabase-backed notification helper | Firestore repositories and authenticated callable/HTTPS Functions; server-enforced ban and notification authorization |
+| `lib/play_billing_service.dart` | Supabase auth stream/current user; `play-billing` Edge Function; `claim_ad_free_daily_coins` RPC | Firebase Auth; callable Functions for offer eligibility, purchase verification, subscription refresh and daily claims; idempotent ledger |
+| `lib/ad_free_access.dart` | Supabase user-row query and realtime stream for entitlement | Firestore entitlement document/stream; server-controlled expiry and no client-granted entitlement |
+| `lib/chest_timer_service.dart` | Supabase auth, `chest_progress` reads, timer RPCs, `notify` Edge Function and notifications query | Firestore chest state and trusted Functions for start/sync/notification dedupe |
+| `lib/cloudflare_media_service.dart` | Supabase access token authorizes Cloudflare gateway; `r2-upload` Edge Function uploads to R2 | Firebase ID token validation at gateway/Function; preserve R2 unless media-retention decision explicitly migrates it |
+| `lib/models.dart` | Shared relational table-name constants and global user state; not itself a network client | Replace table constants with typed Firestore collection/repository definitions as call sites are migrated |
+| `android/app/google-services.json` | No Supabase dependency; Firebase config includes project `proearn-6acdd` and package `com.prosn.app` | Verify Firebase Console Android app, OAuth clients, SHA-1/SHA-256 and downloaded config match release signing; never infer that config alone enables Auth/Firestore |
+
+### Immediate implementation constraints
+1. Billing cannot be ported as a simple table rename. Purchase token verification, replay protection, account ownership, first-purchase offer eligibility, subscription expiry, and coin ledger writes must be server-side and idempotent.
+2. Cloudflare R2 is an active media path. Moving to Firebase Storage is a separate data migration; first replace the gateway's Supabase-token verification without changing stored media URLs.
+3. Terms acceptance and ban checks are part of the auth gate. Do not remove those checks during Firebase Auth replacement.
+4. Chest timers and notification deduplication have existing behavior and tests. Preserve their repository abstraction and add Firebase repository tests before swapping implementations.
+5. The current Firebase config contains the correct `com.prosn.app` client entry, but this does not prove that Firestore, Storage, Functions, or Firebase Auth are provisioned or deployed.
+
+## Next source files to inspect
+- Remaining `lib/**` files for PostgREST, auth, realtime, RPC, and Edge Function call sites.
+- `supabase/functions/**` and `supabase/migrations/**` for request contracts, schema, triggers, RLS, and scheduled work.
+- Android manifest/Gradle and CI workflows for package, signing, build and Firebase configuration.
