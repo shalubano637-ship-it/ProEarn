@@ -51,6 +51,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          # Keep the CI SDK aligned with this app's AGP 8.12 / Gradle 8.14 toolchain.
           flutter-version: '3.41.0'
           cache: true
 
