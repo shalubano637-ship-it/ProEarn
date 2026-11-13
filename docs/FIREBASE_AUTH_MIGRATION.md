@@ -11,8 +11,10 @@
 - `lib/main.dart` initializes Supabase and initializes Firebase only on Android. Startup, lifecycle, and deferred services currently assume Supabase Auth.
 - `lib/auth_screen.dart` uses Supabase Auth for password login, signup, Google OAuth, password reset, email verification, session restoration, and sign-out.
 - `lib/fcm_service.dart` observes Supabase Auth events and stores FCM tokens in `public.users` keyed by the current Supabase user UUID.
-- `public.users.uid` is a UUID referenced by many application tables and RPCs. The signup trigger creates that row from `auth.users.id`.
-- `android/app/google-services.json` contains a Firebase Android client for `com.prosn.app`, but the OAuth client list is empty. Google provider setup is not verified.
+- Supabase project is `mltvpfqfhbhgkejcjpmq` (healthy). `public.users.uid` is a UUID and has a foreign key to `auth.users.id`; many other tables also reference `public.users.uid`. Billing tables additionally reference `auth.users.id`. The signup trigger creates the profile row from `auth.users.id`.
+- The live database currently has 8 rows in `public.users`. Do not run a destructive auth migration or change primary keys.
+- A Firebase third-party JWT alone does not automatically create a corresponding `auth.users` row. The migration design must account for both the existing `auth.users` foreign keys and the `auth.uid()` RLS checks; simply wiring Firebase tokens into the Supabase client is insufficient.
+- The uploaded `google-services.json` has been committed on this branch. It contains a `com.prosn.app` Android OAuth client whose certificate hash matches the supplied SHA-1 fingerprint, plus a web OAuth client. The old `com.example.proearn` client entry remains in the file but is not the active app package.
 - Android manifest still contains the old Supabase OAuth callback intent filter. It must be replaced only after Firebase Google sign-in and redirect handling are configured and tested.
 
 ## Non-negotiable identity constraint
@@ -27,8 +29,8 @@ The safe target is:
 6. Keep all profile, posts, followers, messages, coins, purchases, moderation, and admin data in Supabase under the unchanged UID.
 
 ## Required setup before client cutover
-- Enable Email/Password and Google providers in Firebase Authentication.
-- Configure the Firebase Android app's SHA-1 and SHA-256 fingerprints and complete Google OAuth client setup; download the updated `google-services.json` for package `com.prosn.app`.
+- Email/Password and Google providers are reported enabled by the app owner.
+- The supplied SHA-1 is represented in the uploaded Android OAuth client. Confirm the SHA-256 is also saved under Firebase Android app settings. The uploaded `google-services.json` has been committed to `android/app/google-services.json` on this branch.
 - Provide/enable a trusted migration endpoint or Cloud Function using Firebase Admin SDK. It must validate the legacy Supabase session and credentials, enforce rate limits, preserve the existing UID, and never return admin secrets.
 - Configure Supabase Third-Party Auth for the Firebase project and verify that RLS sees the Firebase UID as `auth.uid()`.
 - Review all RLS policies, database triggers, Edge Functions, account deletion, and admin authorization under Firebase-issued tokens before enabling the new client.
@@ -43,4 +45,4 @@ The safe target is:
 6. Build and run Android tests on the branch. Merge only after all critical checks pass.
 
 ## Current status
-Branch created. No authentication code has been changed yet. A client-only switch is intentionally blocked until the trusted UID-preserving migration bridge and Firebase/Supabase provider configuration are available. This prevents locking existing users out or breaking Supabase RLS.
+Branch created and updated Android Firebase configuration committed. No authentication code has been cut over yet. A client-only switch is intentionally blocked: the live schema has foreign keys into `auth.users`, and RLS relies on UUID identity. A server-side bridge must preserve UUIDs and maintain the Supabase auth-user records before any production login switch.
