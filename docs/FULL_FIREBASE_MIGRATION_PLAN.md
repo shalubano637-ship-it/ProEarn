@@ -157,3 +157,27 @@ Important limitations:
 
 ### Next safe implementation gate
 Create a trusted Firebase provisioning function for new Auth users (profile creation, validated referral attribution, immutable moderation fields), add emulator-backed Security Rules tests, and only then connect the Firebase Auth UI. Do not deploy the deny-all rules to a live project if it would disrupt an already-used Firestore database; confirm the target Firebase project/database state first.
+
+
+## Trusted Firebase profile provisioning scaffold (2026-11-13)
+
+Added:
+- `functions/` Node 20 TypeScript Firebase Functions package and build scripts.
+- Callable `provisionMyProfile` in `functions/src/index.ts`.
+- The callable requires Firebase Auth, derives UID/email from verified auth context, validates username/referral-code format, checks the submitted Terms version against server-owned `appConfig/legal`, and creates public `users/{uid}` and private `userPrivate/{uid}` records in one Admin SDK transaction.
+- Server sets `isBanned: false`; the client cannot set that field through this endpoint. No coins, rewards, or referral credit are granted.
+- Flutter adapter now calls the callable for profile provisioning. Direct client profile creation was removed.
+- Added `cloud_functions` Flutter dependency and Firebase Functions codebase to `firebase.json`.
+
+Deployment prerequisites:
+1. Provision Firestore in the intended Firebase project.
+2. Create `appConfig/legal` with the exact current `termsVersion` before signup is enabled.
+3. Deploy the Functions code and deny-by-default Firestore rules from a trusted CI/developer environment.
+4. Add emulator tests for unauthenticated calls, invalid username, missing/old Terms version, malformed referral code, idempotent retries, and attempts to write protected moderation fields.
+5. Implement trusted profile/ban/terms read endpoints and a trusted terms re-acceptance endpoint before routing app gates to Firebase.
+
+Limitations:
+- No Firebase deployment or live test was performed. This environment has GitHub repository access but no Firebase project deployment credential/CLI execution path.
+- Firestore rules remain deny-all. The new callable uses Admin SDK and can provision records despite those client rules, but app-side profile reads/ban checks remain unavailable until secure read rules or callables are added.
+- The app UI and startup are still on Supabase. Do not switch signup/login yet.
+- Terms acceptance is a client attestation; the callable verifies it matches the server-configured current version, but legal consent UI must remain explicit and auditable.
