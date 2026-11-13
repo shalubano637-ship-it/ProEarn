@@ -117,3 +117,23 @@ This is a concrete first pass, not yet a complete repository-wide inventory. Sea
 - Remaining `lib/**` files for PostgREST, auth, realtime, RPC, and Edge Function call sites.
 - `supabase/functions/**` and `supabase/migrations/**` for request contracts, schema, triggers, RLS, and scheduled work.
 - Android manifest/Gradle and CI workflows for package, signing, build and Firebase configuration.
+
+
+## Auth-flow deep inspection (2026-11-13)
+
+The first UI cutover is blocked until profile provisioning and authorization are implemented. The inspected source confirms:
+
+- `lib/auth_screen.dart` currently signs up with Supabase Auth metadata: `userName`, `termsAcceptedAt`, `termsVersion`, and uppercase `referralCode`. A Supabase database trigger is expected to create the `public.users` row.
+- Email verification is polled by repeatedly calling Supabase `signInWithPassword`; resend uses Supabase `auth.resend(type: signup)`. Firebase must instead use the signed-in Firebase user, `sendEmailVerification()`, `reload()`, and Firebase verification state. Do not keep a password in a long-lived verification page as the new flow.
+- Password reset currently uses Supabase `resetPasswordForEmail`; Google login currently uses Supabase OAuth redirect and an auth-state listener.
+- `SplashPage` requires current terms acceptance and checks the ban flag before opening the app. The terms document is read from `users/{uid}`-equivalent data and updated on acceptance.
+- `service.dart` repairs a missing user row, loads profile fields, and checks `isBanned` through Supabase. Its current ban-check error handling fails open; the Firebase implementation must not silently treat an unavailable authorization check as an allowed account.
+- FCM currently depends on Supabase auth and the Supabase users row, so it cannot be considered migrated merely by switching Firebase Auth.
+
+### Blocking Firebase prerequisites
+
+- No `firebase.json` or `firestore.rules` was found at the repository root on this branch.
+- No Firestore package or Firestore profile repository is present yet.
+- Therefore there is no verified Firebase-side replacement for the Supabase user-creation trigger, profile document, terms acceptance, referral handling, or ban enforcement.
+- Do not enable Firebase signup/login UI until Firestore is provisioned, deny-by-default rules and trusted profile/ban provisioning are deployed, and emulator tests cover owner/other-user/admin access.
+- The current Firebase Auth adapter is isolated scaffolding only. It does not switch any app screen or alter Supabase behavior.
