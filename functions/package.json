@@ -8,13 +8,16 @@
   "scripts": {
     "build": "tsc",
     "emulate": "npm run build && firebase emulators:start --only auth,firestore,functions",
-    "deploy": "npm run build && firebase deploy --only functions"
+    "deploy": "npm run build && firebase deploy --only functions",
+    "test": "npm run build && node --test test/*.test.js"
   },
   "dependencies": {
     "firebase-admin": "^13.0.2",
     "firebase-functions": "^6.3.2"
   },
   "devDependencies": {
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.1.0"
   }
 }
