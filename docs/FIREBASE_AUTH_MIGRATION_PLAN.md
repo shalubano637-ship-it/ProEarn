@@ -1,6 +1,6 @@
 # ProSN Firebase Authentication Migration Plan
 
-Status: discovery complete; implementation and production cutover are NOT complete.
+Status: discovery complete; implementation and production cutover are NOT complete. The only Supabase Auth account was the owner's test account and has been deleted; verification confirmed zero rows in `auth.users`, `public.users`, and the three Play Billing ownership tables. There are no existing app users to migrate or claim.
 
 ## Current repository state
 
@@ -27,7 +27,7 @@ Status: discovery complete; implementation and production cutover are NOT comple
 
 - Design a private mapping table between Firebase UID and existing UUID app identity.
 - Verify Firebase ID tokens server-side using the Firebase Admin SDK.
-- Define a safe account-claiming process for existing Supabase accounts. Email equality alone must not silently merge accounts.
+- No legacy account-claiming flow is needed because the only existing Auth account was the owner's test account and has been deleted. New account provisioning still needs server-side identity verification; email equality alone must not silently merge identities.
 - Decide how Google sign-in links to an existing email/password account and how duplicate identities are rejected.
 - Add server-side profile provisioning that creates the UUID app profile only after verified identity mapping.
 - Add tests for replay, mismatched email, duplicate provider identity, and unauthorized UUID claims.
