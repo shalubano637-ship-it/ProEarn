@@ -13,9 +13,9 @@ Status: discovery complete; implementation and production cutover are NOT comple
 
 ## Non-negotiable compatibility requirements
 
-1. Preserve each existing user's UUID identity. Do not replace it with a random Firebase UID.
+1. Preserve UUID ownership. New Firebase UIDs must be server-generated UUIDs matching the app's `uid` values; do not use Firebase's default random UID for this schema.
 2. Never trust a Firebase UID, email address, or UUID supplied by the mobile client as proof of identity.
-3. Resolve Firebase identity to the stable app UUID only through a server-verified mapping.
+3. Keep the Firebase UID itself UUID-shaped and equal to the stable app UUID, or comprehensively replace every `auth.uid()`/UUID ownership assumption with a verified mapping. The preferred option for this schema is a server-created Firebase user whose UID is a server-generated UUID.
 4. Preserve existing profile, posts, follows, moderation state, admin mapping, and Play Billing ownership.
 5. Keep account deletion working for Firebase-authenticated requests and ensure both identity records are handled correctly.
 6. Ensure Firebase ID tokens include the Supabase `role: authenticated` claim and Supabase validates the configured Firebase project.
@@ -71,3 +71,8 @@ Status: discovery complete; implementation and production cutover are NOT comple
 ## Current cutover decision
 
 Do not merge a schema change or ship an APK claiming Firebase Auth is active yet. The current app still uses Supabase Auth. The earlier draft that detached foreign keys was removed because it would be unsafe without the identity bridge and full application changes.
+
+
+## Implementation decision after code inspection
+
+The current `public.users.uid` and billing ownership columns are UUIDs, and existing application code uses the auth user ID directly in profile queries and writes. Supabase's `auth.uid()` also returns a UUID. A plain Firebase client signup (which creates a random Firebase UID) is therefore not a safe drop-in: it can fail UUID casts and break ownership checks. The implementation must provision UUID-shaped Firebase UIDs server-side before enabling Firebase tokens in the Supabase client. Do not add `firebase_auth` to the app or switch the Supabase `accessToken` callback until that provisioning path and Google custom-token flow are implemented and tested.
