@@ -25,12 +25,14 @@ Status: discovery complete; implementation and production cutover are NOT comple
 
 ### Phase 1: identity bridge (server-side first)
 
-- Design a private mapping table between Firebase UID and existing UUID app identity.
-- Verify Firebase ID tokens server-side using the Firebase Admin SDK.
-- No legacy account-claiming flow is needed because the only existing Auth account was the owner's test account and has been deleted. New account provisioning still needs server-side identity verification; email equality alone must not silently merge identities.
-- Decide how Google sign-in links to an existing email/password account and how duplicate identities are rejected.
-- Add server-side profile provisioning that creates the UUID app profile only after verified identity mapping.
-- Add tests for replay, mismatched email, duplicate provider identity, and unauthorized UUID claims.
+- Use the Firebase UID itself as the stable app UUID. A separate mapping table is not part of the selected design unless implementation discovers a hard blocker.
+- A trusted server endpoint must generate the UUID; the mobile client must never choose or submit the UID that becomes authoritative.
+- Use Firebase Admin SDK to create the Firebase user with that server-generated UUID and assign the Supabase-compatible `role: authenticated` custom claim.
+- Email/password signup: validate the request server-side, create the Firebase account with the server-generated UUID, then let the client sign in with Firebase credentials. Handle partial failure and duplicate email without creating orphaned identities.
+- Google sign-in: verify the Google ID token server-side, including signature, expiry, issuer, and configured OAuth audience. Resolve an existing Firebase identity or create one with a server-generated UUID, then mint a Firebase custom token for that UID. Never trust a client-supplied email or UID.
+- Decide and implement safe provider linking. A verified matching email alone must not silently merge accounts unless the server proves control of both provider identities under an explicit linking flow.
+- Create the `public.users` profile only after Supabase accepts the Firebase ID token and RLS identity is established. Preserve username, terms acceptance, referral attribution, and existing validation rules.
+- Add tests for duplicate email, unverified Google email, wrong OAuth audience, expired/replayed tokens, partial provisioning failure, and unauthorized UUID claims.
 
 ### Phase 2: Firebase client authentication
 
