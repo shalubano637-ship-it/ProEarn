@@ -81,3 +81,17 @@ Do not merge a schema change or ship an APK claiming Firebase Auth is active yet
 ## Implementation decision after code inspection
 
 The current `public.users.uid` and billing ownership columns are UUIDs, and existing application code uses the auth user ID directly in profile queries and writes. Supabase's `auth.uid()` also returns a UUID. A plain Firebase client signup (which creates a random Firebase UID) is therefore not a safe drop-in: it can fail UUID casts and break ownership checks. The implementation must provision UUID-shaped Firebase UIDs server-side before enabling Firebase tokens in the Supabase client. Do not add `firebase_auth` to the app or switch the Supabase `accessToken` callback until that provisioning path and Google custom-token flow are implemented and tested.
+
+
+## Live Supabase security-advisor baseline (2026-11-13)
+
+The hosted project's Security Advisor was queried before any auth cutover. It currently reports:
+
+- 17 public tables with RLS enabled but no policies. These may be intentionally service-role-only, but each must be checked against actual client and Edge Function access before changing grants or adding policies.
+- `public.public_profiles` is flagged as a SECURITY DEFINER view. Review whether it should use `security_invoker = true` and confirm its intended public profile visibility.
+- 9 SECURITY DEFINER functions are executable by `anon`.
+- 79 SECURITY DEFINER functions are executable by `authenticated`.
+
+These advisor findings are not proof that every function is exploitable: SECURITY DEFINER can be intentional when its body validates caller identity and ownership. Do not mass-revoke or convert them. Before Firebase cutover, review function bodies and arguments for caller-controlled user IDs, enforce `auth.uid()` ownership checks, set a safe `search_path`, and narrow EXECUTE grants to the required roles. In particular, audit functions that accept a user UUID as an argument (for example follow, like, block, gift, reward, and scheduled chest operations).
+
+**Migration gate:** do not switch client auth or apply production RLS/grant changes until the 17 table access patterns, the public_profiles view, and SECURITY DEFINER function authorization have been individually reviewed and regression-tested with Firebase JWTs and anonymous requests.
