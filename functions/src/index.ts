@@ -36,6 +36,13 @@ export const provisionMyProfile = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "Referral code format is invalid.");
   }
 
+  const termsRef = db.collection("appConfig").doc("legal");
+  const termsSnapshot = await termsRef.get();
+  const currentTermsVersion = String(termsSnapshot.data()?.termsVersion ?? "").trim();
+  if (!currentTermsVersion || termsVersion !== currentTermsVersion) {
+    throw new HttpsError("failed-precondition", "Terms have changed. Review and accept the current version.");
+  }
+
   const publicRef = db.collection("users").doc(uid);
   const privateRef = db.collection("userPrivate").doc(uid);
 
