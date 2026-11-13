@@ -137,3 +137,23 @@ The first UI cutover is blocked until profile provisioning and authorization are
 - Therefore there is no verified Firebase-side replacement for the Supabase user-creation trigger, profile document, terms acceptance, referral handling, or ban enforcement.
 - Do not enable Firebase signup/login UI until Firestore is provisioned, deny-by-default rules and trusted profile/ban provisioning are deployed, and emulator tests cover owner/other-user/admin access.
 - The current Firebase Auth adapter is isolated scaffolding only. It does not switch any app screen or alter Supabase behavior.
+
+
+## Firebase profile adapter scaffold (2026-11-13)
+
+Added on the migration branch:
+- `cloud_firestore: ^5.6.12` dependency.
+- `lib/firebase_profile_service.dart` with isolated profile ensure/load, current-terms read/write, and ban lookup methods.
+- `firebase.json`, `firestore.rules`, and `firestore.indexes.json` so Firestore rules/index configuration has an explicit deployment manifest.
+- Firestore rules currently deny every client read/write. This is intentional fail-closed scaffolding, not production-ready rules.
+
+Important limitations:
+- The new profile adapter is not called by app screens or startup. Supabase remains the active auth/database path.
+- Profile creation currently uses a client transaction and is blocked by the deny-all rules until a reviewed provisioning design is implemented. It must not be treated as a trusted replacement for the Supabase signup trigger.
+- `pendingReferralCode` is only an untrusted submitted value; a trusted backend must validate and apply referral attribution.
+- Ban reads must fail closed at the app gate; a missing profile or Firestore error must never be interpreted as an unbanned account.
+- Email is currently included in the private profile draft. Before enabling access, split public and private profile fields and write rules that prevent other users from reading private fields.
+- No Firebase CLI deployment, Firestore database provisioning, emulator tests, Flutter dependency resolution, analyzer, APK build, or live Firebase Auth test has been performed in this step.
+
+### Next safe implementation gate
+Create a trusted Firebase provisioning function for new Auth users (profile creation, validated referral attribution, immutable moderation fields), add emulator-backed Security Rules tests, and only then connect the Firebase Auth UI. Do not deploy the deny-all rules to a live project if it would disrupt an already-used Firestore database; confirm the target Firebase project/database state first.
