@@ -1,6 +1,6 @@
 # ProSN Android release signing
 
-The Android package identifier is currently `com.example.proearn` and matches
+The Android package identifier is currently `com.prosn.app` and matches
 `android/app/google-services.json`. Keep `namespace` and `applicationId`
 aligned. Do not change the application ID after the first Play Store upload:
 Google Play treats a different application ID as a different app.
@@ -8,7 +8,7 @@ Google Play treats a different application ID as a different app.
 ## Confirm the Play package and version
 
 Before the first upload, confirm the intended package ID in Play Console. The current
-ID is `com.example.proearn`, matching `google-services.json`; keep it unchanged
+ID is `com.prosn.app`, matching `google-services.json`; keep it unchanged
 if that is already the app's Play package. If this app has never been uploaded,
 choose its final unique package ID before the first upload and regenerate the
 matching Firebase Android app configuration. Also set the `pubspec.yaml` build
