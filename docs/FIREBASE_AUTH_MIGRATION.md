@@ -92,6 +92,8 @@ Do not call the migration complete or build a release APK until all pass:
 - Android Firebase config is committed.
 - Supabase test accounts have been deleted as requested.
 - Firebase project ID confirmed: `proearn-6acdd`.
+- Owner confirmed the Firebase project `proearn-6acdd` has been added in Supabase Authentication > Third-Party Auth.
+- Owner confirmed the Firebase Admin SDK service-account JSON was saved in Supabase Edge Function Secrets under `FIREBASE_SERVICE_ACCOUNT_JSON`. Secret values are not readable through this workflow, so the name/value cannot be independently inspected.
 - No Flutter auth code has been switched yet.
 - No production database constraints have been changed.
-- The server-side UUID provisioning layer and Supabase third-party integration are still prerequisites. A client-only cutover would break identity/RLS and is intentionally not being made.
+- Next implementation step: build and validate a trusted UUID provisioning flow, then migrate Flutter auth and update account deletion. A client-only cutover would break identity/RLS and is intentionally not being made.
