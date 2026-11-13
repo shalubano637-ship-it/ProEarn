@@ -1,19 +1,14 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-/// Firebase profile adapter. Profile creation is performed by a trusted
-/// callable function; clients never write moderation or private account data.
+/// Firebase profile adapter. Sensitive account state is returned only by
+/// authenticated callable functions; clients never write moderation fields.
 class FirebaseProfileService {
   FirebaseProfileService._();
 
   static final FirebaseProfileService instance = FirebaseProfileService._();
 
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseFunctions _functions = FirebaseFunctions.instance;
-
-  DocumentReference<Map<String, dynamic>> _userDocument(String uid) =>
-      _db.collection('users').doc(uid);
 
   Future<void> ensureProfile({
     required User user,
@@ -35,26 +30,27 @@ class FirebaseProfileService {
     });
   }
 
-  /// Requires collection-specific read rules to be deployed before use.
-  Future<Map<String, dynamic>?> loadProfile(String uid) async {
-    final snapshot = await _userDocument(uid).get();
-    return snapshot.data();
+  /// Reads only the current user's ban and Terms status from a trusted endpoint.
+  Future<Map<String, dynamic>> loadAccountState() async {
+    if (FirebaseAuth.instance.currentUser == null) {
+      throw StateError('Sign in before loading account state.');
+    }
+    final result = await _functions.httpsCallable('getMyAccountState').call();
+    return Map<String, dynamic>.from(result.data as Map);
   }
 
-  /// Requires a trusted profile read endpoint or reviewed read rules.
   Future<bool> hasAcceptedCurrentTerms({
     required String uid,
     required String termsVersion,
   }) async {
-    final snapshot = await _db.collection('userPrivate').doc(uid).get();
-    final data = snapshot.data();
-    return data != null &&
-        data['termsAcceptedAt'] != null &&
-        data['termsVersion'] == termsVersion;
+    if (FirebaseAuth.instance.currentUser?.uid != uid) {
+      throw StateError('Cannot inspect another account.');
+    }
+    final state = await loadAccountState();
+    return state['termsAccepted'] == true &&
+        state['currentTermsVersion'] == termsVersion;
   }
 
-  /// Terms changes must be recorded through a trusted callable endpoint.
-  /// Direct client writes are intentionally not allowed by current rules.
   Future<void> acceptCurrentTerms({
     required String uid,
     required String termsVersion,
@@ -62,18 +58,25 @@ class FirebaseProfileService {
     if (FirebaseAuth.instance.currentUser?.uid != uid) {
       throw StateError('Cannot accept terms for another account.');
     }
-    throw UnimplementedError(
-      'A trusted terms-acceptance callable must be deployed before this operation is enabled.',
-    );
+    final result = await _functions.httpsCallable('acceptCurrentTerms').call({
+      'accepted': true,
+    });
+    final data = Map<String, dynamic>.from(result.data as Map);
+    if (data['termsVersion'] != termsVersion) {
+      throw StateError('Terms version changed. Review the current Terms again.');
+    }
   }
 
-  /// A ban check must never fail open. Direct reads require reviewed rules;
-  /// errors and missing profiles are intentionally propagated to the caller.
+  /// Fails closed: callable errors are propagated and cannot be interpreted
+  /// as an unbanned account.
   Future<bool> isBanned(String uid) async {
-    final snapshot = await _userDocument(uid).get();
-    if (!snapshot.exists) {
-      throw StateError('Firebase profile is missing; access cannot be verified.');
+    if (FirebaseAuth.instance.currentUser?.uid != uid) {
+      throw StateError('Cannot check ban status for another account.');
     }
-    return snapshot.data()?['isBanned'] == true;
+    final state = await loadAccountState();
+    if (state['isBanned'] is! bool) {
+      throw StateError('Ban status is unavailable; access cannot be verified.');
+    }
+    return state['isBanned'] as bool;
   }
 }
