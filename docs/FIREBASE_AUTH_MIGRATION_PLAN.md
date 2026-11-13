@@ -44,6 +44,9 @@ Status: discovery complete; implementation and production cutover are NOT comple
 
 ### Phase 3: dependent services
 
+- Repository review confirms the client auth identity is consumed directly by profile loading, profile creation, FCM sync, ban checks, and lifecycle RPCs. These call sites must be switched together, not piecemeal.
+- The live Supabase project currently has 12 active Edge Functions: `imgbb-upload`, `notify`, `request-payout`, `verify-otp`, `send-otp`, `delete-account`, `delete-account-request`, `publish-app-update`, `voice-message`, `r2-upload`, `admin-moderate-report`, and `play-billing`. Audit each function for bearer-token validation, `auth.uid()` assumptions, and service-role authorization before cutover.
+- `notify` currently resolves callers with Supabase `auth.getUser()`, and `delete-account` does the same before deleting the Supabase Auth user. Both are known migration blockers; do not change their live deployments until Firebase token verification and deletion semantics are tested.
 - Update profile loading and creation to use the server-resolved stable UUID.
 - Update FCM token sync and auth-state listeners.
 - Update every Edge Function that currently assumes a Supabase Auth user.
