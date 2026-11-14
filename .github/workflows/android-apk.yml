@@ -1,4 +1,4 @@
-name: Android APK
+name: Android APK and AAB
 
 'on':
   workflow_dispatch:
@@ -33,8 +33,8 @@ permissions:
   contents: read
 
 jobs:
-  build-debug-apk:
-    name: Build debug APK
+  build-android:
+    name: Build Android APK and AAB
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -51,7 +51,6 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          # Keep the CI SDK aligned with this app's AGP 8.12 / Gradle 8.14 toolchain.
           flutter-version: '3.44.0'
           cache: true
 
@@ -78,13 +77,13 @@ jobs:
       - name: Run Flutter tests
         run: flutter test --reporter expanded
 
-      - name: Build APK
+      - name: Build debug APK
         run: flutter build apk --debug --verbose
 
-      - name: Upload direct APK artifact
+      - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ProEarn-Debug-APK
+          name: ProSN-Debug-APK
           path: build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 14
@@ -105,7 +104,6 @@ jobs:
           storeFile=upload-keystore.jks
           storePassword=$KEYSTORE_PASSWORD
           keyAlias=$KEY_ALIAS
-          # PKCS12 uses the keystore password for the private-key entry as well.
           keyPassword=$KEYSTORE_PASSWORD
           EOF
 
@@ -119,5 +117,18 @@ jobs:
         with:
           name: ProSN-Signed-Release-APK
           path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Build signed Android App Bundle
+        if: github.event_name != 'pull_request'
+        run: flutter build appbundle --release --verbose
+
+      - name: Upload signed AAB artifact for Play Console
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ProSN-Internal-Testing-AAB
+          path: build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 14
