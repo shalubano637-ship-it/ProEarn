@@ -215,7 +215,11 @@ class PlayBillingService {
         if (response.status < 200 || response.status >= 300 ||
             data is! Map || data['success'] != true) {
           final error = data is Map ? data['error'] : null;
-          throw StateError(error?.toString() ?? 'Purchase verification failed.');
+          final diagnostic = data is Map
+              ? 'HTTP ${response.status}: ${error ?? data}'
+              : 'HTTP ${response.status}: ${data ?? 'Empty server response'}';
+          debugPrint('Play purchase verification rejected: productId=${purchase.productID}, status=${response.status}, response=$data');
+          throw StateError(diagnostic);
         }
 
         // Acknowledge with the Flutter billing plugin first. Consumable coins
@@ -245,8 +249,8 @@ class PlayBillingService {
         }
       } catch (error) {
         // Keep any unacknowledged purchase pending so Google Play can redeliver it.
-        message.value = 'Payment verification is pending. Please reopen the app.';
-        debugPrint('Purchase verification pending: $error');
+        message.value = 'Payment verification failed: ${error.toString()}';
+        debugPrint('Purchase verification pending: productId=${purchase.productID}; error=$error');
       } finally {
         _processingTokens.remove(token);
       }
