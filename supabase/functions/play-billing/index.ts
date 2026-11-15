@@ -146,8 +146,24 @@ Deno.serve(async (req) => {
     if (COINS[productId]) {
       const purchase = await playApi("purchases/products/" + encodeURIComponent(productId) +
         "/tokens/" + encodeURIComponent(purchaseToken));
-      if (Number(purchase.purchaseState) !== 0 || purchase.productId !== productId) {
-        return json({ error: "Google Play has not confirmed this purchase" }, 409);
+      const purchaseState = Number(purchase.purchaseState);
+      const returnedProductId = String(purchase.productId ?? "");
+      if (purchaseState !== 0 || returnedProductId !== productId) {
+        // Safe diagnostics only: never log or return the purchase token.
+        console.warn("Google Play coin purchase rejected", {
+          productId,
+          returnedProductId,
+          purchaseState: Number.isFinite(purchaseState) ? purchaseState : null,
+          orderIdPresent: Boolean(purchase.orderId),
+        });
+        return json({
+          error: "Google Play has not confirmed this purchase",
+          diagnostic: {
+            requestedProductId: productId,
+            returnedProductId,
+            purchaseState: Number.isFinite(purchaseState) ? purchaseState : null,
+          },
+        }, 409);
       }
       const { data, error } = await admin.rpc("record_verified_play_purchase", {
         p_user_id: userId, p_product_id: productId, p_purchase_token: purchaseToken,
