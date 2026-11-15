@@ -15,9 +15,6 @@ class PlayBillingService {
     'coins_1700': 1700,
     'coins_3800': 3800,
     'coins_9200': 9200,
-    'coins_100_first': 100, 'coins_275_first': 275,
-    'coins_700_first': 700, 'coins_1700_first': 1700,
-    'coins_3800_first': 3800, 'coins_9200_first': 9200,
   };
   static const subscriptionProducts = <String>{
     'ad_free_weekly',
@@ -30,8 +27,6 @@ class PlayBillingService {
     'coins_1700',
     'coins_3800',
     'coins_9200',
-    'coins_100_first', 'coins_275_first', 'coins_700_first',
-    'coins_1700_first', 'coins_3800_first', 'coins_9200_first',
     'ad_free_weekly',
     'ad_free_monthly',
   };
