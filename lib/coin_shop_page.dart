@@ -248,7 +248,7 @@ class _CoinShopPageState extends State<CoinShopPage> {
               style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 12),
-            if (_billing.firstCoinOfferAvailable.value)
+            if (false && _billing.firstCoinOfferAvailable.value)
               Container(
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(12),
@@ -278,7 +278,9 @@ class _CoinShopPageState extends State<CoinShopPage> {
                   itemBuilder: (context, index) {
                     final pack = _packs[index];
                     final isFirstOffer = _billing.firstCoinOfferAvailable.value;
-                    final purchaseId = isFirstOffer ? '${pack.id}_first' : pack.id;
+                    // Play Console offers belong to the regular product ID.
+                    // Do not query synthetic *_first IDs: they are not Play products.
+                    final purchaseId = pack.id;
                     final product = products[purchaseId];
                     final originalProduct = products[pack.id];
                     final highlighted = index == 0 || pack.tag == 'BEST VALUE';
@@ -357,7 +359,7 @@ class _CoinShopPageState extends State<CoinShopPage> {
                               ),
                             ),
                           ),
-                          if (isFirstOffer && originalProduct != null)
+                          if (false && isFirstOffer && originalProduct != null)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 4),
                               child: Text(
