@@ -2,7 +2,7 @@ name: proearn
 description: ProSN — AI content social platform with reels feed and an in-app coin/gift economy.
 publish_to: 'none'
 
-version: 0.0.1+3
+version: 0.0.1+4
 environment:
   sdk: ^3.0.0
 
