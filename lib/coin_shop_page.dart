@@ -22,7 +22,7 @@ class _CoinShopPageState extends State<CoinShopPage> {
   String? _buyingProduct;
 
   static const _packs = <({String id, int coins, String tag})>[
-    (id: 'coins_100', coins: 100, tag: 'FIRST BUY'),
+    (id: 'coins_100', coins: 100, tag: ''),
     (id: 'coins_275', coins: 275, tag: ''),
     (id: 'coins_700', coins: 700, tag: 'POPULAR'),
     (id: 'coins_1700', coins: 1700, tag: ''),
@@ -248,20 +248,6 @@ class _CoinShopPageState extends State<CoinShopPage> {
               style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 12),
-            if (false && _billing.firstCoinOfferAvailable.value)
-              Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.accent.withOpacity(.12),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.accent.withOpacity(.55)),
-                ),
-                child: const Text(
-                  'FIRST PURCHASE DEALS: UP TO 70% OFF\nOriginal prices are crossed out. Choose any one discounted coin pack; later purchases use regular prices.',
-                  style: TextStyle(fontWeight: FontWeight.w800, height: 1.35),
-                ),
-              ),
             ValueListenableBuilder<Map<String, ProductDetails>>(
               valueListenable: _billing.products,
               builder: (context, products, _) {
@@ -277,12 +263,8 @@ class _CoinShopPageState extends State<CoinShopPage> {
                   ),
                   itemBuilder: (context, index) {
                     final pack = _packs[index];
-                    final isFirstOffer = _billing.firstCoinOfferAvailable.value;
-                    // Play Console offers belong to the regular product ID.
-                    // Do not query synthetic *_first IDs: they are not Play products.
                     final purchaseId = pack.id;
                     final product = products[purchaseId];
-                    final originalProduct = products[pack.id];
                     final highlighted = index == 0 || pack.tag == 'BEST VALUE';
                     return Container(
                       decoration: BoxDecoration(
@@ -359,19 +341,6 @@ class _CoinShopPageState extends State<CoinShopPage> {
                               ),
                             ),
                           ),
-                          if (false && isFirstOffer && originalProduct != null)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: Text(
-                                originalProduct.price,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  decoration: TextDecoration.lineThrough,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
                           Padding(
                             padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
                             child: SizedBox(
