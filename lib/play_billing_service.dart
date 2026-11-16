@@ -36,7 +36,6 @@ class PlayBillingService {
       ValueNotifier(<String, ProductDetails>{});
   final ValueNotifier<bool> available = ValueNotifier(false);
   final ValueNotifier<bool> loading = ValueNotifier(false);
-  final ValueNotifier<bool> firstCoinOfferAvailable = ValueNotifier(false);
   final ValueNotifier<String?> message = ValueNotifier(null);
 
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
@@ -56,15 +55,11 @@ class PlayBillingService {
     );
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((state) {
       if (state.session?.user != null) {
-        unawaited(refreshCoinOfferStatus());
         unawaited(refreshSubscription());
       } else {
-        firstCoinOfferAvailable.value = false;
-        products.value = {...products.value};
       }
     });
     await loadProducts();
-    await refreshCoinOfferStatus();
     await refreshSubscription();
   }
 
@@ -125,24 +120,6 @@ class PlayBillingService {
     } catch (error) {
       message.value = 'Could not restore purchases. Please try again.';
       debugPrint('Restore purchases failed: $error');
-    }
-  }
-
-  Future<void> refreshCoinOfferStatus() async {
-    if (Supabase.instance.client.auth.currentUser == null) {
-      firstCoinOfferAvailable.value = false;
-      return;
-    }
-    try {
-      final response = await Supabase.instance.client.functions.invoke(
-        'play-billing', body: {'action': 'coin_offer_status'},
-      );
-      firstCoinOfferAvailable.value = response.status == 200 &&
-          response.data is Map && response.data['eligible'] == true;
-      products.value = {...products.value};
-    } catch (error) {
-      debugPrint('Coin offer status unavailable: $error');
-      firstCoinOfferAvailable.value = false;
     }
   }
 
@@ -236,7 +213,6 @@ class PlayBillingService {
           } else {
             final coins = coinProducts[purchase.productID] ?? 0;
             message.value = '$coins coins have been added to your wallet.';
-            await refreshCoinOfferStatus();
           }
         } else {
           await claimDailySubscriptionCoins();
@@ -256,7 +232,6 @@ class PlayBillingService {
     await _purchaseSubscription?.cancel();
     await _authSubscription?.cancel();
     products.dispose();
-    firstCoinOfferAvailable.dispose();
     available.dispose();
     loading.dispose();
     message.dispose();
