@@ -253,6 +253,26 @@ class _SecurityPageState extends State<SecurityPage> {
   }
 
   Future<void> handleLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Log Out?"),
+        content: const Text("Are you sure you want to log out of your ProSN account?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text("Log Out", style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
     try {
       await FcmService.signOutAndUnlink();
       resetLocalUserState();
