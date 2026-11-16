@@ -10,12 +10,12 @@ class AppColors {
 
   static const List<Color> accentGradient = [Color(0xFFF4D976), Color(0xFFD4AF37), Color(0xFF9C7F2B)];
 
-  static const Color background = Color(0xFF171A27); // deep slate base for dark clay surfaces
-  static const Color surface = Color(0xFF222638); // softly raised clay cards
-  static const Color surfaceElevated = Color(0xFF292E43); // elevated clay sheets and dialogs
-  static const Color surfaceHighlight = Color(0xFF343A50); // selected clay surface
-  static const Color divider = Color(0xFF343A50);
-  static const Color border = Color(0xFF353B51);
+  static const Color background = Color(0xFF000000); // pure black dark theme
+  static const Color surface = Color(0xFF000000); // pure black surfaces
+  static const Color surfaceElevated = Color(0xFF000000); // pure black elevated surfaces
+  static const Color surfaceHighlight = Color(0xFF000000); // pure black highlighted surfaces
+  static const Color divider = Color(0xFF292929);
+  static const Color border = Color(0xFF292929);
 
   static const Color backgroundLight = Color(0xFFEEF0F8);
   static const Color surfaceLight = Color(0xFFE9ECF6);
