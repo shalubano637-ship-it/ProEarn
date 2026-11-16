@@ -22,20 +22,7 @@ Create these as **auto-renewing subscriptions**:
 | `ad_free_weekly` | 1 week | ₹99 |
 | `ad_free_monthly` | 1 month | ₹299 |
 
-Also create six additional **one-time consumable** products for the account's single first coin purchase. Set their India prices to the discounted amounts shown in the app:
-
-| First-purchase product ID | Coins credited | First-purchase price | Regular product ID / price |
-|---|---:|---:|---|
-| `coins_100_first` | 100 | ₹9 | `coins_100` / ₹29 |
-| `coins_275_first` | 275 | ₹19 | `coins_275` / ₹49 |
-| `coins_700_first` | 700 | ₹39 | `coins_700` / ₹99 |
-| `coins_1700_first` | 1,700 | ₹79 | `coins_1700` / ₹199 |
-| `coins_3800_first` | 3,800 | ₹149 | `coins_3800` / ₹399 |
-| `coins_9200_first` | 9,200 | ₹299 | `coins_9200` / ₹799 |
-
-The app queries both sets. Before any coin pack is purchased, it shows the `_first` product price and crosses out the regular product price. After the first verified coin purchase, it shows only regular products. The server checks eligibility and rejects a second discounted purchase, including simultaneous purchase attempts. A reinstall does not reset eligibility.
-
-Use these exact product IDs. Configure the subscription base plans as auto-renewing. Activate all products and make them available in India. Google Play may require a published app bundle and tester accounts before products can be queried.
+Configure only the six regular coin products and the two subscription products listed above. Use these exact product IDs. Activate all products and make them available in India. Google Play may require a published app bundle and tester accounts before products can be queried.
 
 ## Google Play Developer API credentials
 
@@ -62,8 +49,6 @@ Do not test purchases from a sideloaded APK. Use a Play Store-installed internal
 ## Important behavior
 
 - Coin packs are consumable and are granted only once per unique Google purchase token.
-- Each account may redeem exactly one first-purchase coin offer across all six pack sizes. The first successful verified coin purchase consumes the offer; every later coin pack uses its regular product ID.
-- Play Console must have all six `_first` products created and active at the discounted India prices above, as well as all six regular products at the original prices.
 - Weekly/monthly passes are auto-renewing Google Play subscriptions.
 - Active passes suppress banner, native, and in-feed reel ads.
 - An active pass can claim 150 coins once per India calendar day.
