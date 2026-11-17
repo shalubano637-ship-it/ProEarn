@@ -14,6 +14,7 @@ import 'package:share_plus/share_plus.dart';
 import '../models.dart';
 import '../service.dart';
 import '../ad_unit_ids.dart';
+import '../ad_free_access.dart';
 import '../social_feed.dart';
 import '../theme/theme.dart';
 import '../social/follow_list_page.dart';
@@ -48,16 +49,32 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
+    AdFreeAccess.active.addListener(_handleAdEntitlementChanged);
     _loadAds();
   }
 
+  void _handleAdEntitlementChanged() {
+    if (AdFreeAccess.isActive) {
+      _bannerAd?.dispose();
+      _bannerAd = null;
+      if (mounted) setState(() => _isAdLoaded = false);
+    } else if (_bannerAd == null) {
+      _loadAds();
+    }
+  }
+
   void _loadAds() {
+    if (AdFreeAccess.isActive || _bannerAd != null) return;
     _bannerAd = BannerAd(
       adUnitId: AdUnitIds.banner,
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
+          if (!mounted || AdFreeAccess.isActive) {
+            ad.dispose();
+            return;
+          }
           setState(() {
             _isAdLoaded = true;
           });
@@ -73,8 +90,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   void dispose() {
+    AdFreeAccess.active.removeListener(_handleAdEntitlementChanged);
     _bannerAd?.dispose();
-        super.dispose();
+    super.dispose();
   }
 
   Future<void> deleteSelectedPosts() async {
@@ -538,7 +556,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
 
-                if (canSeePrivateProfile && _isAdLoaded && _bannerAd != null)
+                if (!AdFreeAccess.isActive && canSeePrivateProfile && _isAdLoaded && _bannerAd != null)
                   Container(
                     alignment: Alignment.center,
                     width: _bannerAd!.size.width.toDouble(),
