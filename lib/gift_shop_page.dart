@@ -30,43 +30,100 @@ class _GiftShopPageState extends State<GiftShopPage> {
       .eq('isActive', true)
       .order('priceCoins', ascending: true);
 
+  Future<double> _loadCoinBalance() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return 0;
+    final row = await Supabase.instance.client
+        .from(kUsersCollection)
+        .select('mainCoins')
+        .eq('uid', user.id)
+        .maybeSingle();
+    final value = row?['mainCoins'];
+    return value is num ? value.toDouble() : 0;
+  }
+
   Future<void> _purchase(Map<String, dynamic> gift) async {
+    final priceValue = gift['priceCoins'];
+    final price = priceValue is num ? priceValue.toDouble() : 0.0;
+    if (price <= 0) return;
+
+    double balance;
+    try {
+      balance = await _loadCoinBalance();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't check your coin balance. Please try again."),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+    final maxQuantity = (balance / price).floor();
     final quantity = await showDialog<int>(
       context: context,
       builder: (dialogContext) {
-        int qty = 1;
+        int qty = maxQuantity > 0 ? 1 : 0;
         return StatefulBuilder(
-          builder: (context, setDialogState) => AlertDialog(
-            title: Text("Buy ${gift['name']}"),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [Text("${gift['priceCoins']} each")]),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle_outline),
-                      tooltip: "Decrease quantity",
-                      onPressed: qty > 1 ? () => setDialogState(() => qty--) : null,
+          builder: (context, setDialogState) {
+            final total = price * qty;
+            final canAffordOne = maxQuantity > 0;
+            return AlertDialog(
+              title: Text("Buy ${gift['name']}"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text("${price.toStringAsFixed(0)} coins each"),
+                  const SizedBox(height: 8),
+                  Text("Your balance: ${balance.toStringAsFixed(2)} coins"),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline),
+                        tooltip: "Decrease quantity",
+                        onPressed: qty > 1 ? () => setDialogState(() => qty--) : null,
+                      ),
+                      Text("$qty", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      if (qty < maxQuantity)
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline),
+                          tooltip: "Increase quantity",
+                          onPressed: () => setDialogState(() => qty++),
+                        ),
+                    ],
+                  ),
+                  Text(
+                    canAffordOne
+                        ? "Total: ${total.toStringAsFixed(2)} coins"
+                        : "Insufficient coins. You need ${price.toStringAsFixed(0)} coins to buy this gift.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: canAffordOne ? null : AppColors.error,
                     ),
-                    Text("$qty", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle_outline),
-                      tooltip: "Increase quantity",
-                      onPressed: () => setDialogState(() => qty++),
+                  ),
+                  if (canAffordOne && qty == maxQuantity)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 6),
+                      child: Text("Maximum quantity available for your balance.", textAlign: TextAlign.center),
                     ),
-                  ],
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text("Cancel")),
+                ElevatedButton(
+                  onPressed: qty > 0 ? () => Navigator.pop(dialogContext, qty) : null,
+                  child: const Text("Buy"),
                 ),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [Text("Total: ${((gift['priceCoins'] as num) * qty).toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold))]),
               ],
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(dialogContext, null), child: const Text("Cancel")),
-              ElevatedButton(onPressed: () => Navigator.pop(dialogContext, qty), child: const Text("Buy")),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -86,8 +143,11 @@ class _GiftShopPageState extends State<GiftShopPage> {
       }
     } catch (e) {
       if (mounted) {
+        final message = e.toString().toLowerCase().contains('insufficient')
+            ? "Insufficient coins. Please add more coins to your wallet."
+            : "Couldn't complete the purchase. Please try again.";
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Purchase failed — please try again."), backgroundColor: AppColors.error),
+          SnackBar(content: Text(message), backgroundColor: AppColors.error),
         );
       }
     } finally {
