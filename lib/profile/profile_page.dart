@@ -381,11 +381,35 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                       Column(
                         children: [
-                          CircleAvatar(
-                            radius: 45,
-                            backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                            backgroundImage: profileUrl.isNotEmpty ? CachedNetworkImageProvider(profileUrl, cacheManager: CustomImageCacheManager.instance) : null,
-                            child: profileUrl.isEmpty ? const Icon(Icons.person, size: 45) : null,
+                          Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: theme.colorScheme.primary,
+                                width: 2.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: theme.colorScheme.primary.withValues(alpha: 0.35),
+                                  blurRadius: 12,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                            child: CircleAvatar(
+                              radius: 42,
+                              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                              backgroundImage: profileUrl.isNotEmpty
+                                  ? CachedNetworkImageProvider(
+                                      profileUrl,
+                                      cacheManager: CustomImageCacheManager.instance,
+                                    )
+                                  : null,
+                              child: profileUrl.isEmpty
+                                  ? const Icon(Icons.person, size: 45)
+                                  : null,
+                            ),
                           ),
                         ],
                       )
