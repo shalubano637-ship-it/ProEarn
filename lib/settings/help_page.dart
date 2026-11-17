@@ -12,27 +12,48 @@ class HelpPage extends StatelessWidget {
   const HelpPage({super.key});
 
   Future<void> _contactSupport(BuildContext context) async {
-    final Uri emailLaunchUri = Uri(
-      scheme: 'mailto',
-      path: 'support.prosn@gmail.com',
-      queryParameters: {
-        'subject': 'Support Request / Issue Report [ProSN]',
-        'body': 'Hi Support Team,\n\nUser ID / Username:\nDevice Model:\n\n[Type your issue here]'
-      },
+    const subject = 'ProSN Support | Issue Report';
+    const body = 'Hello ProSN Support Team,\n\n'
+        'I am contacting you regarding an issue with the ProSN app. '
+        'Please find the details below:\n\n'
+        'Username / User ID:\n'
+        'Device Model:\n'
+        'App Version:\n\n'
+        'Issue Description:\n'
+        '[Please describe the issue and include the steps to reproduce it.]\n\n'
+        'Thank you,\n'
+        'ProSN User';
+
+    // Encode spaces as %20 so email clients do not display literal plus signs.
+    final emailLaunchUri = Uri.parse(
+      'mailto:support.prosn@gmail.com'
+      '?subject=${Uri.encodeComponent(subject)}'
+      '&body=${Uri.encodeComponent(body)}',
     );
 
     try {
-      final launched = await launchUrl(emailLaunchUri, mode: LaunchMode.externalApplication);
+      final launched = await launchUrl(
+        emailLaunchUri,
+        mode: LaunchMode.externalApplication,
+      );
       if (!launched && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No email app found. Email support.prosn@gmail.com directly.')),
+          const SnackBar(
+            content: Text(
+              'No email app found. Email support.prosn@gmail.com directly.',
+            ),
+          ),
         );
       }
     } catch (e) {
       debugPrint('Could not open email app: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open email. Contact support.prosn@gmail.com directly.')),
+          const SnackBar(
+            content: Text(
+              'Could not open email. Contact support.prosn@gmail.com directly.',
+            ),
+          ),
         );
       }
     }
@@ -150,7 +171,7 @@ class HelpPage extends StatelessWidget {
       {'title': '6. Send and Read Messages', 'steps': ['Tap Messages in the bottom navigation bar.', 'Open an existing conversation or select a user when that option is available.', 'Type your message and tap Send.', 'If you cannot message someone, check their messaging settings and whether either account has blocked the other.']},
       {'title': '7. Coins, Gifts, and Rewards', 'steps': ['Tap the coin balance or open the Coin Shop to review available coin options.', 'Open the Bag or Gifts area to view items available to your account.', 'Follow the on-screen instructions to claim or use a reward when eligible.', 'Review the displayed price, limits, and confirmation screen before spending coins.', 'Reward availability and limits may vary. Do not assume a reward or payment is complete until the app confirms it.']},
       {'title': '8. Leaderboard and Community Rooms', 'steps': ['Tap Leaderboard in the bottom navigation bar to view rankings.', 'Open the Rooms section to browse available community rooms.', 'Choose a room and follow the on-screen instructions to join or participate.', 'Treat other users respectfully and follow the Community Guidelines.']},
-      {'title': '9. Report a Problem or Contact Support', 'steps': ['Open Settings and select Help & Support.', 'Choose the Support tab and tap Contact for any issue.', 'Explain what happened in your email and list the steps that caused the issue.', 'Include your username, app version, device model, and a screenshot if helpful. Never send your password or verification code.', 'You can also email support.prosn@gmail.com directly.']}
+      {'title': '9. Report a Problem or Contact Support', 'steps': ['Open Settings and select Help & Support.', 'Choose the Support tab and tap Email Support to report an issue.', 'Explain what happened in your email and list the steps that caused the issue.', 'Include your username, app version, device model, and a screenshot if helpful. Never send your password or verification code.', 'You can also email support.prosn@gmail.com directly.']}
     ];
     return ListView(
       padding: const EdgeInsets.all(16),
