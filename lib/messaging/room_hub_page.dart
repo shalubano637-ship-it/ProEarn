@@ -110,7 +110,7 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
             if (privateRoom) TextField(controller: passwordController, obscureText: true, decoration: const InputDecoration(labelText: 'Room password')),
           ]),
           actions: [
-            TextButton(onPressed: busy ? null : () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
             FilledButton(onPressed: busy ? null : () async {
               if (privateRoom && passwordController.text.isEmpty) return;
               setDialogState(() => busy = true);
