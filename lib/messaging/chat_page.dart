@@ -158,6 +158,24 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     }
   }
 
+  // Poll as a recovery path for devices where the Realtime websocket
+  // silently disconnects while the chat screen remains open.
+  Stream<List<Map<String, dynamic>>> _pollMessages(String conversationId) async* {
+    while (mounted) {
+      try {
+        final rows = await Supabase.instance.client
+            .from('messages')
+            .select()
+            .eq('conversationId', conversationId)
+            .order('createdAt', ascending: true);
+        yield List<Map<String, dynamic>>.from(rows);
+      } catch (e) {
+        debugPrint('Chat message refresh failed: $e');
+      }
+      await Future.delayed(const Duration(seconds: 4));
+    }
+  }
+
   Future<void> _initConversation() async {
     try {
       final id = await Supabase.instance.client
@@ -168,11 +186,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       if (mounted) {
         setState(() {
           _conversationId = id as String;
-          _messagesStream = Supabase.instance.client
-              .from('messages')
-              .stream(primaryKey: ['id'])
-              .eq('conversationId', id)
-              .order('createdAt', ascending: true);
+          _messagesStream = _pollMessages(id as String);
         });
       }
       Supabase.instance.client
