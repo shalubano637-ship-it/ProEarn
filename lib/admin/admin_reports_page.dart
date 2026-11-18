@@ -131,11 +131,19 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
     if (!confirmed) return;
 
     try {
-      await _client.from(kUsersCollection).update({'isBanned': true}).eq('uid', reportedUserId);
-      await _markStatus(report, 'actioned');
+      final response = await _client.functions.invoke(
+        'admin-moderate-report',
+        body: {'reportId': report['id'], 'action': 'ban_user'},
+      );
+      final data = response.data;
+      if (data is! Map || data['success'] != true) {
+        throw StateError("Moderation service did not confirm account action");
+      }
       if (!mounted) return;
       setState(() {
         _usersById[reportedUserId] = {...?_usersById[reportedUserId], 'isBanned': true};
+        report['status'] = 'actioned';
+        report['actionTaken'] = 'user_banned';
       });
       _showSnack("User banned.");
     } catch (e) {
