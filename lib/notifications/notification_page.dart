@@ -227,6 +227,7 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
                           if (type == 'like') leadingIcon = Icons.favorite;
                           if (type == 'comment') leadingIcon = Icons.comment;
                           if (type == 'follow') leadingIcon = Icons.person_add;
+                          if (type == 'report_actioned') leadingIcon = Icons.verified_user;
 
                           final String senderName = data['senderName'] ?? 'Someone';
                           final String senderProfile = data['senderProfileUrl'] ?? '';
