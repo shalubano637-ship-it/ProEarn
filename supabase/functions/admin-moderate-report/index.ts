@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
               senderName: "ProSN",
               senderProfile: "",
               senderProfileUrl: "",
-              message: "Team ne aapke report par successful action le liya hai. Report ki gayi post remove kar di gayi hai.",
+              message: "We have reviewed your report and taken action. The reported post has been removed.",
               targetPostId: "",
               requestId: reportId,
             });
