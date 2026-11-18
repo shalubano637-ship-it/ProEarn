@@ -231,6 +231,7 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
                           final String senderName = data['senderName'] ?? 'Someone';
                           final String senderProfile = data['senderProfileUrl'] ?? '';
 
+                          final requestId = data['requestId']?.toString() ?? '';
                           return ListTile(
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 1),
                             leading: CircleAvatar(
@@ -257,6 +258,52 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
                               timeText,
                               style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6)),
                             ),
+                            trailing: type == 'follow_request' && requestId.isNotEmpty
+                                ? Wrap(
+                                    spacing: 2,
+                                    children: [
+                                      TextButton(
+                                        onPressed: () async {
+                                          try {
+                                            await Supabase.instance.client.rpc('respond_follow_request', params: {
+                                              'p_request_id': requestId,
+                                              'p_accept': true,
+                                            });
+                                            await Supabase.instance.client.from(kNotificationsCollection)
+                                                .update({'isRead': true}).eq('id', data['id']);
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Follow request accepted.')),
+                                              );
+                                            }
+                                          } catch (e) {
+                                            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('Could not accept this request.')),
+                                            );
+                                          }
+                                        },
+                                        child: const Text('Accept'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () async {
+                                          try {
+                                            await Supabase.instance.client.rpc('respond_follow_request', params: {
+                                              'p_request_id': requestId,
+                                              'p_accept': false,
+                                            });
+                                            await Supabase.instance.client.from(kNotificationsCollection)
+                                                .update({'isRead': true}).eq('id', data['id']);
+                                          } catch (e) {
+                                            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('Could not cancel this request.')),
+                                            );
+                                          }
+                                        },
+                                        child: const Text('Cancel'),
+                                      ),
+                                    ],
+                                  )
+                                : null,
                             onTap: () {
                               if (type == 'comment' && targetPostId.trim().isNotEmpty) {
                                 ReelsAutoTrigger.targetPostId = targetPostId.trim();
