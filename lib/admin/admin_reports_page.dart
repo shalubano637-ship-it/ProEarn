@@ -117,6 +117,40 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
     }
   }
 
+  Future<void> _notifyReporterPostAction(Map<String, dynamic> report) async {
+    final reporterId = report['reportedBy']?.toString() ?? '';
+    final reportId = report['id']?.toString() ?? '';
+    if (reporterId.isEmpty || reportId.isEmpty) return;
+
+    try {
+      final existing = await _client
+          .from(kNotificationsCollection)
+          .select('id')
+          .eq('targetOwnerId', reporterId)
+          .eq('type', 'report_actioned')
+          .eq('requestId', reportId)
+          .limit(1);
+      if ((existing as List).isNotEmpty) return;
+
+      await _client.from(kNotificationsCollection).insert({
+        'targetOwnerId': reporterId,
+        'type': 'report_actioned',
+        'senderId': '',
+        'senderName': 'ProSN',
+        'senderProfile': '',
+        'senderProfileUrl': '',
+        'message': 'Team ne aapke report par successful action le liya hai. Report ki gayi post remove kar di gayi hai.',
+        'targetPostId': '',
+        'requestId': reportId,
+      });
+    } catch (e) {
+      debugPrint('Could not create report-action notification: $e');
+      if (mounted) {
+        _showSnack('Post remove ho gayi, lekin reporter notification save nahi hui.', isError: true);
+      }
+    }
+  }
+
   Future<void> _banUser(Map<String, dynamic> report) async {
     final reportedUserId = report['reportedUserId'] as String?;
     if (reportedUserId == null || reportedUserId.isEmpty) {
@@ -159,6 +193,7 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
     try {
       await _client.from(kPostsCollection).delete().eq('id', postId);
       await _markStatus(report, 'actioned');
+      await _notifyReporterPostAction(report);
       if (!mounted) return;
       setState(() => _postsById.remove(postId));
       _showSnack("Post deleted.");
