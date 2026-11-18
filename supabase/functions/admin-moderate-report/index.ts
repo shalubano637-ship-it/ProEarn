@@ -39,6 +39,23 @@ async function removeR2(key: string | null) {
   const response = await r2.fetch(url, { method: "DELETE" });
   if (!response.ok && response.status !== 404) throw new Error(`R2 object deletion failed: ${response.status}`);
 }
+
+async function notifyReporter(reporterId: string, reportId: string, message: string) {
+  if (!reporterId) return false;
+  const { data: existing, error: lookupError } = await admin.from("notifications")
+    .select("id").eq("targetOwnerId", reporterId).eq("type", "report_actioned")
+    .eq("requestId", reportId).limit(1);
+  if (lookupError) throw lookupError;
+  if (existing?.length) return true;
+  const { error } = await admin.from("notifications").insert({
+    targetOwnerId: reporterId, type: "report_actioned", senderId: "",
+    senderName: "ProSN", senderProfile: "", senderProfileUrl: "",
+    message, targetPostId: "", requestId: reportId,
+  });
+  if (error) throw error;
+  return true;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -60,11 +77,26 @@ Deno.serve(async (req) => {
   const action = String(body.action ?? "remove_message");
   if (!reportId) return json({ error: "reportId is required" }, 400);
   const { data: report, error: reportError } = await admin.from("reports")
-    .select("id,targetCommentId,targetMessageId,targetPostId,reportedBy,source,reason,status")
+    .select("id,targetCommentId,targetMessageId,targetPostId,reportedBy,reportedUserId,source,reason,status")
     .eq("id", reportId).maybeSingle();
   if (reportError || !report) return json({ error: "Report not found" }, 404);
 
   try {
+    if (action === "ban_user") {
+      const userId = String(report.reportedUserId ?? "");
+      if (!userId) return json({ error: "Report has no reported user" }, 400);
+      const { error: banError } = await admin.from("users").update({ isBanned: true }).eq("uid", userId);
+      if (banError) throw banError;
+      const { error: updateError } = await admin.from("reports").update({
+        status: "actioned", actionTaken: "user_banned", reviewedAt: new Date().toISOString(),
+        reviewedBy: auth.user.id,
+      }).eq("id", reportId);
+      if (updateError) throw updateError;
+      await notifyReporter(String(report.reportedBy ?? ""), reportId,
+        "We have reviewed your report and taken action. Appropriate action has been taken on the reported account.");
+      return json({ success: true, actionTaken: "user_banned", notificationCreated: true });
+    }
+
     if (action === "delete_post") {
       const postId = String(report.targetPostId ?? "");
       const reporterId = String(report.reportedBy ?? "");
@@ -81,27 +113,8 @@ Deno.serve(async (req) => {
         if (updateError) throw updateError;
 
         if (reporterId) {
-          const { data: existingNotice, error: lookupError } = await admin.from("notifications")
-            .select("id").eq("targetOwnerId", reporterId)
-            .eq("type", "report_actioned").eq("requestId", reportId).limit(1);
-          if (lookupError) throw lookupError;
-          if (!existingNotice?.length) {
-            const { error: noticeError } = await admin.from("notifications").insert({
-              targetOwnerId: reporterId,
-              type: "report_actioned",
-              senderId: "",
-              senderName: "ProSN",
-              senderProfile: "",
-              senderProfileUrl: "",
-              message: "We have reviewed your report and taken action. The reported post has been removed.",
-              targetPostId: "",
-              requestId: reportId,
-            });
-            if (noticeError) {
-              console.error("Could not create report action notification:", noticeError);
-              return json({ success: true, actionTaken: "post_removed", notificationCreated: false });
-            }
-          }
+          await notifyReporter(reporterId, reportId,
+            "We have reviewed your report and taken action. The reported post has been removed.");
         }
       }
       return json({ success: true, actionTaken: "post_removed", notificationCreated: true });
@@ -127,7 +140,9 @@ Deno.serve(async (req) => {
         reviewedBy: auth.user.id,
       }).eq("id", reportId);
       if (updateError) throw updateError;
-      return json({ success: true, actionTaken: "comment_removed" });
+      await notifyReporter(String(report.reportedBy ?? ""), reportId,
+        "We have reviewed your report and taken action. The reported comment has been removed.");
+      return json({ success: true, actionTaken: "comment_removed", notificationCreated: true });
     }
 
     if (action === "remove_message" || action === "delete_message") {
