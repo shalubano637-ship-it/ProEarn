@@ -2,6 +2,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart' show kDebugMode, defaultTargetPlatform, TargetPlatform;
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'dart:ui' show PlatformDispatcher;
 import 'fcm_service.dart';
 
 import 'package:flutter/material.dart';
@@ -116,6 +118,15 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
       try {
         if (defaultTargetPlatform == TargetPlatform.android) {
           await Firebase.initializeApp();
+          FlutterError.onError = (details) {
+            FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+            Sentry.captureException(details.exception, stackTrace: details.stack);
+          };
+          PlatformDispatcher.instance.onError = (error, stackTrace) {
+            FirebaseCrashlytics.instance.recordError(error, stackTrace, fatal: true);
+            Sentry.captureException(error, stackTrace: stackTrace);
+            return true;
+          };
           FcmService.initialize();
         }
       } catch (e, st) {
@@ -132,6 +143,9 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
       debugPrint('CRITICAL ASYNC ERROR: $error');
       debugPrint('STACKTRACE: $stackTrace');
       Sentry.captureException(error, stackTrace: stackTrace);
+      if (Firebase.apps.isNotEmpty) {
+        unawaited(FirebaseCrashlytics.instance.recordError(error, stackTrace, fatal: true));
+      }
     },
   );
 }
