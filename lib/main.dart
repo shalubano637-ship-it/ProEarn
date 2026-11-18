@@ -184,6 +184,15 @@ class AiSocialApp extends StatelessWidget {
         darkTheme: AppTheme.dark,
         themeMode: appThemeController.mode,
         home: const SplashPage(),
+        // Handle stale/unknown deep links safely instead of letting Flutter
+        // fail while resolving a route after login or notification taps.
+        onUnknownRoute: (settings) {
+          debugPrint('Unknown route requested: ${settings.name}');
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => const SplashPage(),
+          );
+        },
       ),
     );
   }
