@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:postgrest/postgrest.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'models.dart';
 import 'theme/theme.dart';
@@ -132,6 +133,18 @@ class _GiftShopPageState extends State<GiftShopPage> {
 
     setState(() { _isPurchasing = true; });
     try {
+      final latestBalance = await _loadCoinBalance();
+      if (quantity * price > latestBalance) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Insufficient coins. Please add more coins.'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
       await Supabase.instance.client.rpc('purchase_gift', params: {
         'p_gift_id': gift['id'],
         'p_quantity': quantity,
@@ -143,7 +156,14 @@ class _GiftShopPageState extends State<GiftShopPage> {
       }
     } catch (e) {
       if (mounted) {
-        final message = e.toString().toLowerCase().contains('insufficient')
+        final errorText = e is PostgrestException
+            ? '${e.message} ${e.details ?? ''} ${e.hint ?? ''}'.toLowerCase()
+            : e.toString().toLowerCase();
+        final isInsufficient = errorText.contains('insufficient') ||
+            errorText.contains('not enough') ||
+            errorText.contains('low balance') ||
+            errorText.contains('insufficient_balance');
+        final message = isInsufficient
             ? "Insufficient coins. Please add more coins to your wallet."
             : "Couldn't complete the purchase. Please try again.";
         ScaffoldMessenger.of(context).showSnackBar(
@@ -180,7 +200,12 @@ class _GiftShopPageState extends State<GiftShopPage> {
           }
 
           return GridView.builder(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.fromLTRB(
+              12,
+              12,
+              12,
+              MediaQuery.of(context).viewPadding.bottom + 36,
+            ),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 3,
               mainAxisSpacing: 12,
