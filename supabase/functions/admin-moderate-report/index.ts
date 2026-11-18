@@ -60,11 +60,53 @@ Deno.serve(async (req) => {
   const action = String(body.action ?? "remove_message");
   if (!reportId) return json({ error: "reportId is required" }, 400);
   const { data: report, error: reportError } = await admin.from("reports")
-    .select("id,targetCommentId,targetMessageId,targetPostId,source,reason,status")
+    .select("id,targetCommentId,targetMessageId,targetPostId,reportedBy,source,reason,status")
     .eq("id", reportId).maybeSingle();
   if (reportError || !report) return json({ error: "Report not found" }, 404);
 
   try {
+    if (action === "delete_post") {
+      const postId = String(report.targetPostId ?? "");
+      const reporterId = String(report.reportedBy ?? "");
+      if (!postId) return json({ error: "Report has no post target" }, 400);
+
+      if (report.status !== "actioned") {
+        const { error: deleteError } = await admin.from("posts").delete().eq("id", postId);
+        if (deleteError) throw deleteError;
+
+        const { error: updateError } = await admin.from("reports").update({
+          status: "actioned", actionTaken: "post_removed", reviewedAt: new Date().toISOString(),
+          reviewedBy: auth.user.id,
+        }).eq("id", reportId);
+        if (updateError) throw updateError;
+
+        if (reporterId) {
+          const { data: existingNotice, error: lookupError } = await admin.from("notifications")
+            .select("id").eq("targetOwnerId", reporterId)
+            .eq("type", "report_actioned").eq("requestId", reportId).limit(1);
+          if (lookupError) throw lookupError;
+          if (!existingNotice?.length) {
+            const { error: noticeError } = await admin.from("notifications").insert({
+              targetOwnerId: reporterId,
+              type: "report_actioned",
+              senderId: "",
+              senderName: "ProSN",
+              senderProfile: "",
+              senderProfileUrl: "",
+              message: "Team ne aapke report par successful action le liya hai. Report ki gayi post remove kar di gayi hai.",
+              targetPostId: "",
+              requestId: reportId,
+            });
+            if (noticeError) {
+              console.error("Could not create report action notification:", noticeError);
+              return json({ success: true, actionTaken: "post_removed", notificationCreated: false });
+            }
+          }
+        }
+      }
+      return json({ success: true, actionTaken: "post_removed", notificationCreated: true });
+    }
+
     if (action === "delete_comment") {
       const commentId = String(report.targetCommentId ?? "");
       if (!commentId) return json({ error: "Report has no comment target" }, 400);
