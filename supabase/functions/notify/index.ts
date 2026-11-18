@@ -4,7 +4,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const ALLOWED_TYPES = new Set(["like", "comment", "follow", "get", "message", "chest_ready"]);
+const ALLOWED_TYPES = new Set(["like", "comment", "follow", "follow_request", "get", "message", "chest_ready"]);
 const MAX_MESSAGE_LENGTH = 300;
 
 const FIREBASE_PROJECT_ID = Deno.env.get("FIREBASE_PROJECT_ID") ?? "";
@@ -157,6 +157,12 @@ Deno.serve(async (req) => {
         return json({ error: "Event not verified" }, 403);
       }
       eventKey = new Date().toISOString().slice(0, 10);
+    } else if (type === "follow_request") {
+      const { data: followRequest } = await admin.from("follow_requests")
+        .select("id").eq("requester_uid", senderId).eq("target_uid", targetOwnerId)
+        .eq("status", "pending").order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (!followRequest) return json({ error: "Follow request not found" }, 403);
+      eventKey = String(followRequest.id);
     } else if (type === "message") {
       const { data: conversation } = await admin.from("conversations").select("id")
         .or("and(participantA.eq." + senderId + ",participantB.eq." + targetOwnerId +
@@ -208,7 +214,7 @@ Deno.serve(async (req) => {
 
     if ((type === "like" && targetPrefs.notifyLikes === false) ||
         (type === "comment" && targetPrefs.notifyComments === false) ||
-        (type === "follow" && targetPrefs.notifyFollow === false) ||
+        ((type === "follow" || type === "follow_request") && targetPrefs.notifyFollow === false) ||
         (type === "message" && targetPrefs.notifyMessages === false) ||
         (type === "message" && Array.isArray(targetPrefs.mutedUsers) &&
           targetPrefs.mutedUsers.map(String).includes(senderId))) {
@@ -236,7 +242,7 @@ Deno.serve(async (req) => {
     const { data: sender } = await admin.from("users").select('userName,profileUrl')
       .eq("uid", senderId).maybeSingle();
 
-    if (type !== "message") {
+    if (type !== "message" && type !== "follow_request") {
       const { error: notificationError } = await admin.from("notifications").insert({
         targetOwnerId,
         type,
@@ -270,9 +276,10 @@ Deno.serve(async (req) => {
       return json({ success: true });
     }
 
-    const pushTitle = type === "chest_ready" ? "Chest Ready" : "You have a new notification";
+    const pushTitle = type === "chest_ready" ? "Chest Ready" : type === "follow_request" ? "New follow request" : "You have a new notification";
     const pushBody = type === "like" ? "Someone liked your post" :
       type === "comment" ? "Someone commented on your post" :
+      type === "follow_request" ? "Someone sent you a follow request" :
       type === "follow" ? "Someone started following you" :
       type === "get" ? "Someone got your post" :
       type === "message" ? "Someone sent you a message" :
