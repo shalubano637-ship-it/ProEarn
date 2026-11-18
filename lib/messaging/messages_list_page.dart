@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../models.dart';
 import '../ad_unit_ids.dart';
+import '../ad_free_access.dart';
 import '../theme/theme.dart';
 import '../service.dart';
 import 'chat_page.dart';
@@ -124,6 +125,7 @@ class _MessagesListPageState extends State<MessagesListPage> {
         callback: (_) => _scheduleConversationRefresh(),
       )
       ..subscribe();
+    AdFreeAccess.active.addListener(_handleAdEntitlementChanged);
     _loadBannerAd();
     _searchController.addListener(() {
       _searchDebounce?.cancel();
@@ -133,13 +135,31 @@ class _MessagesListPageState extends State<MessagesListPage> {
     });
   }
 
+  void _handleAdEntitlementChanged() {
+    if (AdFreeAccess.isActive) {
+      _bannerAd?.dispose();
+      _bannerAd = null;
+      if (mounted) setState(() => _isBannerLoaded = false);
+    } else if (_bannerAd == null) {
+      _loadBannerAd();
+    }
+  }
+
   void _loadBannerAd() {
+    if (AdFreeAccess.isActive || _bannerAd != null) return;
     _bannerAd = BannerAd(
       adUnitId: AdUnitIds.banner,
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
-        onAdLoaded: (ad) { if (mounted) setState(() => _isBannerLoaded = true); },
+        onAdLoaded: (ad) {
+          if (!mounted || AdFreeAccess.isActive) {
+            ad.dispose();
+            if (identical(_bannerAd, ad)) _bannerAd = null;
+            return;
+          }
+          setState(() => _isBannerLoaded = true);
+        },
         onAdFailedToLoad: (ad, error) => ad.dispose(),
       ),
     )..load();
@@ -147,6 +167,7 @@ class _MessagesListPageState extends State<MessagesListPage> {
 
   @override
   void dispose() {
+    AdFreeAccess.active.removeListener(_handleAdEntitlementChanged);
     _searchDebounce?.cancel();
     _inboxRefreshDebounce?.cancel();
     _searchController.dispose();
@@ -183,7 +204,7 @@ class _MessagesListPageState extends State<MessagesListPage> {
       ),
       body: Column(
         children: [
-          if (_isBannerLoaded && _bannerAd != null)
+          if (!AdFreeAccess.isActive && _isBannerLoaded && _bannerAd != null)
             SizedBox(
               width: _bannerAd!.size.width.toDouble(),
               height: _bannerAd!.size.height.toDouble(),
