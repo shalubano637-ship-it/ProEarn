@@ -93,3 +93,27 @@ create policy posts_select_all on public.posts for select to authenticated using
 drop policy if exists comments_select_all on public.comments;
 create policy comments_select_all on public.comments for select to authenticated
 using (exists(select 1 from public.posts p where p.id=comments."postId"));
+
+-- Prevent clients from bypassing request approval through the legacy follow RPC.
+create or replace function public.toggle_follow(p_follower_id uuid,p_target_id uuid,p_follow boolean)
+returns void language plpgsql security definer set search_path=public
+as $function$
+declare v_recent_actions int; v_me uuid:=auth.uid(); v_private boolean;
+begin
+ if v_me is null or p_follower_id<>v_me then raise exception 'Not authorized'; end if;
+ if p_target_id is null or p_target_id=v_me then raise exception 'Invalid target'; end if;
+ select coalesce("isPrivateAccount",false) into v_private from public.users where uid=p_target_id;
+ if not found then raise exception 'User not found'; end if;
+ if p_follow and v_private then raise exception 'Private account requires a follow request'; end if;
+ select count(*) into v_recent_actions from public.follow_action_log where "actorUid"=v_me and "createdAt">now()-interval '1 minute';
+ if v_recent_actions>=30 then raise exception 'Too many follow/unfollow actions — please slow down.'; end if;
+ insert into public.follow_action_log("actorUid") values(v_me);
+ perform set_config('app.bypass_column_protection','on',true);
+ if p_follow then
+  update public.users set followers=array_append(followers,v_me::text) where uid=p_target_id and not (followers @> array[v_me::text]);
+  update public.users set following=array_append(following,p_target_id::text) where uid=v_me and not (following @> array[p_target_id::text]);
+ else
+  update public.users set followers=array_remove(followers,v_me::text) where uid=p_target_id;
+  update public.users set following=array_remove(following,p_target_id::text) where uid=v_me;
+ end if;
+end $function$;
