@@ -135,6 +135,10 @@ class _ProfilePageState extends State<ProfilePage> {
         Supabase.instance.client.from(kUsersCollection).select('blockedUsers').eq('uid', viewerUid).maybeSingle()
       else
         Future.value(null),
+      if (viewerUid != null && viewerUid != uid)
+        Supabase.instance.client.rpc('get_follow_request_status', params: {'p_target_uid': uid})
+      else
+        Future.value('none'),
     ]);
     final profile = results[0] as Map<String, dynamic>?;
     if (profile == null) return null;
@@ -150,6 +154,7 @@ class _ProfilePageState extends State<ProfilePage> {
       // made by the viewer does not hide the target's followers/following.
       'canViewRelationships': results[2] != true,
       'viewerBlockedTarget': ((results[3]?['blockedUsers'] as List?)?.cast<String>() ?? const <String>[]).contains(uid),
+      'followRequestStatus': results[4]?.toString() ?? 'none',
     };
   }
 
@@ -437,14 +442,16 @@ class _ProfilePageState extends State<ProfilePage> {
                               : Builder(
                                   builder: (context) {
                                     bool isFollowing = userFollowersList.contains(currentUser.id);
+                                    final requestStatus = userSnapshot.data?['followRequestStatus']?.toString() ?? 'none';
+                                    final isPending = isPrivateAccount && requestStatus == 'pending';
 
                                     return ElevatedButton(
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: isFollowing 
-                                            ? theme.colorScheme.surfaceContainerHighest 
-                                            : theme.colorScheme.primary, 
-                                        foregroundColor: isFollowing 
-                                            ? theme.colorScheme.onSurface 
+                                        backgroundColor: (isFollowing || isPending)
+                                            ? theme.colorScheme.surfaceContainerHighest
+                                            : theme.colorScheme.primary,
+                                        foregroundColor: (isFollowing || isPending)
+                                            ? theme.colorScheme.onSurface
                                             : theme.colorScheme.onPrimary,
                                       ),
                                       onPressed: _followActionInProgress ? null : () async {
@@ -476,6 +483,19 @@ class _ProfilePageState extends State<ProfilePage> {
                                                 const SnackBar(content: Text("You can't follow this user.")),
                                               );
                                             }
+                                            return;
+                                          }
+                                          if (isPending) {
+                                            await Supabase.instance.client.rpc('cancel_follow_request', params: {'p_target_uid': targetUid});
+                                            final updatedProfile = Map<String, dynamic>.from(userSnapshot.data!)..['followRequestStatus'] = 'none';
+                                            if (mounted) setState(() => _profileFuture = Future.value(updatedProfile));
+                                            return;
+                                          }
+                                          if (!isFollowing && isPrivateAccount) {
+                                            await Supabase.instance.client.rpc('request_private_follow', params: {'p_target_uid': targetUid});
+                                            final updatedProfile = Map<String, dynamic>.from(userSnapshot.data!)..['followRequestStatus'] = 'pending';
+                                            if (mounted) setState(() => _profileFuture = Future.value(updatedProfile));
+                                            sendNotification(targetOwnerId: targetUid, type: 'follow_request', message: 'sent you a follow request.').catchError((e) => debugPrint('Follow request push failed: $e'));
                                             return;
                                           }
                                           await Supabase.instance.client.rpc('toggle_follow', params: {
@@ -527,7 +547,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                       },
                                       child: _followActionInProgress
                                           ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                                          : Text(isFollowing ? "Unfollow" : "Follow"),
+                                          : Text(isFollowing ? "Unfollow" : (isPending ? "Requested" : "Follow")),
                                     );
                                   },
                                 ),
@@ -574,7 +594,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   const Padding(
                     padding: EdgeInsets.fromLTRB(24, 35, 24, 50),
                     child: Text(
-                      'Follow this account to see their posts and follower/following lists.',
+                      'This is a private account. Send a follow request to see their posts and follower/following lists.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: AppColors.textTertiary),
                     ),
