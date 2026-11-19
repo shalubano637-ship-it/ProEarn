@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:postgrest/postgrest.dart';
+import 'package:postgrest/postgrest.dart';
 import '../theme/theme.dart';
 import '../service.dart';
 import '../utils/friendly_error.dart';
@@ -477,8 +478,13 @@ class _GiftShopSectionState extends State<_GiftShopSection> {
     } catch (e) {
       debugPrint('Gift purchase failed: $e');
       if (mounted) {
-        final error = e.toString().toLowerCase();
-        final insufficient = error.contains('insufficient') || error.contains('not enough') || error.contains('low balance');
+        final error = e is PostgrestException
+            ? '${e.message} ${e.details ?? ''} ${e.hint ?? ''}'.toLowerCase()
+            : e.toString().toLowerCase();
+        final insufficient = error.contains('insufficient') ||
+            error.contains('not enough') ||
+            error.contains('low balance') ||
+            error.contains('insufficient_balance');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(insufficient
