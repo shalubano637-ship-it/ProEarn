@@ -159,7 +159,7 @@ class ChestTimerService extends ChangeNotifier {
       } else {
         currentChestIndex = existing.currentChestIndex;
         _unlockAt = existing.unlockAt;
-        isStarted = existing.unlockAt != null || existing.isUnlocked || existing.remainingSeconds > 0;
+        isStarted = existing.unlockAt != null || existing.isUnlocked;
         if (_unlockAt != null) {
           final serverRemaining = _unlockAt!.difference(DateTime.now()).inSeconds;
           remainingSeconds = math.max(0, serverRemaining);
