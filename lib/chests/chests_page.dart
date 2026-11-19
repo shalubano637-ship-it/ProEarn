@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:postgrest/postgrest.dart';
+import 'package:postgrest/postgrest.dart';
 import '../theme/theme.dart';
 import '../service.dart';
 import '../utils/friendly_error.dart';
@@ -188,8 +190,19 @@ class _ChestsPageState extends State<ChestsPage> {
         debugPrint('Chest state refresh failed: $refreshError');
       }
       if (mounted) {
+        final details = e is PostgrestException
+            ? '${e.message} ${e.details ?? ''} ${e.hint ?? ''}'
+            : e.toString();
+        final normalized = details.toLowerCase();
+        final message = normalized.contains('chest is not unlocked')
+            ? 'Chest is not ready yet. Please wait for the timer to finish.'
+            : normalized.contains('chest index mismatch')
+                ? 'Chest status changed. Your rewards have been refreshed. Please try again.'
+                : normalized.contains('no chest progress')
+                    ? 'Chest progress was not found. Please reopen Rewards and try again.'
+                    : 'Could not claim chest. Please check your connection and try again.';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Couldn't claim chest — please try again."), backgroundColor: AppColors.error),
+          SnackBar(content: Text(message), backgroundColor: AppColors.error),
         );
       }
     } finally {
@@ -465,8 +478,13 @@ class _GiftShopSectionState extends State<_GiftShopSection> {
     } catch (e) {
       debugPrint('Gift purchase failed: $e');
       if (mounted) {
-        final error = e.toString().toLowerCase();
-        final insufficient = error.contains('insufficient') || error.contains('not enough') || error.contains('low balance');
+        final error = e is PostgrestException
+            ? '${e.message} ${e.details ?? ''} ${e.hint ?? ''}'.toLowerCase()
+            : e.toString().toLowerCase();
+        final insufficient = error.contains('insufficient') ||
+            error.contains('not enough') ||
+            error.contains('low balance') ||
+            error.contains('insufficient_balance');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(insufficient
