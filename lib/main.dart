@@ -2,6 +2,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart' show kDebugMode, defaultTargetPlatform, TargetPlatform;
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'firebase_supabase_token_bridge.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'dart:ui' show PlatformDispatcher;
 import 'fcm_service.dart';
@@ -129,6 +131,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
             'SUPABASE_ANON_KEY',
             defaultValue: 'sb_publishable_3c2SHzm3Y8u_pjbmpWNSXw_5Rwkn5b_',
           ),
+          accessToken: FirebaseSupabaseTokenBridge().getAccessToken,
         );
         if (defaultTargetPlatform == TargetPlatform.android &&
             Firebase.apps.isNotEmpty) {
@@ -208,7 +211,7 @@ class _AppLifecycleObserver extends WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
       chestTimerService.pauseAndPersist();
-      if (Supabase.instance.client.auth.currentUser != null) {
+      if (FirebaseAuth.instance.currentUser != null) {
         Supabase.instance.client.rpc('clear_my_conversations').catchError((e) {
           debugPrint('clear_my_conversations failed: $e');
         });
