@@ -65,10 +65,11 @@ void main() {
         async.flushMicrotasks();
 
         when(() => repo.fetchProgress(uid)).thenAnswer(
-          (_) async => const ChestProgress(
+          (_) async => ChestProgress(
             currentChestIndex: 0,
             remainingSeconds: 60,
             isUnlocked: false,
+            unlockAt: DateTime.now().add(const Duration(seconds: 60)),
           ),
         );
 
@@ -268,7 +269,12 @@ void main() {
         verify(() => repo.sendChestReadyNotification(uid)).called(1);
 
         when(() => repo.fetchProgress(uid)).thenAnswer(
-          (_) async => const ChestProgress(currentChestIndex: 1, remainingSeconds: 1, isUnlocked: false),
+          (_) async => ChestProgress(
+            currentChestIndex: 1,
+            remainingSeconds: 1,
+            isUnlocked: false,
+            unlockAt: DateTime.now().add(const Duration(seconds: 1)),
+          ),
         );
         service.advanceToNextChest();
         async.flushMicrotasks();
