@@ -301,7 +301,7 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => isGoogleAuthStarting = true);
     try {
-      final google = GoogleSignIn();
+      final google = GoogleSignIn(serverClientId: '449305618154-ii2bo0jsf8ner0oa4f6lv4eo3q4slft0.apps.googleusercontent.com');
       final account = await google.signIn();
       if (account == null) {
         if (mounted) setState(() => isGoogleAuthStarting = false);
@@ -325,6 +325,7 @@ class _LoginPageState extends State<LoginPage> {
         throw StateError('Secure Firebase identity bridge did not return a token.');
       }
       await FirebaseAuth.instance.signInWithCustomToken(customToken);
+      await FirebaseAuth.instance.currentUser?.getIdToken(true);
       if (mounted) setState(() => isGoogleAuthStarting = false);
       await FcmService.enableForCurrentUser();
       if (!mounted) return;
@@ -332,7 +333,7 @@ class _LoginPageState extends State<LoginPage> {
         MaterialPageRoute(builder: (_) => const SplashPage()),
         (route) => false,
       );
-    } on AuthException catch (e) {
+    } on FunctionException catch (e) {
       if (!mounted) return;
       setState(() => isGoogleAuthStarting = false);
       ScaffoldMessenger.of(context).showSnackBar(
