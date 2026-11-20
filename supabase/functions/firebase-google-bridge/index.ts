@@ -15,6 +15,12 @@ function json(body: unknown, status = 200) {
   });
 }
 
+async function keyedHash(value: string, pepper: string): Promise<string> {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(pepper), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(signature), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 function adminAuth() {
   const raw = Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON");
   if (!raw) throw new Error("Firebase Admin service account is not configured");
@@ -68,6 +74,15 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     if (!serviceUrl || !serviceKey) throw new Error("Supabase server configuration is missing");
     const db = createClient(serviceUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-real-ip") ??
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const emailKey = await keyedHash(`email:${email}`, serviceKey);
+    const ipKey = await keyedHash(`ip:${ip}`, serviceKey);
+    const { data: allowed, error: rateError } = await db.rpc("consume_firebase_signup_rate_limit", {
+      p_email_key: emailKey, p_ip_key: ipKey,
+    });
+    if (rateError) throw rateError;
+    if (allowed !== true) return json({ error: "Too many sign-in attempts. Please try again later." }, 429);
 
     let firebaseUser;
     try {
