@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -55,7 +56,7 @@ class _SendGiftSheetState extends State<_SendGiftSheet> {
   @override
   void initState() {
     super.initState();
-    final uid = Supabase.instance.client.auth.currentUser?.id ?? '';
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
     _availableGiftsFuture = _loadAvailableGifts(uid);
   }
 
