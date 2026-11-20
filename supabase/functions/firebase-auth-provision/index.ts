@@ -24,6 +24,18 @@ function referralCode(): string {
   return Array.from(bytes, (b) => (b % 36).toString(36)).join("").toUpperCase();
 }
 
+async function keyedHash(value: string, pepper: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(pepper),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(signature), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 function firebaseAdmin() {
   const raw = Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON");
   if (!raw) throw new Error("Firebase Admin service account is not configured");
@@ -48,7 +60,7 @@ Deno.serve(async (req) => {
     const termsVersion = requiredString(body.termsVersion, 40);
     const suppliedReferral = requiredString(body.referralCode, 12).toUpperCase();
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "Enter a valid email address." }, 400);
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return json({ error: "Enter a valid email address." }, 400);
     if (password.length < 8 || password.length > 128) return json({ error: "Password must be 8–128 characters." }, 400);
     if (!/^[A-Za-z0-9_.]{3,30}$/.test(username)) return json({ error: "Username must be 3–30 letters, numbers, dots or underscores." }, 400);
     if (!acceptedAt || !termsVersion) return json({ error: "Terms acceptance is required." }, 400);
@@ -57,8 +69,22 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     if (!serviceUrl || !serviceKey) throw new Error("Supabase server configuration is missing");
     const db = createClient(serviceUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-    const auth = firebaseAdmin();
 
+    // Use only the edge proxy's client-IP headers; never trust arbitrary request body values.
+    const ip = req.headers.get("cf-connecting-ip") ??
+      req.headers.get("x-real-ip") ??
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+      "unknown";
+    const emailKey = await keyedHash(`email:${email}`, serviceKey);
+    const ipKey = await keyedHash(`ip:${ip}`, serviceKey);
+    const { data: allowed, error: rateError } = await db.rpc("consume_firebase_signup_rate_limit", {
+      p_email_key: emailKey,
+      p_ip_key: ipKey,
+    });
+    if (rateError) throw rateError;
+    if (allowed !== true) return json({ error: "Too many signup attempts. Please try again later." }, 429);
+
+    const auth = firebaseAdmin();
     const { data: usernameTaken, error: usernameError } = await db.from("users")
       .select("uid").ilike("userName", username).limit(1);
     if (usernameError) throw usernameError;
@@ -116,6 +142,6 @@ Deno.serve(async (req) => {
     const message = error instanceof Error ? error.message : "Signup failed";
     const duplicate = /email.*already|already.*email|email-already-exists/i.test(message);
     console.error("firebase-auth-provision:", message);
-    return json({ error: duplicate ? "An account with this email already exists." : "Account creation failed. Please try again." }, duplicate ? 409 : 400);
+    return json({ error: duplicate ? "An account with this email already exists." : "Account creation failed. Please try again." }, duplicate ? 409 : 500);
   }
 });
