@@ -432,17 +432,9 @@ class _LoginPageState extends State<LoginPage> {
 
         String errorMessage = friendlyErrorMessage(e, fallback: "We couldn’t sign you in. Please check your details and try again.");
 
-        if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
-          if (mounted) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => VerifyEmailPage(email: email, password: password),
-              ),
-            );
-          }
-          return;
-        } else if ((e.message ?? '').toLowerCase().contains('invalid login credentials')) {
+        if (e.code == 'user-not-found' ||
+            e.code == 'wrong-password' ||
+            e.code == 'invalid-credential') {
           errorMessage = "The email or password is incorrect. Check your details and try again.";
         }
 
