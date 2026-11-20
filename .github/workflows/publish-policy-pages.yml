@@ -101,6 +101,7 @@ jobs:
               <section id="policies" aria-labelledby="policy-title">
                 <div class="section-head"><div><h2 id="policy-title">Policies & safety center</h2><p>Important information about using ProSN.</p></div></div>
                 <div class="grid">
+                  <a class="card" href="policy/terms-of-service.html"><span class="icon" aria-hidden="true">§</span><h3>Terms of Service</h3><p>Read the terms and rules for using ProSN, including accounts, content, safety and virtual items.</p><span class="more">Read terms →</span></a>
                   <a class="card" href="policy/privacy-policy.html"><span class="icon" aria-hidden="true">◈</span><h3>Privacy Policy</h3><p>Learn what information ProSN processes, why it is used, and how your data is protected and managed.</p><span class="more">Read privacy policy →</span></a>
                   <a class="card" href="policy/account-deletion.html"><span class="icon" aria-hidden="true">⌫</span><h3>Account deletion</h3><p>Request permanent deletion of your ProSN account after securely verifying ownership.</p><span class="more">Delete your account →</span></a>
                   <a class="card" href="policy/community-guidelines.html"><span class="icon" aria-hidden="true">◎</span><h3>Community Guidelines</h3><p>Understand the content and behaviour standards that help keep ProSN respectful and safe.</p><span class="more">View guidelines →</span></a>
@@ -112,7 +113,7 @@ jobs:
                 <a class="btn primary" href="mailto:support.prosn@gmail.com">Contact support ↗</a>
               </section>
             </main>
-            <footer><div class="wrap foot"><span>© 2026 ProSN. All rights reserved.</span><nav class="footlinks" aria-label="Footer navigation"><a href="policy/privacy-policy.html">Privacy</a><a href="policy/community-guidelines.html">Guidelines</a><a href="policy/child-safety.html">Child safety</a><a href="policy/account-deletion.html">Account deletion</a></nav></div></footer>
+            <footer><div class="wrap foot"><span>© 2026 ProSN. All rights reserved.</span><nav class="footlinks" aria-label="Footer navigation"><a href="policy/terms-of-service.html">Terms</a><a href="policy/privacy-policy.html">Privacy</a><a href="policy/community-guidelines.html">Guidelines</a><a href="policy/child-safety.html">Child safety</a><a href="policy/account-deletion.html">Account deletion</a></nav></div></footer>
           </body>
           </html>
           EOF
