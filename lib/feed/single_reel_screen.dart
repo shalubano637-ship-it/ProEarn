@@ -1,3 +1,4 @@
+import 'package:proearn/firebase_user_compat.dart';
 
 
 import 'package:universal_io/universal_io.dart';
