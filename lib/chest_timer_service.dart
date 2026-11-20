@@ -161,7 +161,9 @@ class ChestTimerService extends ChangeNotifier {
         _unlockAt = existing.unlockAt;
         isStarted = existing.unlockAt != null || existing.isUnlocked;
         if (_unlockAt != null) {
-          final serverRemaining = _unlockAt!.difference(DateTime.now()).inSeconds;
+          final remainingDuration = _unlockAt!.difference(DateTime.now());
+          // Round up partial seconds so a fresh timer does not lose a second.
+          final serverRemaining = (remainingDuration.inMilliseconds / Duration.millisecondsPerSecond).ceil();
           remainingSeconds = math.max(0, serverRemaining);
           isUnlocked = existing.isUnlocked || remainingSeconds <= 0;
         } else {
