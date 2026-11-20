@@ -54,10 +54,9 @@ class PlayBillingService {
         debugPrint('Purchase stream error: $error');
       },
     );
-    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((state) {
-      if (state.session?.user != null) {
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null) {
         unawaited(refreshSubscription());
-      } else {
       }
     });
     await loadProducts();
@@ -125,7 +124,7 @@ class PlayBillingService {
   }
 
   Future<void> refreshSubscription() async {
-    if (Supabase.instance.client.auth.currentUser == null) return;
+    if (FirebaseAuth.instance.currentUser == null) return;
     try {
       await Supabase.instance.client.functions.invoke(
         'play-billing',
