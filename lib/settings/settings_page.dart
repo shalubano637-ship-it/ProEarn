@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'push_notification_page.dart';
@@ -31,7 +32,7 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentEmail =
-        Supabase.instance.client.auth.currentUser?.email?.toLowerCase().trim();
+        FirebaseAuth.instance.currentUser?.email?.toLowerCase().trim();
     final isAdmin = currentEmail == kAdminEmail.toLowerCase();
 
     return Scaffold(
