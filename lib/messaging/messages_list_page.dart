@@ -42,7 +42,7 @@ class _MessagesListPageState extends State<MessagesListPage> {
   RealtimeChannel? _chatUpdatesChannel;
 
   Future<List<Map<String, dynamic>>> _fetchConversations() async {
-    final currentUid = Supabase.instance.FirebaseAuth.instance.currentUser?.id ?? '';
+    final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
     // Inbox rows and pending requests are independent reads.
     final results = await Future.wait([
       Supabase.instance.client
@@ -113,7 +113,7 @@ class _MessagesListPageState extends State<MessagesListPage> {
     final client = Supabase.instance.client;
     // Refresh the inbox whenever a conversation or message changes so the most
     // recently active chat moves to the top without reopening the page.
-    _chatUpdatesChannel = client.channel('messages-list-${client.auth.currentUser?.id ?? 'user'}')
+    _chatUpdatesChannel = client.channel('messages-list-${FirebaseAuth.instance.currentUser?.uid ?? 'user'}')
       ..onPostgresChanges(
         event: PostgresChangeEvent.all,
         schema: 'public',
@@ -181,7 +181,7 @@ class _MessagesListPageState extends State<MessagesListPage> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUid = FirebaseAuth.instance.currentUser?.id ?? '';
+    final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
     if (currentUid.isEmpty) {
       return const Scaffold(body: Center(child: Text("Please log in.")));
     }
