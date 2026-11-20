@@ -93,22 +93,41 @@ jobs:
         run: flutter build apk --debug --verbose
 
       - name: Verify actual debug APK signing certificate for Google Sign-In
+        shell: bash
         run: |
+          set -euo pipefail
           APK="build/app/outputs/flutter-apk/app-debug.apk"
           test -s "$APK"
-          echo "Actual installed debug APK signing certificate:"
-          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
-          test -n "$APKSIGNER" || { echo "apksigner not found under $ANDROID_HOME/build-tools"; exit 1; }
-          echo "apksigner path: $APKSIGNER"
-          echo "APK signer certificate details:"
-          "$APKSIGNER" verify --print-certs "$APK"
-          echo "Runner debug keystore certificate details:"
-          DEBUG_KEYSTORE="$(find "$HOME" -path '*/.android/debug.keystore' -type f -print -quit)"
-          test -n "$DEBUG_KEYSTORE" || { echo "Debug keystore not found"; exit 1; }
-          keytool -list -v -keystore "$DEBUG_KEYSTORE" -storepass android -alias androiddebugkey
-          echo "Configured Firebase Android OAuth certificate hashes:"
-          grep -A 4 -B 2 'certificate_hash' android/app/google-services.json
-
+          echo "Actual debug APK signing certificate:"
+          BUILD_TOOLS="$(find "${ANDROID_SDK_ROOT:-$ANDROID_HOME}/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          test -n "$BUILD_TOOLS" || { echo "Android build-tools directory not found"; exit 1; }
+          APKSIGNER="$BUILD_TOOLS/apksigner"
+          test -x "$APKSIGNER" || { echo "apksigner not executable: $APKSIGNER"; exit 1; }
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/prosn-apk-cert.txt
+          echo "Runner debug keystore SHA-1 (if present):"
+          DEBUG_KEYSTORE="$HOME/.android/debug.keystore"
+          if [ -f "$DEBUG_KEYSTORE" ]; then
+            keytool -list -v -keystore "$DEBUG_KEYSTORE" -storepass android -alias androiddebugkey | grep -i 'SHA1:'
+          else
+            echo "No runner debug keystore file; APK signer output above is authoritative."
+          fi
+          echo "Firebase OAuth SHA-1 for com.prosn.app:"
+          python3 - <<'PY'
+          import json
+          with open("android/app/google-services.json", encoding="utf-8") as f:
+              config = json.load(f)
+          clients = [
+              c for c in config.get("client", [])
+              if c.get("client_info", {}).get("android_client_info", {}).get("package_name") == "com.prosn.app"
+          ]
+          if not clients:
+              raise SystemExit("No Firebase config entry for com.prosn.app")
+          for client in clients:
+              for oauth in client.get("oauth_client", []):
+                  info = oauth.get("android_info", {})
+                  if info.get("package_name") == "com.prosn.app":
+                      print(info.get("certificate_hash", "No Android certificate_hash"))
+          PY
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
