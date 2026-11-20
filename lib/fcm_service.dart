@@ -110,7 +110,7 @@ class FcmService {
 
   // Explicit login/settings action: request permission and persist preference.
   static Future<bool> enableForCurrentUser() async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       debugPrint('FCM registration skipped: no signed-in Firebase user.');
       return false;
@@ -151,7 +151,7 @@ class FcmService {
       await Supabase.instance.client
           .from('users')
           .update({'pushNotificationsEnabled': allowed})
-          .eq('uid', user.id);
+          .eq('uid', user.uid);
 
       debugPrint('FCM registration and preference update succeeded.');
       return true;
@@ -164,7 +164,7 @@ class FcmService {
   }
 
   static Future<bool> _saveToken(String token) async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null || token.isEmpty) {
       lastTokenSaveError = 'No authenticated Firebase user or empty FCM token.';
       return false;
@@ -174,7 +174,7 @@ class FcmService {
       final saved = await Supabase.instance.client
           .from('users')
           .update({'fcmToken': token})
-          .eq('uid', user.id)
+          .eq('uid', user.uid)
           .select('uid')
           .maybeSingle();
       if (saved == null) {
@@ -197,13 +197,13 @@ class FcmService {
   // Keep the user's notification preference unchanged so it works again
   // automatically the next time this account is signed in.
   static Future<void> unlinkCurrentUserToken() async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     await Supabase.instance.client
         .from('users')
         .update({'fcmToken': null})
-        .eq('uid', user.id);
-    debugPrint('FCM token unlinked from user ${user.id} before sign out.');
+        .eq('uid', user.uid);
+    debugPrint('FCM token unlinked from user ${user.uid} before sign out.');
   }
 
   static Future<void> signOutAndUnlink() async {
@@ -212,13 +212,13 @@ class FcmService {
   }
 
   static Future<void> disableForCurrentUser() async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     try {
       await Supabase.instance.client
           .from('users')
           .update({'pushNotificationsEnabled': false, 'fcmToken': null})
-          .eq('uid', user.id);
+          .eq('uid', user.uid);
     } catch (error) {
       debugPrint('Could not disable push notifications: $error');
     }
