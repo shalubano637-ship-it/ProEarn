@@ -380,6 +380,7 @@ class _LoginPageState extends State<LoginPage> {
           password: password,
         );
         final signedInUser = credential.user;
+        await signedInUser?.getIdToken(true);
         await signedInUser?.reload();
         final refreshedUser = FirebaseAuth.instance.currentUser;
         if (signedInUser != null) {
