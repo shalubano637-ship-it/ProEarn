@@ -84,7 +84,7 @@ void main() {
 
     test('existing not-yet-unlocked row resumes ticking from its saved remainingSeconds', () {
       when(() => repo.fetchProgress(uid)).thenAnswer(
-        (_) async => const ChestProgress(currentChestIndex: 2, remainingSeconds: 37, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 37))),
+        (_) async => ChestProgress(currentChestIndex: 2, remainingSeconds: 37, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 37))),
       );
 
       fakeAsync((async) {
@@ -101,7 +101,7 @@ void main() {
 
     test('ticking actually counts down one second per tick', () {
       when(() => repo.fetchProgress(uid)).thenAnswer(
-        (_) async => const ChestProgress(currentChestIndex: 0, remainingSeconds: 60, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 60))),
+        (_) async => ChestProgress(currentChestIndex: 0, remainingSeconds: 60, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 60))),
       );
 
       fakeAsync((async) {
@@ -119,7 +119,7 @@ void main() {
   group('pause/resume', () {
     test('pauseAndPersist stops the ticker and persists the exact remaining value', () {
       when(() => repo.fetchProgress(uid)).thenAnswer(
-        (_) async => const ChestProgress(currentChestIndex: 0, remainingSeconds: 60, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 60))),
+        (_) async => ChestProgress(currentChestIndex: 0, remainingSeconds: 60, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 60))),
       );
 
       fakeAsync((async) {
@@ -159,7 +159,7 @@ void main() {
 
     test('resumeFromForeground reloads from the repository and resumes ticking', () {
       when(() => repo.fetchProgress(uid)).thenAnswer(
-        (_) async => const ChestProgress(currentChestIndex: 0, remainingSeconds: 42, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 42))),
+        (_) async => ChestProgress(currentChestIndex: 0, remainingSeconds: 42, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 42))),
       );
 
       fakeAsync((async) {
@@ -172,7 +172,7 @@ void main() {
         expect(service.isTickingForTest, isFalse);
 
         when(() => repo.fetchProgress(uid)).thenAnswer(
-          (_) async => const ChestProgress(currentChestIndex: 0, remainingSeconds: 30, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 30))),
+          (_) async => ChestProgress(currentChestIndex: 0, remainingSeconds: 30, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 30))),
         );
 
         service.resumeFromForeground();
@@ -187,7 +187,7 @@ void main() {
   group('expiry', () {
     test('counting down to zero unlocks the chest, persists 0, and notifies once', () {
       when(() => repo.fetchProgress(uid)).thenAnswer(
-        (_) async => const ChestProgress(currentChestIndex: 0, remainingSeconds: 3, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 3))),
+        (_) async => ChestProgress(currentChestIndex: 0, remainingSeconds: 3, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 3))),
       );
 
       fakeAsync((async) {
@@ -229,7 +229,7 @@ void main() {
   group('duplicate claim / duplicate unlock', () {
     test('reloading twice while still unlocked never sends a second notification', () {
       when(() => repo.fetchProgress(uid)).thenAnswer(
-        (_) async => const ChestProgress(currentChestIndex: 0, remainingSeconds: 1, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 1))),
+        (_) async => ChestProgress(currentChestIndex: 0, remainingSeconds: 1, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 1))),
       );
 
       fakeAsync((async) {
@@ -256,7 +256,7 @@ void main() {
 
     test('advanceToNextChest resets the notify-guard for the NEW chest', () {
       when(() => repo.fetchProgress(uid)).thenAnswer(
-        (_) async => const ChestProgress(currentChestIndex: 0, remainingSeconds: 1, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 1))),
+        (_) async => ChestProgress(currentChestIndex: 0, remainingSeconds: 1, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 1))),
       );
 
       fakeAsync((async) {
@@ -285,7 +285,7 @@ void main() {
   group('notification trigger', () {
     test('does not attempt to notify if the user becomes unauthenticated mid-countdown', () {
       when(() => repo.fetchProgress(uid)).thenAnswer(
-        (_) async => const ChestProgress(currentChestIndex: 0, remainingSeconds: 1, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 1))),
+        (_) async => ChestProgress(currentChestIndex: 0, remainingSeconds: 1, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 1))),
       );
 
       fakeAsync((async) {
@@ -335,7 +335,7 @@ void main() {
 
     test('dispose() cancels any active ticker', () {
       when(() => repo.fetchProgress(uid)).thenAnswer(
-        (_) async => const ChestProgress(currentChestIndex: 0, remainingSeconds: 60, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 60))),
+        (_) async => ChestProgress(currentChestIndex: 0, remainingSeconds: 60, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 60))),
       );
 
       fakeAsync((async) {
