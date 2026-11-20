@@ -176,7 +176,9 @@ Deno.serve(async (req) => {
       const { error: adminCleanupError } = await admin.from("admins").delete().eq("email", email);
       assertNoError("Remove admin mapping", adminCleanupError);
     }
-    // Remove the public profile explicitly: this schema does not cascade public.users from auth.users.\n    await deleteWhere("users", "uid", uid);\n    // Firebase identity is deleted only after all application data and media cleanup succeeds.
+    // Remove the public profile explicitly before deleting the Firebase identity.
+    await deleteWhere("users", "uid", uid);
+    // Firebase identity is deleted only after all application data and media cleanup succeeds.
     await firebaseAdminAuth().deleteUser(uid);
     return json({ success: true, r2MediaDeleted: true });
   } catch (error) {
