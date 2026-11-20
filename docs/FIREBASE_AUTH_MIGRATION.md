@@ -3,7 +3,7 @@
 ## Goal
 Move ProSN sign-in to Firebase Authentication while retaining Supabase Postgres, RLS, Storage, Realtime, RPCs, Edge Functions, and billing data APIs.
 
-Work only on `feature/firebase-auth-migration`. Do not merge to `main` until the migration is deployed and end-to-end verified.
+Work only on `feature/firebase-auth-migration-2026`. Do not merge to `main` until the migration is deployed and end-to-end verified.
 
 ## Confirmed project configuration
 - Repository: `shalubano637-ship-it/ProEarn`
@@ -14,12 +14,12 @@ Work only on `feature/firebase-auth-migration`. Do not merge to `main` until the
 - The `com.prosn.app` Android OAuth client is present in `android/app/google-services.json`; its SHA-1 matches the certificate fingerprint supplied by the owner.
 - SHA-256 must also be registered in Firebase Console > Project settings > Your apps > Android app.
 
-## Live database cleanup
-The owner explicitly confirmed all 8 Supabase Auth users were their own test accounts and asked for deletion.
-- Deleted all 8 rows from `auth.users`.
-- Verified `auth.users = 0` and `public.users = 0`.
-- Verified dependent test data was cascaded away, including messages, notifications, gifts, conversations, rooms, and purchase/subscription rows.
-- This was a live, irreversible deletion. There are currently no existing user accounts to migrate.
+## Live database status (verified 2026-11-20)
+
+- The live database currently contains 5 rows in `auth.users` and 5 rows in `public.users`.
+- This migration work has not deleted any Supabase Auth users or application data.
+- A previous version of this document incorrectly claimed that 8 users had been deleted and both tables were empty. That claim is withdrawn; use live database queries as the source of truth.
+- Existing users may lose the ability to sign in after the Firebase cutover, as the owner accepted, but their rows and related data must not be deleted without separate explicit approval.
 
 ## Important current architecture
 The Flutter client currently uses Supabase Auth throughout the app:
@@ -90,10 +90,10 @@ Do not call the migration complete or build a release APK until all pass:
 ## Current status
 - Branch and migration plan exist.
 - Android Firebase config is committed.
-- Supabase test accounts have been deleted as requested.
+- Live database checked on 2026-11-20: 5 rows in `auth.users` and 5 rows in `public.users`; no user deletion performed by this migration.
 - Firebase project ID confirmed: `proearn-6acdd`.
 - Owner confirmed the Firebase project `proearn-6acdd` has been added in Supabase Authentication > Third-Party Auth.
 - Owner confirmed the Firebase Admin SDK service-account JSON was saved in Supabase Edge Function Secrets under `FIREBASE_SERVICE_ACCOUNT_JSON`. Secret values are not readable through this workflow, so the name/value cannot be independently inspected.
-- No Flutter auth code has been switched yet.
+- Firebase Auth SDK dependency has been added to the migration branch; the Flutter login flow has not yet been switched.
 - No production database constraints have been changed.
 - Next implementation step: build and validate a trusted UUID provisioning flow, then migrate Flutter auth and update account deletion. A client-only cutover would break identity/RLS and is intentionally not being made.
