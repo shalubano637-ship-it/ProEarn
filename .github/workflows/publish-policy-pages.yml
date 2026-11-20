@@ -40,15 +40,79 @@ jobs:
           cat > _site/index.html <<'EOF'
           <!doctype html>
           <html lang="en">
-          <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ProSN Policies</title></head>
-          <body style="font-family:system-ui;max-width:720px;margin:40px auto;padding:20px;line-height:1.6">
-            <h1>ProSN Policies</h1>
-            <ul>
-              <li><a href="policy/privacy-policy.html">Privacy Policy</a></li>
-              <li><a href="policy/account-deletion.html">Account deletion</a></li>
-              <li><a href="policy/community-guidelines.html">Community Guidelines</a></li>
-              <li><a href="policy/child-safety.html">Child Safety Standards</a></li>
-            </ul>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <meta name="theme-color" content="#10172a">
+            <meta name="description" content="Official ProSN policies, community standards, child safety information and account support.">
+            <title>ProSN | Community, Safety & Policies</title>
+            <style>
+              :root{color-scheme:dark;--bg:#0b1020;--panel:#141d33;--line:rgba(255,255,255,.11);--text:#f7f8fc;--muted:#aab4ca;--accent:#8b9cff;--cyan:#66e2d2}
+              *{box-sizing:border-box}
+              html{scroll-behavior:smooth}
+              body{margin:0;background:radial-gradient(ellipse at 75% -10%,rgba(93,111,255,.24),transparent 42%),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6}
+              a{color:inherit}
+              .wrap{width:min(1080px,calc(100% - 40px));margin:auto}
+              header{border-bottom:1px solid var(--line);background:rgba(11,16,32,.76);backdrop-filter:blur(16px)}
+              .nav{height:76px;display:flex;align-items:center;justify-content:space-between}
+              .brand{display:flex;align-items:center;gap:12px;text-decoration:none;font-weight:800;font-size:21px;letter-spacing:-.5px}
+              .logo{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,#8b9cff,#62e0d0);color:#10172a;font-weight:900}
+              .navlinks{display:flex;gap:24px;color:var(--muted);font-size:14px}
+              .navlinks a{text-decoration:none}.navlinks a:hover{color:white}
+              .hero{padding:88px 0 66px;max-width:780px}
+              .eyebrow{display:inline-flex;gap:9px;align-items:center;padding:7px 12px;border:1px solid rgba(139,156,255,.35);border-radius:999px;color:#c4ccff;background:rgba(139,156,255,.09);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+              h1{font-size:clamp(42px,7vw,68px);line-height:1.04;letter-spacing:-2.8px;margin:24px 0 18px}
+              .gradient{background:linear-gradient(100deg,#a9b5ff,#6ee5d3);-webkit-background-clip:text;background-clip:text;color:transparent}
+              .lead{font-size:18px;color:var(--muted);max-width:660px;margin:0}
+              .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+              .btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 18px;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;border:1px solid var(--line);background:rgba(255,255,255,.05)}
+              .btn.primary{background:linear-gradient(110deg,#8798ff,#62dcca);color:#0c1425;border:0}
+              .section-head{display:flex;justify-content:space-between;align-items:end;gap:20px;margin:16px 0 22px}
+              h2{font-size:26px;letter-spacing:-.7px;margin:0}
+              .section-head p{color:var(--muted);margin:5px 0 0;font-size:14px}
+              .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+              .card{position:relative;display:block;text-decoration:none;padding:25px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,rgba(255,255,255,.065),rgba(255,255,255,.025));transition:transform .2s,border-color .2s}
+              .card:hover{transform:translateY(-3px);border-color:rgba(139,156,255,.6)}
+              .icon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:rgba(139,156,255,.13);color:#b8c2ff;font-size:20px;margin-bottom:18px}
+              .card h3{font-size:18px;margin:0 0 7px}.card p{color:var(--muted);font-size:14px;margin:0 0 17px}
+              .more{font-size:13px;color:#aebaff;font-weight:700}
+              .support{margin:54px 0 70px;padding:28px;border:1px solid rgba(102,226,210,.23);border-radius:20px;background:linear-gradient(110deg,rgba(102,226,210,.09),rgba(139,156,255,.08));display:flex;justify-content:space-between;align-items:center;gap:24px}
+              .support p{margin:5px 0 0;color:var(--muted);font-size:14px}
+              footer{border-top:1px solid var(--line);padding:26px 0 34px;color:var(--muted);font-size:13px}
+              .foot{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap}.footlinks{display:flex;gap:18px;flex-wrap:wrap}.footlinks a{text-decoration:none}
+              @media(max-width:650px){.wrap{width:min(100% - 32px,1080px)}.nav{height:66px}.navlinks{gap:12px;font-size:12px}.hero{padding:66px 0 48px}h1{letter-spacing:-1.8px}.lead{font-size:16px}.grid{grid-template-columns:1fr}.section-head{display:block}.support{display:block;padding:23px}.support .btn{margin-top:18px}.card{padding:21px}}
+              @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important}}
+            </style>
+          </head>
+          <body>
+            <header>
+              <div class="wrap nav">
+                <a class="brand" href="/" aria-label="ProSN home"><span class="logo">P</span><span>ProSN</span></a>
+                <nav class="navlinks" aria-label="Main navigation"><a href="#policies">Policies</a><a href="policy/community-guidelines.html">Community</a><a href="#support">Support</a></nav>
+              </div>
+            </header>
+            <main class="wrap">
+              <section class="hero">
+                <span class="eyebrow">● Official ProSN information</span>
+                <h1>Connect freely.<br><span class="gradient">Stay safe together.</span></h1>
+                <p class="lead">Welcome to the ProSN policy and safety center. Find clear information about your privacy, account controls, community standards and the ways we work to keep our community safer.</p>
+                <div class="actions"><a class="btn primary" href="policy/privacy-policy.html">Explore privacy policy ↗</a><a class="btn" href="policy/account-deletion.html">Manage account</a></div>
+              </section>
+              <section id="policies" aria-labelledby="policy-title">
+                <div class="section-head"><div><h2 id="policy-title">Policies & safety center</h2><p>Important information about using ProSN.</p></div></div>
+                <div class="grid">
+                  <a class="card" href="policy/privacy-policy.html"><span class="icon" aria-hidden="true">◈</span><h3>Privacy Policy</h3><p>Learn what information ProSN processes, why it is used, and how your data is protected and managed.</p><span class="more">Read privacy policy →</span></a>
+                  <a class="card" href="policy/account-deletion.html"><span class="icon" aria-hidden="true">⌫</span><h3>Account deletion</h3><p>Request permanent deletion of your ProSN account after securely verifying ownership.</p><span class="more">Delete your account →</span></a>
+                  <a class="card" href="policy/community-guidelines.html"><span class="icon" aria-hidden="true">◎</span><h3>Community Guidelines</h3><p>Understand the content and behaviour standards that help keep ProSN respectful and safe.</p><span class="more">View guidelines →</span></a>
+                  <a class="card" href="policy/child-safety.html"><span class="icon" aria-hidden="true">♧</span><h3>Child Safety Standards</h3><p>Read ProSN's rules and reporting approach for child safety and protection from exploitation.</p><span class="more">View safety standards →</span></a>
+                </div>
+              </section>
+              <section class="support" id="support">
+                <div><h2>Need help?</h2><p>For privacy, account deletion or safety questions, contact the ProSN support team.</p></div>
+                <a class="btn primary" href="mailto:support.prosn@gmail.com">Contact support ↗</a>
+              </section>
+            </main>
+            <footer><div class="wrap foot"><span>© 2026 ProSN. All rights reserved.</span><nav class="footlinks" aria-label="Footer navigation"><a href="policy/privacy-policy.html">Privacy</a><a href="policy/community-guidelines.html">Guidelines</a><a href="policy/child-safety.html">Child safety</a><a href="policy/account-deletion.html">Account deletion</a></nav></div></footer>
           </body>
           </html>
           EOF
