@@ -5,6 +5,7 @@ name: Android APK and AAB
   push:
     branches:
       - main
+      - feature/firebase-auth-migration-2026
     paths:
       - 'lib/**'
       - 'android/**'
@@ -117,6 +118,14 @@ jobs:
           keyAlias=$KEY_ALIAS
           keyPassword=$KEYSTORE_PASSWORD
           EOF
+
+      - name: Verify release signing certificate for Google Sign-In
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "Release signing certificate SHA-1:"
+          keytool -list -v -keystore android/upload-keystore.jks -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" | grep -E 'SHA1:|SHA-1:'
+          echo "Configured Android OAuth certificate SHA-1:"
+          grep -A 5 -B 2 'certificate_hash' android/app/google-services.json
 
       - name: Build signed release APK
         if: github.event_name != 'pull_request'
