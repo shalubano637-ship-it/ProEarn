@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:universal_io/universal_io.dart';
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -123,7 +124,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<Map<String, dynamic>?> _loadProfileData(String uid) async {
     // These reads are independent; run them together to avoid serial network latency.
-    final viewerUid = Supabase.instance.client.auth.currentUser?.id;
+    final viewerUid = FirebaseAuth.instance.currentUser?.uid;
     final results = await Future.wait<dynamic>([
       Supabase.instance.client.from('public_profiles').select().eq('uid', uid).maybeSingle(),
       Supabase.instance.client.rpc('get_follow_relationships', params: {'p_target_id': uid}),
@@ -178,10 +179,10 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser = FirebaseAuth.instance.currentUser;
     
     final String targetUid = widget.isOwnProfile
-        ? (currentUser?.id ?? '')
+        ? (currentUser?.uid ?? '')
         : (widget.otherUser ?? '');
 
     if (_profileFuture == null || _loadedTargetUid != targetUid) {
