@@ -1,3 +1,5 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:proearn/firebase_user_compat.dart';
 import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
