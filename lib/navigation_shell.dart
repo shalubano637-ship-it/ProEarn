@@ -83,7 +83,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   void _watchForLiveBan() {
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
     _banWatchSub = Supabase.instance.client
@@ -129,7 +129,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser = FirebaseAuth.instance.currentUser;
 
     return PopScope(
       canPop: false, // Disables standard automatic page pop/app termination routing
@@ -396,7 +396,7 @@ class _MessagesUnreadNavIconState extends State<_MessagesUnreadNavIcon> {
       _refreshRequested = true;
       return;
     }
-    if (_client.auth.currentUser == null) return;
+    if (FirebaseAuth.instance.currentUser == null) return;
     _fetching = true;
     try {
       // One server-side aggregate replaces one query per conversation.
