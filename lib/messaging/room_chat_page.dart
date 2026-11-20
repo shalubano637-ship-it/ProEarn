@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:universal_io/universal_io.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -57,7 +58,7 @@ class _RoomChatPageState extends State<RoomChatPage> {
   late int _memberCount;
   Map<String, dynamic>? _replyingTo;
 
-  String get _myUid => Supabase.instance.client.auth.currentUser?.id ?? '';
+  String get _myUid => FirebaseAuth.instance.currentUser?.id ?? '';
   String _imageContentType(String name) {
     final lower = name.toLowerCase();
     if (lower.endsWith('.png')) return 'image/png';
