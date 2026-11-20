@@ -5,6 +5,7 @@ import 'package:universal_io/universal_io.dart';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -52,7 +53,7 @@ class _ReelsPageState extends State<ReelsPage> {
           .maybeSingle());
 
   void _initStreams() {
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser != null) {
       _userStream = Supabase.instance.client
           .from(kUsersCollection)
@@ -144,7 +145,7 @@ class _ReelsPageState extends State<ReelsPage> {
     
   @override
   Widget build(BuildContext context) {
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser = FirebaseAuth.instance.currentUser;
       
     if (currentUser == null || _userStream == null || _postsStream == null) {
       return const Scaffold(
@@ -429,7 +430,7 @@ class _ReelFollowButtonState extends State<_ReelFollowButton> {
 
   Future<void> _toggle() async {
     if (_requestInProgress) return;
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     final previous = _following;
