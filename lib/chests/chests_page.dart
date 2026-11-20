@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -368,7 +369,7 @@ class _GiftShopSectionState extends State<_GiftShopSection> {
       .order('priceCoins', ascending: true);
 
   Future<double> _loadCoinBalance() async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) return 0;
     final row = await Supabase.instance.client
         .from(kUsersCollection)
