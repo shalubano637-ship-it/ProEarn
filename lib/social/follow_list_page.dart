@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../service.dart';
@@ -39,7 +40,7 @@ class _FollowListPageState extends State<FollowListPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final currentAuthUser = Supabase.instance.client.auth.currentUser;
+    final currentAuthUser = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.title, style: const TextStyle(fontWeight: FontWeight.bold))),
