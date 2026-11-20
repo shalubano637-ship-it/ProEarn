@@ -1,6 +1,7 @@
 
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -36,7 +37,7 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadBannerAd();
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       _notificationsStream = Supabase.instance.client
           .from(kNotificationsCollection)
@@ -107,7 +108,7 @@ class _NotificationPageState extends State<NotificationPage> with WidgetsBinding
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser = FirebaseAuth.instance.currentUser;
     final theme = Theme.of(context);
 
     if (currentUser == null) {
