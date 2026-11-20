@@ -97,24 +97,9 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
         Sentry.captureException(e, stackTrace: st);
       }
 
-      try {
-        await appThemeController.load();
-        await Supabase.initialize(
-          url: const String.fromEnvironment(
-            'SUPABASE_URL',
-            defaultValue: 'https://mltvpfqfhbhgkejcjpmq.supabase.co',
-          ),
-          anonKey: const String.fromEnvironment(
-            'SUPABASE_ANON_KEY',
-            defaultValue: 'sb_publishable_3c2SHzm3Y8u_pjbmpWNSXw_5Rwkn5b_',
-          ),
-        );
-      } catch (e, st) {
-        debugPrint("Supabase Init Error: $e");
-        Sentry.captureException(e, stackTrace: st);
-      }
-
-      // Start Firebase Messaging after Supabase is ready for auth restoration.
+      // Firebase Core must be ready before Supabase Auth is bridged to Firebase.
+      // Keep FCM listeners until after Supabase initialization because the
+      // current auth UI is still being migrated from Supabase Auth.
       try {
         if (defaultTargetPlatform == TargetPlatform.android) {
           await Firebase.initializeApp();
@@ -127,10 +112,30 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
             Sentry.captureException(error, stackTrace: stackTrace);
             return true;
           };
-          FcmService.initialize();
         }
       } catch (e, st) {
         debugPrint('Firebase Init Error: $e');
+        Sentry.captureException(e, stackTrace: st);
+      }
+
+      try {
+        await appThemeController.load();
+        await Supabase.initialize(
+          url: const String.fromEnvironment(
+            'SUPABASE_URL',
+            defaultValue: 'https://mltvpfqfhbhgkejcjpmq.supabase.co',
+          ),
+          anonKey: const String.fromEnvironment(
+            'SUPABASE_ANON_KEY',
+            defaultValue: 'sb_publishable_3c2SHzm3Y8u_pjbmpWNSXw_5Rwkn5b_',
+          ),
+        );
+        if (defaultTargetPlatform == TargetPlatform.android &&
+            Firebase.apps.isNotEmpty) {
+          FcmService.initialize();
+        }
+      } catch (e, st) {
+        debugPrint("Supabase Init Error: $e");
         Sentry.captureException(e, stackTrace: st);
       }
 
