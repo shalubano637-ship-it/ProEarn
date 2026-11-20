@@ -1,6 +1,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../models.dart';
@@ -40,7 +41,7 @@ class _MessagesListPageState extends State<MessagesListPage> {
   RealtimeChannel? _chatUpdatesChannel;
 
   Future<List<Map<String, dynamic>>> _fetchConversations() async {
-    final currentUid = Supabase.instance.client.auth.currentUser?.id ?? '';
+    final currentUid = Supabase.instance.FirebaseAuth.instance.currentUser?.id ?? '';
     // Inbox rows and pending requests are independent reads.
     final results = await Future.wait([
       Supabase.instance.client
@@ -179,7 +180,7 @@ class _MessagesListPageState extends State<MessagesListPage> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUid = Supabase.instance.client.auth.currentUser?.id ?? '';
+    final currentUid = FirebaseAuth.instance.currentUser?.id ?? '';
     if (currentUid.isEmpty) {
       return const Scaffold(body: Center(child: Text("Please log in.")));
     }
