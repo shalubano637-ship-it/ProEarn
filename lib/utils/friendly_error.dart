@@ -1,62 +1,62 @@
-/// Converts technical exceptions into short, actionable messages for app users.
-/// Keep raw exception details in debug logs only; never display backend internals.
-String friendlyErrorMessage(
-  Object error, {
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// Identifies the subsystem that raised an exception without exposing secrets.
+String errorSource(Object error) {
+  if (error is FirebaseAuthException) return 'Firebase Auth';
+  if (error is FirebaseException) return 'Firebase';
+  if (error is AuthException || error is PostgrestException || error is StorageException || error is FunctionException) return 'Supabase';
+  if (error is PlatformException) return 'Android / Platform';
+  final text = error.toString().toLowerCase();
+  if (text.contains('cloudflare') || text.contains('r2')) return 'Cloudflare R2';
+  if (text.contains('billing') || text.contains('purchase') || text.contains('in_app_purchase')) return 'Google Play Billing';
+  if (text.contains('google_sign_in') || text.contains('google sign-in') || text.contains('google sign in')) return 'Google Sign-In';
+  if (text.contains('socketexception') || text.contains('clientexception') || text.contains('timeout')) return 'Network';
+  if (text.contains('firebase')) return 'Firebase';
+  if (text.contains('supabase') || text.contains('postgrest') || text.contains('row-level security')) return 'Supabase';
+  return 'App';
+}
+
+/// Provider code and message are retained for diagnosis. Never include request
+/// headers, access tokens, passwords, or service credentials in this string.
+String diagnosticErrorMessage(Object error) {
+  if (error is FirebaseAuthException) return '[Firebase Auth] \${error.code}: \${error.message ?? error.plugin}';
+  if (error is FirebaseException) return '[Firebase] \${error.plugin}/\${error.code}: \${error.message ?? 'No provider message'}';
+  if (error is AuthException) return '[Supabase Auth] \${error.statusCode ?? 'no status'}: \${error.message}';
+  if (error is PostgrestException) return '[Supabase Database] \${error.code ?? 'no code'}: \${error.message}';
+  if (error is StorageException) return '[Supabase Storage] \${error.statusCode ?? 'no status'}: \${error.message}';
+  if (error is FunctionException) return '[Supabase Edge Function] HTTP \${error.status ?? 'unknown'}: \${error.reasonPhrase ?? error.details ?? 'Request failed'}';
+  if (error is PlatformException) return '[Android / Platform] \${error.code}: \${error.message ?? 'Platform operation failed'}';
+  return '[\${errorSource(error)}] \${error.toString()}';
+}
+
+String friendlyErrorMessage(Object error, {
   String fallback = 'Something went wrong. Please try again.',
 }) {
-  final message = error.toString().toLowerCase();
-
-  if (message.contains('socketexception') ||
-      message.contains('failed host lookup') ||
-      message.contains('network is unreachable') ||
-      message.contains('clientexception')) {
-    return 'You appear to be offline. Check your internet connection and try again.';
+  final detail = diagnosticErrorMessage(error);
+  final text = detail.toLowerCase();
+  if (text.contains('socketexception') || text.contains('failed host lookup') ||
+      text.contains('network is unreachable') || text.contains('clientexception')) {
+    return '[Network] Internet connection failed. Check your connection and retry.\\n$detail';
   }
-  if (message.contains('timed out') || message.contains('timeout')) {
-    return 'The request took too long. Please try again.';
+  if (text.contains('timed out') || text.contains('timeout')) {
+    return '[Network] Request timed out. Retry the operation.\\n$detail';
   }
-  if (message.contains('invalid login credentials') ||
-      message.contains('invalid_credentials')) {
-    return 'The email or password is incorrect. Check your details and try again.';
+  if (text.contains('permission denied') || text.contains('row-level security') ||
+      text.contains('rls') || text.contains('42501')) {
+    return '[Supabase Database] Permission denied by RLS/policy. Check the user JWT and table policy.\\n$detail';
   }
-  if (message.contains('invalid email') || message.contains('email address is invalid')) {
-    return 'Enter a valid email address and try again.';
+  if (text.contains('too many requests') || text.contains('rate limit')) {
+    return '[\${errorSource(error)}] Rate limit reached. Wait before retrying.\\n$detail';
   }
-  if (message.contains('weak password') || message.contains('password should be at least')) {
-    return 'Choose a stronger password that meets the password requirements.';
+  if (text.contains('google_sign_in') || text.contains('sign_in_failed') ||
+      text.contains('developer_error') || text.contains('10:')) {
+    return '[Google Sign-In] OAuth configuration or credential exchange failed. Check package name, SHA-1/SHA-256 and Web Client ID.\\n$detail';
   }
-  if (message.contains('email not confirmed')) {
-    return 'Please verify your email address before signing in.';
-  }
-  if (message.contains('already registered') ||
-      message.contains('user already exists')) {
-    return 'An account with this email already exists. Try signing in instead.';
-  }
-  if (message.contains('duplicate key') || message.contains('unique constraint')) {
-    return 'This information is already in use. Check your details and try again.';
-  }
-  if (message.contains('foreign key') || message.contains('violates check constraint')) {
-    return 'This action could not be completed with the current information. Please refresh and try again.';
-  }
-  if (message.contains('permission denied') ||
-      message.contains('row-level security') ||
-      message.contains('rls')) {
-    return 'You do not have permission to do that. Check your account access and try again.';
-  }
-  if (message.contains('file too large') ||
-      message.contains('payload too large') ||
-      message.contains('413')) {
-    return 'This file is too large. Choose a smaller file and try again.';
-  }
-  if (message.contains('storage') || message.contains('upload')) {
-    return 'We could not upload your file. Check your connection and try again.';
-  }
-  if (message.contains('rate limit') || message.contains('too many requests')) {
-    return 'You have tried too many times. Please wait a moment and try again.';
-  }
-  if (message.contains('cancelled') || message.contains('canceled')) {
-    return 'The action was cancelled.';
-  }
-
-  return fallback;
+  if (error is FirebaseAuthException || error is FirebaseException ||
+      error is AuthException || error is PostgrestException ||
+      error is StorageException || error is FunctionException ||
+      error is PlatformException) return detail;
+  return '[\${errorSource(error)}] $fallback\\n$detail';
 }
