@@ -99,15 +99,22 @@ jobs:
           APK="build/app/outputs/flutter-apk/app-debug.apk"
           test -s "$APK"
           echo "Actual debug APK signing certificate:"
-          BUILD_TOOLS="$(find "${ANDROID_SDK_ROOT:-$ANDROID_HOME}/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
-          test -n "$BUILD_TOOLS" || { echo "Android build-tools directory not found"; exit 1; }
-          APKSIGNER="$BUILD_TOOLS/apksigner"
-          test -x "$APKSIGNER" || { echo "apksigner not executable: $APKSIGNER"; exit 1; }
-          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/prosn-apk-cert.txt
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/.android}}"
+          echo "Android SDK root: $SDK_ROOT"
+          APKSIGNER="$(find "$SDK_ROOT/build-tools" -name apksigner -print 2>/dev/null | sort -V | tail -n 1)"
+          if [ -n "$APKSIGNER" ] && [ -x "$APKSIGNER" ]; then
+            echo "APK signature details from apksigner:"
+            "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/prosn-apk-cert.txt
+          else
+            echo "apksigner not found; falling back to keytool APK certificate inspection."
+            keytool -printcert -jarfile "$APK" | tee /tmp/prosn-apk-cert.txt
+          fi
+          echo "Extracted certificate fingerprints:"
+          grep -Ei 'SHA-1|SHA1|SHA-256|SHA256' /tmp/prosn-apk-cert.txt || true
           echo "Runner debug keystore SHA-1 (if present):"
           DEBUG_KEYSTORE="$HOME/.android/debug.keystore"
           if [ -f "$DEBUG_KEYSTORE" ]; then
-            keytool -list -v -keystore "$DEBUG_KEYSTORE" -storepass android -alias androiddebugkey | grep -i 'SHA1:'
+            keytool -list -v -keystore "$DEBUG_KEYSTORE" -storepass android -alias androiddebugkey | grep -i 'SHA1:' || true
           else
             echo "No runner debug keystore file; APK signer output above is authoritative."
           fi
