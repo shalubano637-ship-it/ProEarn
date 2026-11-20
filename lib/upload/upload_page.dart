@@ -8,6 +8,7 @@ import 'package:universal_io/universal_io.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -107,7 +108,7 @@ class _UploadPageState extends State<UploadPage> {
       return;
     }
      
-    if (Supabase.instance.client.auth.currentUser == null) return;
+    if (FirebaseAuth.instance.currentUser == null) return;
 
     setState(() {
       _isUploading = true;
