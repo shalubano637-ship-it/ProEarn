@@ -8,6 +8,7 @@ import 'package:postgrest/postgrest.dart';
 import 'package:postgrest/postgrest.dart';
 import '../theme/theme.dart';
 import '../service.dart';
+import '../models.dart';
 import '../utils/friendly_error.dart';
 import '../chest_timer_service.dart';
 import '../ad_preloader.dart';
