@@ -1,8 +1,9 @@
+import 'package:proearn/firebase_user_compat.dart';
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 import 'fcm_service.dart';
 
 import 'models.dart';
@@ -441,7 +442,7 @@ class _LoginPageState extends State<LoginPage> {
             );
           }
           return;
-        } else if (e.message.toLowerCase().contains('invalid login credentials')) {
+        } else if ((e.message ?? '').toLowerCase().contains('invalid login credentials')) {
           errorMessage = "The email or password is incorrect. Check your details and try again.";
         }
 
