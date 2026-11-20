@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'models.dart';
@@ -10,18 +11,17 @@ class AdFreeAccess {
   AdFreeAccess._();
 
   static final ValueNotifier<bool> active = ValueNotifier(false);
-  static StreamSubscription<AuthState>? _authSubscription;
+  static StreamSubscription<User?>? _authSubscription;
   static StreamSubscription<List<Map<String, dynamic>>>? _userSubscription;
   static Timer? _expiryTimer;
 
   static bool get isActive => active.value;
 
   static Future<void> initialize() async {
-    final client = Supabase.instance.client;
-    _authSubscription ??= client.auth.onAuthStateChange.listen((state) {
-      unawaited(_watchUser(state.session?.user.id));
+    _authSubscription ??= FirebaseAuth.instance.authStateChanges().listen((user) {
+      unawaited(_watchUser(user?.uid));
     });
-    await _watchUser(client.auth.currentUser?.id);
+    await _watchUser(FirebaseAuth.instance.currentUser?.uid);
   }
 
   static Future<void> _watchUser(String? uid) async {
