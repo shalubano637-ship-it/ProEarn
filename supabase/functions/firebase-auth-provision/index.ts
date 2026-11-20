@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
     const termsVersion = requiredString(body.termsVersion, 40);
     const suppliedReferral = requiredString(body.referralCode, 12).toUpperCase();
 
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return json({ error: "Enter a valid email address." }, 400);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "Enter a valid email address." }, 400);
     if (password.length < 8 || password.length > 128) return json({ error: "Password must be 8–128 characters." }, 400);
     if (!/^[A-Za-z0-9_.]{3,30}$/.test(username)) return json({ error: "Username must be 3–30 letters, numbers, dots or underscores." }, 400);
     if (!acceptedAt || !termsVersion) return json({ error: "Terms acceptance is required." }, 400);
