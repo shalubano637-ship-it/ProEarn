@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:universal_io/universal_io.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'fcm_service.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +17,7 @@ import 'models.dart';
 import 'theme/theme.dart';
 
 Future<void> ensureUserDocumentExists() async {
-  final currentUser = Supabase.instance.client.auth.currentUser;
+  final currentUser = FirebaseAuth.instance.currentUser;
   if (currentUser == null) return;
 
   final client = Supabase.instance.client;
@@ -25,7 +26,7 @@ Future<void> ensureUserDocumentExists() async {
     final existing = await client
         .from(kUsersCollection)
         .select('uid')
-        .eq('uid', currentUser.id)
+        .eq('uid', currentUser.uid)
         .maybeSingle();
 
     if (existing == null) {
@@ -92,7 +93,7 @@ class PushService {
 Future<void> loadUserDataOnStartup() async {
   final user = Supabase.instance.client.auth.currentUser;
   if (user != null) {
-    currentUserId = user.id;
+    currentUserId = user.uid;
     currentUserEmail = user.email ?? "";
 
     try {
