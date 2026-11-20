@@ -53,7 +53,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
         final user = FirebaseAuth.instance.currentUser;
 
         if (user != null && user.emailVerified) {
-          final termsOk = await _ensureCurrentTermsAccepted(user.id);
+          final termsOk = await _ensureCurrentTermsAccepted(user.uid);
           if (!mounted) return;
           if (!termsOk) {
             await FcmService.signOutAndUnlink();
