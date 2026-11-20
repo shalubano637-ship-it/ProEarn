@@ -65,6 +65,17 @@ jobs:
           rsvg-convert -w 1024 -h 1024 assets/icon/app_icon.svg -o assets/icon/app_icon.png
           test -s assets/icon/app_icon.png
 
+      - name: Set up Deno for Edge Function type checks
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Check Firebase Edge Functions
+        run: |
+          deno check supabase/functions/firebase-auth-provision/index.ts
+          deno check supabase/functions/firebase-google-bridge/index.ts
+          deno check supabase/functions/delete-account/index.ts
+
       - name: Install dependencies
         run: flutter pub get
 
