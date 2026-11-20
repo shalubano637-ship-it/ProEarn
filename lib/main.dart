@@ -27,6 +27,7 @@ import 'chest_timer_service.dart';
 import 'ad_preloader.dart';
 import 'ad_free_access.dart';
 import 'play_billing_service.dart';
+import 'utils/friendly_error.dart';
 
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -69,7 +70,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
                     ),
                     child: SingleChildScrollView(
                       child: Text(
-                        details.exceptionAsString(),
+                        diagnosticErrorMessage(details.exception),
                         style: const TextStyle(fontSize: 12, color: Colors.black87),
                         textAlign: TextAlign.center,
                       ),
@@ -116,7 +117,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
           };
         }
       } catch (e, st) {
-        debugPrint('Firebase Init Error: $e');
+        debugPrint(diagnosticErrorMessage(e));
         Sentry.captureException(e, stackTrace: st);
       }
 
@@ -138,7 +139,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
           FcmService.initialize();
         }
       } catch (e, st) {
-        debugPrint("Supabase Init Error: $e");
+        debugPrint(diagnosticErrorMessage(e));
         Sentry.captureException(e, stackTrace: st);
       }
 
@@ -148,7 +149,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
       unawaited(_initializeDeferredServices());
     },
     (error, stackTrace) {
-      debugPrint('CRITICAL ASYNC ERROR: $error');
+      debugPrint('CRITICAL ASYNC ERROR: ${diagnosticErrorMessage(error)}');
       debugPrint('STACKTRACE: $stackTrace');
       Sentry.captureException(error, stackTrace: stackTrace);
       if (Firebase.apps.isNotEmpty) {
