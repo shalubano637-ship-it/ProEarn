@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -34,7 +35,7 @@ class _SecurityPageState extends State<SecurityPage> {
   @override
   void initState() {
     super.initState();
-    final currentUserEmail = Supabase.instance.client.auth.currentUser?.email;
+    final currentUserEmail = FirebaseAuth.instance.currentUser?.email;
     if (currentUserEmail != null) {
       emailController.text = currentUserEmail;
     }
@@ -63,10 +64,8 @@ class _SecurityPageState extends State<SecurityPage> {
     });
 
     try {
-      await Supabase.instance.client.auth.signInWithPassword(
-        email: user.email!,
-        password: password,
-      );
+      final credential = EmailAuthProvider.credential(email: user.email!, password: password);
+      await user.reauthenticateWithCredential(credential);
 
       if (!mounted) return;
       setState(() {
@@ -106,9 +105,7 @@ class _SecurityPageState extends State<SecurityPage> {
     });
 
     try {
-      await Supabase.instance.client.auth.updateUser(
-        UserAttributes(password: newPassword),
-      );
+      await user.updatePassword(newPassword);
 
       if (!mounted) return;
       setState(() {
@@ -147,7 +144,7 @@ class _SecurityPageState extends State<SecurityPage> {
     });
 
     try {
-      await Supabase.instance.client.auth.resetPasswordForEmail(email);
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
 
       if (!mounted) return;
       setState(() {
@@ -233,7 +230,7 @@ class _SecurityPageState extends State<SecurityPage> {
         debugPrint('FCM token unlink skipped during account deletion: $error');
       }
       await Supabase.instance.client.functions.invoke('delete-account');
-      await Supabase.instance.client.auth.signOut();
+      await FirebaseAuth.instance.signOut();
       resetLocalUserState();
 
       if (mounted) {
