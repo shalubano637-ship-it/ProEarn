@@ -92,6 +92,18 @@ jobs:
       - name: Build debug APK
         run: flutter build apk --debug --verbose
 
+      - name: Verify actual debug APK signing certificate for Google Sign-In
+        run: |
+          APK="build/app/outputs/flutter-apk/app-debug.apk"
+          test -s "$APK"
+          echo "Actual installed debug APK signing certificate:"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          "$APKSIGNER" verify --print-certs "$APK" | grep -E 'Signer #1 certificate SHA-1 digest|Signer #1 certificate SHA-256 digest'
+          echo "Runner debug keystore SHA-1:"
+          keytool -list -v -keystore "$HOME/.config/.android/debug.keystore" -storepass android -alias androiddebugkey | grep -E 'SHA1:|SHA-1:'
+          echo "Configured Firebase Android OAuth certificate hashes:"
+          grep -A 4 -B 2 'certificate_hash' android/app/google-services.json
+
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
