@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -60,7 +61,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void initState() {
     super.initState();
     _loadLastViewedTime(); // Read the last viewed time once without rebuilding the page.
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = FirebaseAuth.instance.currentUser?.id;
     if (uid != null) {
       _profileStream = Supabase.instance.client
           .from(kUsersCollection)
@@ -365,7 +366,7 @@ class _MessagesUnreadNavIconState extends State<_MessagesUnreadNavIcon> {
   void initState() {
     super.initState();
     _loadUnreadCount();
-    final uid = _client.auth.currentUser?.id;
+    final uid = FirebaseAuth.instance.currentUser?.id;
     if (uid != null) {
       _channel = _client.channel('messages-nav-unread-$uid')
         ..onPostgresChanges(
