@@ -6,6 +6,7 @@ import 'package:universal_io/universal_io.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -130,7 +131,7 @@ class _CommentScreenState extends State<CommentScreen> {
 
   
       void _navigateToProfile(String commentUid) {
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null || commentUid.isEmpty) return;
 
     Navigator.push(
@@ -161,7 +162,7 @@ class _CommentScreenState extends State<CommentScreen> {
     required String commentText,
     bool isImage = false,
   }) {
-    final myUid = Supabase.instance.client.auth.currentUser?.id;
+    final myUid = FirebaseAuth.instance.currentUser?.uid;
     final bool isAuthor = myUid != null && myUid == commentUid;
     final bool isPostOwner = myUid != null && myUid == _postOwnerId;
 
@@ -305,7 +306,7 @@ class _CommentScreenState extends State<CommentScreen> {
                         Navigator.pop(sheetContext);
                         try {
                           await Supabase.instance.client.from(kReportsCollection).insert({
-                            'reportedBy': Supabase.instance.client.auth.currentUser!.id,
+                            'reportedBy': FirebaseAuth.instance.currentUser!.uid,
                             'reportedUserId': commentOwnerId,
                             'targetCommentId': commentId,
                             'reason': selectedReason,
@@ -448,7 +449,7 @@ class _CommentScreenState extends State<CommentScreen> {
   }
 
   Future<void> _postImageComment(String imageUrl) async {
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
     final repliedUserId = _replyingToUserId;
@@ -480,7 +481,7 @@ class _CommentScreenState extends State<CommentScreen> {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
 
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
     if (_editingCommentId != null) {
