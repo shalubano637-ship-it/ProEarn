@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
     if (!idToken || idToken.length > 10000) return json({ error: "Google credential is missing." }, 400);
     if (!termsAcceptedAt || !termsVersion) return json({ error: "Terms acceptance is required." }, 400);
 
-    const expectedAudience = Deno.env.get("GOOGLE_WEB_CLIENT_ID") ?? "";
+    const expectedAudience = Deno.env.get("GOOGLE_WEB_CLIENT_ID") ?? "449305618154-ii2bo0jsf8ner0oa4f6lv4eo3q4slft0.apps.googleusercontent.com";
     if (!expectedAudience) return json({ error: "Google sign-in is not configured on the server." }, 503);
 
     // Validate the Google-issued ID token server-side. Never trust client-supplied email.
