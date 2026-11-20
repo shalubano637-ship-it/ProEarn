@@ -15,8 +15,10 @@ Status: migration work branch created; production authentication remains on Supa
 - `lib/main.dart` initializes Supabase and Firebase Core/Messaging.
 - `lib/auth_screen.dart` still uses Supabase Auth for email/password, Google OAuth, password reset, auth-state changes, and email confirmation.
 - The current app uses the authenticated user ID directly as a UUID in Postgres and relies on `auth.uid()` in RLS.
-- Existing Supabase Auth user count was reported as zero in the earlier migration discovery, but this must be rechecked immediately before cutover.
-- Current live database inspection found the `public.users.referredBy -> public.users.uid` self-reference; it did not find the previously expected foreign keys from the user/billing tables to `auth.users`. This difference must be reconciled against all schema migrations and RLS policies before cutover.
+- Live read-only database check on 2026-11-20 returned 5 rows in `auth.users` and 5 rows in `public.users`.
+- Live schema inspection confirms `public.users.uid` has a foreign key to `auth.users.id` (`users_uid_fkey`). Several additional tables reference `public.users.uid`, so this identity is central to the relational data model.
+- The `public.users.referredBy -> public.users.uid` self-reference is also present.
+- The earlier note claiming zero Supabase Auth users and no `auth.users` foreign key was incorrect; the live database is authoritative. Do not remove or alter this constraint until a tested identity/JWT migration and rollback plan exists.
 
 ## Critical identity design
 A normal Firebase client signup creates a Firebase UID that is not guaranteed to be a UUID. The current Postgres schema and RLS rely on UUID identity, so simply adding `firebase_auth` and replacing the login buttons is unsafe.
@@ -64,7 +66,10 @@ Email/password provisioning and Google account linking need separate, tested flo
 - Only after all gates pass, make Firebase Auth the default in a test APK. Keep Play Store upload disabled unless explicitly requested.
 
 ## Current blocker / required console access
-Repository tools can edit code, but they do not provide Firebase Console access to enable Authentication providers, deploy Cloud Functions, or configure Supabase third-party Firebase JWT trust. Those steps must be performed through authorized project access or manually in the consoles. Do not claim Firebase Auth is active until these are verified.
+- Email/Password and Google providers were confirmed enabled by the app owner.
+- The production database currently has 5 Supabase Auth users and 5 profile rows. Existing account identity must be preserved; matching email addresses alone are not sufficient proof to link accounts.
+- `public.users.uid -> auth.users.id` is an active foreign key. A Firebase-only identity cannot be switched on until the foreign-key dependency, user provisioning, and Supabase third-party JWT validation are solved and tested.
+- Repository tools can edit code, but do not provide Firebase Console access to deploy trusted provisioning functions or configure Supabase third-party Firebase JWT trust. Those steps require authorized project access or manual console configuration. Do not claim Firebase Auth is active until verified.
 
 ## Safety rule
 Do not delete Supabase Auth users, remove Supabase Auth dependencies, change production RLS policies, deploy functions, or cut over `main` as part of the initial migration PR. Keep all work isolated on `feature/firebase-auth-migration-2026`.
