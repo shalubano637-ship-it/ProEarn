@@ -29,14 +29,32 @@ String _redactSensitive(String value) {
 }
 
 String diagnosticErrorMessage(Object error) {
-  if (error is FirebaseAuthException) return '[Firebase Auth] ${error.code}: ${error.message ?? error.plugin}';
-  if (error is FirebaseException) return '[Firebase] ${error.plugin}/${error.code}: ${error.message ?? 'No provider message'}';
-  if (error is AuthException) return '[Supabase Auth] ${error.statusCode ?? 'no status'}: ${error.message}';
-  if (error is PostgrestException) return '[Supabase Database] ${error.code ?? 'no code'}: ${error.message}';
-  if (error is StorageException) return '[Supabase Storage] ${error.statusCode ?? 'no status'}: ${error.message}';
-  if (error is FunctionException) return '[Supabase Edge Function] HTTP ${error.status ?? 'unknown'}: ${error.reasonPhrase ?? error.details ?? 'Request failed'}';
-  if (error is PlatformException) return '[Android / Platform] ${error.code}: ${error.message ?? 'Platform operation failed'}';
-  return '[${errorSource(error)}] ${error.toString()}';
+  late final String detail;
+  if (error is FirebaseAuthException) {
+    detail = '[Firebase Auth] ${error.code}: ${error.message ?? error.plugin}';
+  } else if (error is FirebaseException) {
+    detail = '[Firebase] ${error.plugin}/${error.code}: ${error.message ?? 'No provider message'}';
+  } else if (error is AuthException) {
+    detail = '[Supabase Auth] ${error.statusCode ?? 'no status'}: ${error.message}';
+  } else if (error is PostgrestException) {
+    detail = '[Supabase Database] ${error.code ?? 'no code'}: ${error.message}';
+  } else if (error is StorageException) {
+    detail = '[Supabase Storage] ${error.statusCode ?? 'no status'}: ${error.message}';
+  } else if (error is FunctionException) {
+    // Supabase FunctionsHttpError.details contains the actual response body.
+    // Prefer it over the generic HTTP reason phrase so validation failures
+    // (e.g. invalid email, password, username or referral code) are visible.
+    final response = error.details;
+    final responseText = response is Map
+        ? (response['error'] ?? response['message'] ?? response).toString()
+        : response?.toString();
+    detail = '[Supabase Edge Function] HTTP ${error.status ?? 'unknown'}: ${responseText?.isNotEmpty == true ? responseText : error.reasonPhrase ?? 'Request failed'}';
+  } else if (error is PlatformException) {
+    detail = '[Android / Platform] ${error.code}: ${error.message ?? 'Platform operation failed'}';
+  } else {
+    detail = '[${errorSource(error)}] ${error.toString()}';
+  }
+  return _redactSensitive(detail);
 }
 
 String friendlyErrorMessage(Object error, {
