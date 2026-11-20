@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -20,6 +21,13 @@ String errorSource(Object error) {
 
 /// Provider code and message are retained for diagnosis. Never include request
 /// headers, access tokens, passwords, or service credentials in this string.
+String _redactSensitive(String value) {
+  return value
+      .replaceAll(RegExp(r'(authorization|access[_-]?token|refresh[_-]?token|id[_-]?token|password|client_secret)\\s*[:=]\\s*[^,;\\s]+', caseSensitive: false), r'$1=[REDACTED]')
+      .replaceAll(RegExp(r'eyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}'), '[JWT REDACTED]')
+      .replaceAll(RegExp(r'Bearer\\s+[A-Za-z0-9._~+/-]+=*', caseSensitive: false), 'Bearer [REDACTED]');
+}
+
 String diagnosticErrorMessage(Object error) {
   if (error is FirebaseAuthException) return '[Firebase Auth] \${error.code}: \${error.message ?? error.plugin}';
   if (error is FirebaseException) return '[Firebase] \${error.plugin}/\${error.code}: \${error.message ?? 'No provider message'}';
