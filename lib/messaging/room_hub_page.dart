@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/theme.dart';
@@ -138,7 +139,7 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
     final roomId = room['room_id']?.toString();
     if (roomId == null || roomId.isEmpty) return;
 
-    final currentUid = Supabase.instance.client.auth.currentUser?.id;
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
     final ownerUid = room['owner_uid']?.toString();
     final isOwner = currentUid != null && ownerUid != null && currentUid == ownerUid;
 
