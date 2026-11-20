@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'theme/theme.dart';
 import 'models.dart';
@@ -64,7 +65,7 @@ class _OwnRank {
 }
 
 void _openProfile(BuildContext context, String uid) {
-  final myUid = Supabase.instance.client.auth.currentUser?.id;
+  final myUid = FirebaseAuth.instance.currentUser?.uid;
   Navigator.push(
     context,
     MaterialPageRoute(
@@ -140,7 +141,7 @@ Future<List<_RankedUser>> _fetchRoomLeaderboard(_Period period) async {
 }
 
 Future<_OwnRank?> _fetchOwnRoomRank(_Period period) async {
-  final myUid = Supabase.instance.client.auth.currentUser?.id;
+  final myUid = FirebaseAuth.instance.currentUser?.uid;
   if (myUid == null) return null;
 
   final periodName = switch (period) {
@@ -174,7 +175,7 @@ Future<void> _openRoomFromLeaderboard(BuildContext context, _RankedUser room) as
   if (room.roomId == null) return;
   String password = '';
 
-  final currentUid = Supabase.instance.client.auth.currentUser?.id;
+  final currentUid = FirebaseAuth.instance.currentUser?.uid;
   final isOwner = currentUid != null && currentUid == room.uid;
 
   if (room.isPrivateRoom && !isOwner) {
@@ -348,7 +349,7 @@ Future<List<_RankedUser>> _fetchLeaderboard(_Period period, _Metric metric) asyn
 Future<_OwnRank?> _fetchOwnRank(_Period period, _Metric metric) async {
   if (metric == _Metric.room) return _fetchOwnRoomRank(period);
 
-  final myUid = Supabase.instance.client.auth.currentUser?.id;
+  final myUid = FirebaseAuth.instance.currentUser?.uid;
   if (myUid == null) return null;
 
   final client = Supabase.instance.client;
@@ -465,7 +466,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final hasUser = Supabase.instance.client.auth.currentUser != null;
+    final hasUser = FirebaseAuth.instance.currentUser != null;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -952,7 +953,7 @@ class _OwnRankCardState extends State<_OwnRankCard> {
 
   @override
   Widget build(BuildContext context) {
-    final myUid = Supabase.instance.client.auth.currentUser?.id;
+    final myUid = FirebaseAuth.instance.currentUser?.uid;
 
     return FutureBuilder<_OwnRank?>(
       future: _ownRankFuture,
