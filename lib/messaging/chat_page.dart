@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:universal_io/universal_io.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -96,7 +97,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   }
 
   Future<void> _loadBlockStatus() async {
-    final myUid = Supabase.instance.client.auth.currentUser?.id;
+    final myUid = FirebaseAuth.instance.currentUser?.id;
     if (myUid == null) return;
 
     try {
