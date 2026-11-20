@@ -23,20 +23,20 @@ String errorSource(Object error) {
 /// headers, access tokens, passwords, or service credentials in this string.
 String _redactSensitive(String value) {
   return value
-      .replaceAll(RegExp(r'(authorization|access[_-]?token|refresh[_-]?token|id[_-]?token|password|client_secret)\\s*[:=]\\s*[^,;\\s]+', caseSensitive: false), r'$1=[REDACTED]')
-      .replaceAll(RegExp(r'eyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}'), '[JWT REDACTED]')
-      .replaceAll(RegExp(r'Bearer\\s+[A-Za-z0-9._~+/-]+=*', caseSensitive: false), 'Bearer [REDACTED]');
+      .replaceAll(RegExp(r'(authorization|access[_-]?token|refresh[_-]?token|id[_-]?token|password|client_secret)\s*[:=]\s*[^,;\s]+', caseSensitive: false), r'$1=[REDACTED]')
+      .replaceAll(RegExp(r'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}'), '[JWT REDACTED]')
+      .replaceAll(RegExp(r'Bearer\s+[A-Za-z0-9._~+/-]+=*', caseSensitive: false), 'Bearer [REDACTED]');
 }
 
 String diagnosticErrorMessage(Object error) {
-  if (error is FirebaseAuthException) return '[Firebase Auth] \${error.code}: \${error.message ?? error.plugin}';
-  if (error is FirebaseException) return '[Firebase] \${error.plugin}/\${error.code}: \${error.message ?? 'No provider message'}';
-  if (error is AuthException) return '[Supabase Auth] \${error.statusCode ?? 'no status'}: \${error.message}';
-  if (error is PostgrestException) return '[Supabase Database] \${error.code ?? 'no code'}: \${error.message}';
-  if (error is StorageException) return '[Supabase Storage] \${error.statusCode ?? 'no status'}: \${error.message}';
-  if (error is FunctionException) return '[Supabase Edge Function] HTTP \${error.status ?? 'unknown'}: \${error.reasonPhrase ?? error.details ?? 'Request failed'}';
-  if (error is PlatformException) return '[Android / Platform] \${error.code}: \${error.message ?? 'Platform operation failed'}';
-  return '[\${errorSource(error)}] \${error.toString()}';
+  if (error is FirebaseAuthException) return '[Firebase Auth] ${error.code}: ${error.message ?? error.plugin}';
+  if (error is FirebaseException) return '[Firebase] ${error.plugin}/${error.code}: ${error.message ?? 'No provider message'}';
+  if (error is AuthException) return '[Supabase Auth] ${error.statusCode ?? 'no status'}: ${error.message}';
+  if (error is PostgrestException) return '[Supabase Database] ${error.code ?? 'no code'}: ${error.message}';
+  if (error is StorageException) return '[Supabase Storage] ${error.statusCode ?? 'no status'}: ${error.message}';
+  if (error is FunctionException) return '[Supabase Edge Function] HTTP ${error.status ?? 'unknown'}: ${error.reasonPhrase ?? error.details ?? 'Request failed'}';
+  if (error is PlatformException) return '[Android / Platform] ${error.code}: ${error.message ?? 'Platform operation failed'}';
+  return '[${errorSource(error)}] ${error.toString()}';
 }
 
 String friendlyErrorMessage(Object error, {
@@ -46,25 +46,25 @@ String friendlyErrorMessage(Object error, {
   final text = detail.toLowerCase();
   if (text.contains('socketexception') || text.contains('failed host lookup') ||
       text.contains('network is unreachable') || text.contains('clientexception')) {
-    return '[Network] Internet connection failed. Check your connection and retry.\\n$detail';
+    return '[Network] Internet connection failed. Check your connection and retry.\n$detail';
   }
   if (text.contains('timed out') || text.contains('timeout')) {
-    return '[Network] Request timed out. Retry the operation.\\n$detail';
+    return '[Network] Request timed out. Retry the operation.\n$detail';
   }
   if (text.contains('permission denied') || text.contains('row-level security') ||
       text.contains('rls') || text.contains('42501')) {
-    return '[Supabase Database] Permission denied by RLS/policy. Check the user JWT and table policy.\\n$detail';
+    return '[Supabase Database] Permission denied by RLS/policy. Check the user JWT and table policy.\n$detail';
   }
   if (text.contains('too many requests') || text.contains('rate limit')) {
-    return '[\${errorSource(error)}] Rate limit reached. Wait before retrying.\\n$detail';
+    return '[${errorSource(error)}] Rate limit reached. Wait before retrying.\n$detail';
   }
   if (text.contains('google_sign_in') || text.contains('sign_in_failed') ||
       text.contains('developer_error') || text.contains('10:')) {
-    return '[Google Sign-In] OAuth configuration or credential exchange failed. Check package name, SHA-1/SHA-256 and Web Client ID.\\n$detail';
+    return '[Google Sign-In] OAuth configuration or credential exchange failed. Check package name, SHA-1/SHA-256 and Web Client ID.\n$detail';
   }
   if (error is FirebaseAuthException || error is FirebaseException ||
       error is AuthException || error is PostgrestException ||
       error is StorageException || error is FunctionException ||
       error is PlatformException) return detail;
-  return '[\${errorSource(error)}] $fallback\\n$detail';
+  return '[${errorSource(error)}] $fallback\n$detail';
 }
