@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
   let createdUid: string | null = null;
   try {
     const body = await req.json();
-    const email = requiredString(body.email, 254).toLowerCase();
+    const email = requiredString(body.email, 254).normalize("NFKC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
     const password = typeof body.password === "string" ? body.password : "";
     const username = requiredString(body.username, 30);
     const acceptedAt = requiredString(body.termsAcceptedAt, 64);
