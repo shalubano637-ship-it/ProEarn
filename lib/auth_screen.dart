@@ -303,6 +303,8 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => isGoogleAuthStarting = true);
     try {
       final google = GoogleSignIn(serverClientId: '449305618154-ii2bo0jsf8ner0oa4f6lv4eo3q4slft0.apps.googleusercontent.com');
+      // Refresh the Google plugin session before starting a fresh credential flow.
+      await google.signOut();
       final account = await google.signIn();
       if (account == null) {
         if (mounted) setState(() => isGoogleAuthStarting = false);
