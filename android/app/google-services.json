@@ -51,6 +51,14 @@
           }
         },
         {
+          "client_id": "449305618154-0fmnnpqj172pfsct3pkluo93u7bbm7rj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.prosn.app",
+            "certificate_hash": "afe25a7a8a4b2ef6b50e464acf85b329d27fe39a"
+          }
+        },
+        {
           "client_id": "449305618154-i65u0ed0prktql0kiqnh3n2q917k3g6k.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
