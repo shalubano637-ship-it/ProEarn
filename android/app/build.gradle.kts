@@ -60,6 +60,13 @@ android {
     }
 
     buildTypes {
+        debug {
+            // In CI, reuse the persistent upload keystore when key.properties is restored.
+            // Local builds without key.properties continue using Android's standard debug key.
+            if (rootProject.file("key.properties").isFile) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
         release {
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
