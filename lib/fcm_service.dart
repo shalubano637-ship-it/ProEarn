@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
@@ -210,6 +211,13 @@ class FcmService {
 
   static Future<void> signOutAndUnlink() async {
     await unlinkCurrentUserToken();
+    // Clear both identity sessions. Firebase sign-out alone leaves the
+    // GoogleSignIn plugin's cached account session available for the next login.
+    try {
+      await GoogleSignIn().signOut();
+    } catch (error) {
+      debugPrint('Google session sign-out failed: $error');
+    }
     await FirebaseAuth.instance.signOut();
   }
 
