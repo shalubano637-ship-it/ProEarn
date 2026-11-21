@@ -1,9 +1,11 @@
+import 'package:proearn/firebase_user_compat.dart';
 
 
 import 'package:universal_io/universal_io.dart';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -62,7 +64,7 @@ class _SingleReelScreenState extends State<SingleReelScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser = FirebaseAuth.instance.currentUser;
 
     if (currentUser == null) {
       return const Scaffold(

@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/theme.dart';
 import '../service.dart';
@@ -86,7 +87,7 @@ class _ChatGiftSheetState extends State<_ChatGiftSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final uid = Supabase.instance.client.auth.currentUser?.id ?? '';
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
     return DraggableScrollableSheet(
       initialChildSize: 0.65,

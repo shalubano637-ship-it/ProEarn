@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -18,7 +19,7 @@ import '../theme/theme.dart';
   State<PushNotificationPage> createState() => _PushNotificationPageState();
 }
 class _PushNotificationPageState extends State<PushNotificationPage> with WidgetsBindingObserver {
-  final String _currentUid = Supabase.instance.client.auth.currentUser?.id ?? '';
+  final String _currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
   bool _isDevicePermissionGranted = false;
   bool? _pushEnabled;
 

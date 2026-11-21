@@ -2,6 +2,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart' show kDebugMode, defaultTargetPlatform, TargetPlatform;
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'firebase_supabase_token_bridge.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'dart:ui' show PlatformDispatcher;
 import 'fcm_service.dart';
@@ -25,6 +27,7 @@ import 'chest_timer_service.dart';
 import 'ad_preloader.dart';
 import 'ad_free_access.dart';
 import 'play_billing_service.dart';
+import 'utils/friendly_error.dart';
 
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -67,7 +70,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
                     ),
                     child: SingleChildScrollView(
                       child: Text(
-                        details.exceptionAsString(),
+                        diagnosticErrorMessage(details.exception),
                         style: const TextStyle(fontSize: 12, color: Colors.black87),
                         textAlign: TextAlign.center,
                       ),
@@ -97,24 +100,9 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
         Sentry.captureException(e, stackTrace: st);
       }
 
-      try {
-        await appThemeController.load();
-        await Supabase.initialize(
-          url: const String.fromEnvironment(
-            'SUPABASE_URL',
-            defaultValue: 'https://mltvpfqfhbhgkejcjpmq.supabase.co',
-          ),
-          anonKey: const String.fromEnvironment(
-            'SUPABASE_ANON_KEY',
-            defaultValue: 'sb_publishable_3c2SHzm3Y8u_pjbmpWNSXw_5Rwkn5b_',
-          ),
-        );
-      } catch (e, st) {
-        debugPrint("Supabase Init Error: $e");
-        Sentry.captureException(e, stackTrace: st);
-      }
-
-      // Start Firebase Messaging after Supabase is ready for auth restoration.
+      // Firebase Core must be ready before Supabase Auth is bridged to Firebase.
+      // Keep FCM listeners until after Supabase initialization because the
+      // current auth UI is still being migrated from Supabase Auth.
       try {
         if (defaultTargetPlatform == TargetPlatform.android) {
           await Firebase.initializeApp();
@@ -127,10 +115,31 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
             Sentry.captureException(error, stackTrace: stackTrace);
             return true;
           };
+        }
+      } catch (e, st) {
+        debugPrint(diagnosticErrorMessage(e));
+        Sentry.captureException(e, stackTrace: st);
+      }
+
+      try {
+        await appThemeController.load();
+        await Supabase.initialize(
+          url: const String.fromEnvironment(
+            'SUPABASE_URL',
+            defaultValue: 'https://mltvpfqfhbhgkejcjpmq.supabase.co',
+          ),
+          anonKey: const String.fromEnvironment(
+            'SUPABASE_ANON_KEY',
+            defaultValue: 'sb_publishable_3c2SHzm3Y8u_pjbmpWNSXw_5Rwkn5b_',
+          ),
+          accessToken: FirebaseSupabaseTokenBridge().getAccessToken,
+        );
+        if (defaultTargetPlatform == TargetPlatform.android &&
+            Firebase.apps.isNotEmpty) {
           FcmService.initialize();
         }
       } catch (e, st) {
-        debugPrint('Firebase Init Error: $e');
+        debugPrint(diagnosticErrorMessage(e));
         Sentry.captureException(e, stackTrace: st);
       }
 
@@ -140,7 +149,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
       unawaited(_initializeDeferredServices());
     },
     (error, stackTrace) {
-      debugPrint('CRITICAL ASYNC ERROR: $error');
+      debugPrint('CRITICAL ASYNC ERROR: ${diagnosticErrorMessage(error)}');
       debugPrint('STACKTRACE: $stackTrace');
       Sentry.captureException(error, stackTrace: stackTrace);
       if (Firebase.apps.isNotEmpty) {
@@ -203,7 +212,7 @@ class _AppLifecycleObserver extends WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
       chestTimerService.pauseAndPersist();
-      if (Supabase.instance.client.auth.currentUser != null) {
+      if (FirebaseAuth.instance.currentUser != null) {
         Supabase.instance.client.rpc('clear_my_conversations').catchError((e) {
           debugPrint('clear_my_conversations failed: $e');
         });

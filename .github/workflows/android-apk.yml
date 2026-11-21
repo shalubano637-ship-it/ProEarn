@@ -5,6 +5,7 @@ name: Android APK and AAB
   push:
     branches:
       - main
+      - feature/firebase-auth-migration-2026
     paths:
       - 'lib/**'
       - 'android/**'
@@ -65,6 +66,17 @@ jobs:
           rsvg-convert -w 1024 -h 1024 assets/icon/app_icon.svg -o assets/icon/app_icon.png
           test -s assets/icon/app_icon.png
 
+      - name: Set up Deno for Edge Function type checks
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Check Firebase Edge Functions
+        run: |
+          deno check supabase/functions/firebase-auth-provision/index.ts
+          deno check supabase/functions/firebase-google-bridge/index.ts
+          deno check supabase/functions/delete-account/index.ts
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -77,18 +89,8 @@ jobs:
       - name: Run Flutter tests
         run: flutter test --reporter expanded
 
-      - name: Build debug APK
-        run: flutter build apk --debug --verbose
-
-      - name: Upload debug APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ProSN-Debug-APK
-          path: build/app/outputs/flutter-apk/app-debug.apk
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Restore existing Android release signing key
+      - name: Restore existing Android release signing key for stable Debug signing
+        id: restore_debug_key
         if: github.event_name != 'pull_request'
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -107,12 +109,146 @@ jobs:
           keyPassword=$KEYSTORE_PASSWORD
           EOF
 
-      - name: Build signed release APK
+      - name: Build debug APK
+        run: flutter build apk --debug --verbose
+
+      - name: Verify actual debug APK signing certificate for Google Sign-In
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="build/app/outputs/flutter-apk/app-debug.apk"
+          test -s "$APK"
+          echo "Actual debug APK signing certificate:"
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/.android}}"
+          echo "Android SDK root: $SDK_ROOT"
+          APKSIGNER="$(find "$SDK_ROOT/build-tools" -name apksigner -print 2>/dev/null | sort -V | tail -n 1)"
+          if [ -n "$APKSIGNER" ] && [ -x "$APKSIGNER" ]; then
+            echo "APK signature details from apksigner:"
+            "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/prosn-apk-cert.txt
+          else
+            echo "apksigner not found; falling back to keytool APK certificate inspection."
+            keytool -printcert -jarfile "$APK" | tee /tmp/prosn-apk-cert.txt
+          fi
+          echo "Extracted certificate fingerprints:"
+          grep -Ei 'SHA-1|SHA1|SHA-256|SHA256' /tmp/prosn-apk-cert.txt || true
+          echo "Runner debug keystore SHA-1 (if present):"
+          DEBUG_KEYSTORE="$HOME/.android/debug.keystore"
+          if [ -f "$DEBUG_KEYSTORE" ]; then
+            keytool -list -v -keystore "$DEBUG_KEYSTORE" -storepass android -alias androiddebugkey | grep -i 'SHA1:' || true
+          else
+            echo "No runner debug keystore file; APK signer output above is authoritative."
+          fi
+          echo "Firebase OAuth SHA-1 for com.prosn.app:"
+          python3 - <<'PY'
+          import json
+          with open("android/app/google-services.json", encoding="utf-8") as f:
+              config = json.load(f)
+          clients = [
+              c for c in config.get("client", [])
+              if c.get("client_info", {}).get("android_client_info", {}).get("package_name") == "com.prosn.app"
+          ]
+          if not clients:
+              raise SystemExit("No Firebase config entry for com.prosn.app")
+          for client in clients:
+              for oauth in client.get("oauth_client", []):
+                  info = oauth.get("android_info", {})
+                  if info.get("package_name") == "com.prosn.app":
+                      print(info.get("certificate_hash", "No Android certificate_hash"))
+          PY
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ProSN-Debug-APK
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Restore existing Android release signing key
+        id: restore_release_key
         if: github.event_name != 'pull_request'
+        continue-on-error: true
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          test -n "$KEYSTORE_BASE64" || (echo "Missing ANDROID_KEYSTORE_BASE64 secret" && exit 1)
+          test -n "$KEYSTORE_PASSWORD" || (echo "Missing ANDROID_KEYSTORE_PASSWORD secret" && exit 1)
+          test -n "$KEY_ALIAS" || (echo "Missing ANDROID_KEY_ALIAS secret" && exit 1)
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/upload-keystore.jks
+          test -s android/upload-keystore.jks
+          cat > android/key.properties <<EOF
+          storeFile=upload-keystore.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEYSTORE_PASSWORD
+          EOF
+
+      - name: Verify release signing certificate for Google Sign-In
+        id: verify_release_signing
+        if: github.event_name != 'pull_request' && steps.restore_release_key.outcome == 'success'
+        continue-on-error: true
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED_SHA1="E4:26:4A:28:2F:C3:18:BF:8F:75:78:EE:71:DC:88:9F:BC:C6:9D:C4"
+          EXPECTED_SHA256="B7:9C:AC:FE:4F:49:9B:BF:58:8F:7C:97:E8:0D:E7:31:2D:FF:09:D4:AC:1B:3F:B0:33:56:C9:80:B0:E2:71:BC"
+          echo "Inspecting the exact release keystore used to sign this APK."
+          CERT_OUTPUT="$(keytool -list -v -keystore android/upload-keystore.jks -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS")"
+          ACTUAL_SHA1="$(printf '%s\n' "$CERT_OUTPUT" | awk -F': ' '/SHA1:|SHA-1:/ {print $2; exit}' | tr '[:lower:]' '[:upper:]')"
+          ACTUAL_SHA256="$(printf '%s\n' "$CERT_OUTPUT" | awk -F': ' '/SHA256:|SHA-256:/ {print $2; exit}' | tr '[:lower:]' '[:upper:]')"
+          NORMALIZED_SHA1="$(printf '%s' "$ACTUAL_SHA1" | tr -d ':')"
+          NORMALIZED_EXPECTED_SHA1="$(printf '%s' "$EXPECTED_SHA1" | tr -d ':')"
+          NORMALIZED_SHA256="$(printf '%s' "$ACTUAL_SHA256" | tr -d ':')"
+          NORMALIZED_EXPECTED_SHA256="$(printf '%s' "$EXPECTED_SHA256" | tr -d ':')"
+          echo "Release SHA-1: $ACTUAL_SHA1"
+          echo "Release SHA-256: $ACTUAL_SHA256"
+          if [ "$NORMALIZED_SHA1" != "$NORMALIZED_EXPECTED_SHA1" ]; then
+            echo "::error::Release keystore SHA-1 does not match the Firebase-registered ProSN SHA-1."
+            exit 1
+          fi
+          if [ "$NORMALIZED_SHA256" != "$NORMALIZED_EXPECTED_SHA256" ]; then
+            echo "::error::Release keystore SHA-256 does not match the Firebase-registered ProSN SHA-256."
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json
+          import re
+          expected_sha1 = "e4264a282fc318bf8f7578ee71dc889fbcc69dc4"
+          expected_web_client = "449305618154-ii2bo0jsf8ner0oa4f6lv4eo3q4slft0.apps.googleusercontent.com"
+          with open("android/app/google-services.json", encoding="utf-8") as f:
+              config = json.load(f)
+          matches = [
+              c for c in config.get("client", [])
+              if c.get("client_info", {}).get("android_client_info", {}).get("package_name") == "com.prosn.app"
+          ]
+          if len(matches) != 1:
+              raise SystemExit(f"Expected exactly one Firebase Android client for com.prosn.app; found {len(matches)}")
+          client = matches[0]
+          android_oauth = [
+              o for o in client.get("oauth_client", [])
+              if o.get("client_type") == 1
+              and o.get("android_info", {}).get("package_name") == "com.prosn.app"
+          ]
+          if not any(re.sub(r"[^0-9a-f]", "", o.get("android_info", {}).get("certificate_hash", "").lower()) == expected_sha1 for o in android_oauth):
+              raise SystemExit("Firebase google-services.json does not contain the expected ProSN Android SHA-1 OAuth client.")
+          web_oauth = [
+              o for o in client.get("oauth_client", [])
+              if o.get("client_type") == 3 and o.get("client_id") == expected_web_client
+          ]
+          if not web_oauth:
+              raise SystemExit("Firebase google-services.json does not contain the expected ProSN Web OAuth client ID.")
+          print("Firebase package, Android SHA-1 OAuth client, and Web OAuth client ID verified.")
+          PY
+      - name: Build signed release APK
+        if: github.event_name != 'pull_request' && steps.verify_release_signing.outcome == 'success'
         run: flutter build apk --release --verbose
 
       - name: Upload signed release APK artifact
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.verify_release_signing.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: ProSN-Signed-Release-APK
@@ -121,11 +257,11 @@ jobs:
           retention-days: 14
 
       - name: Build signed Android App Bundle
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.verify_release_signing.outcome == 'success'
         run: flutter build appbundle --release --verbose
 
       - name: Upload signed AAB artifact for Play Console
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.verify_release_signing.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: ProSN-Internal-Testing-AAB

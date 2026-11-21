@@ -1,5 +1,7 @@
+import 'package:proearn/firebase_user_compat.dart';
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -60,7 +62,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void initState() {
     super.initState();
     _loadLastViewedTime(); // Read the last viewed time once without rebuilding the page.
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = FirebaseAuth.instance.currentUser?.id;
     if (uid != null) {
       _profileStream = Supabase.instance.client
           .from(kUsersCollection)
@@ -82,7 +84,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   void _watchForLiveBan() {
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
     _banWatchSub = Supabase.instance.client
@@ -128,7 +130,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser = FirebaseAuth.instance.currentUser;
 
     return PopScope(
       canPop: false, // Disables standard automatic page pop/app termination routing
@@ -365,7 +367,7 @@ class _MessagesUnreadNavIconState extends State<_MessagesUnreadNavIcon> {
   void initState() {
     super.initState();
     _loadUnreadCount();
-    final uid = _client.auth.currentUser?.id;
+    final uid = FirebaseAuth.instance.currentUser?.id;
     if (uid != null) {
       _channel = _client.channel('messages-nav-unread-$uid')
         ..onPostgresChanges(
@@ -395,7 +397,7 @@ class _MessagesUnreadNavIconState extends State<_MessagesUnreadNavIcon> {
       _refreshRequested = true;
       return;
     }
-    if (_client.auth.currentUser == null) return;
+    if (FirebaseAuth.instance.currentUser == null) return;
     _fetching = true;
     try {
       // One server-side aggregate replaces one query per conversation.

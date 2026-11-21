@@ -1,6 +1,9 @@
+import 'package:proearn/firebase_user_compat.dart';
 
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 import 'fcm_service.dart';
 
 import 'models.dart';
@@ -48,10 +51,10 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
 
     Future.delayed(const Duration(seconds: 4), () async {
       if (mounted) {
-        final user = Supabase.instance.client.auth.currentUser;
+        final user = FirebaseAuth.instance.currentUser;
 
-        if (user != null && user.emailConfirmedAt != null) {
-          final termsOk = await _ensureCurrentTermsAccepted(user.id);
+        if (user != null && user.emailVerified) {
+          final termsOk = await _ensureCurrentTermsAccepted(user.uid);
           if (!mounted) return;
           if (!termsOk) {
             await FcmService.signOutAndUnlink();
@@ -203,7 +206,7 @@ class _LoginPageState extends State<LoginPage> {
   bool isSendingReset = false;
   bool resetLinkSent = false;
   bool isGoogleAuthStarting = false;
-  StreamSubscription<AuthState>? _authSubscription;
+  StreamSubscription<User?>? _authSubscription;
   final TextEditingController resetEmailController = TextEditingController();
   final TextEditingController signupUsername = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -215,12 +218,9 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((state) async {
-      if (state.event == AuthChangeEvent.signedIn &&
-          isGoogleAuthStarting &&
-          mounted) {
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) async {
+      if (user != null && isGoogleAuthStarting && mounted) {
         isGoogleAuthStarting = false;
-        // Ask for notification permission immediately after Google sign-in.
         await FcmService.enableForCurrentUser();
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
@@ -268,7 +268,7 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => isSendingReset = true);
 
     try {
-      await Supabase.instance.client.auth.resetPasswordForEmail(email);
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
       if (!mounted) return;
       setState(() {
         isSendingReset = false;
@@ -302,17 +302,41 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => isGoogleAuthStarting = true);
     try {
-      final started = await Supabase.instance.client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: 'io.supabase.proearn://login-callback/',
-      );
-      if (!started && mounted) {
-        setState(() => isGoogleAuthStarting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Could not start Google sign-in. Please try again.")),
-        );
+      final google = GoogleSignIn(serverClientId: '449305618154-ii2bo0jsf8ner0oa4f6lv4eo3q4slft0.apps.googleusercontent.com');
+      // Refresh the Google plugin session before starting a fresh credential flow.
+      await google.signOut();
+      final account = await google.signIn();
+      if (account == null) {
+        if (mounted) setState(() => isGoogleAuthStarting = false);
+        return;
       }
-    } on AuthException catch (e) {
+      final googleAuth = await account.authentication;
+      final googleIdToken = googleAuth.idToken;
+      if (googleIdToken == null || googleIdToken.isEmpty) {
+        throw StateError('Google did not return a verifiable ID token.');
+      }
+      final bridge = await Supabase.instance.client.functions.invoke(
+        'firebase-google-bridge',
+        body: {
+          'googleIdToken': googleIdToken,
+          'termsAcceptedAt': DateTime.now().toUtc().toIso8601String(),
+          'termsVersion': kCurrentTermsVersion,
+        },
+      );
+      final customToken = (bridge.data is Map) ? bridge.data['customToken']?.toString() : null;
+      if (customToken == null || customToken.isEmpty) {
+        throw StateError('Secure Firebase identity bridge did not return a token.');
+      }
+      await FirebaseAuth.instance.signInWithCustomToken(customToken);
+      await FirebaseAuth.instance.currentUser?.getIdToken(true);
+      if (mounted) setState(() => isGoogleAuthStarting = false);
+      await FcmService.enableForCurrentUser();
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const SplashPage()),
+        (route) => false,
+      );
+    } on FunctionException catch (e) {
       if (!mounted) return;
       setState(() => isGoogleAuthStarting = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -354,17 +378,21 @@ class _LoginPageState extends State<LoginPage> {
     if (isLogin) {
               
       try {
-        AuthResponse authResponse = await Supabase.instance.client.auth
-            .signInWithPassword(email: email, password: password);
-
-        final signedInUser = authResponse.user;
+        final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+        final signedInUser = credential.user;
+        await signedInUser?.getIdToken(true);
+        await signedInUser?.reload();
+        final refreshedUser = FirebaseAuth.instance.currentUser;
         if (signedInUser != null) {
 
         }
 
         if (mounted) Navigator.pop(context); // Close Loader
 
-        if (signedInUser != null && signedInUser.emailConfirmedAt == null) {
+        if (refreshedUser != null && !refreshedUser.emailVerified) {
           if (mounted) {
             Navigator.push(
               context,
@@ -388,7 +416,7 @@ class _LoginPageState extends State<LoginPage> {
 
           currentUserEmail = email;
           currentUserName = email.split("@")[0];
-          currentUserId = signedInUser!.id;
+          currentUserId = signedInUser!.uid;
           chestTimerService.initialize();
           loadUserDataOnStartup();
 
@@ -401,22 +429,14 @@ class _LoginPageState extends State<LoginPage> {
                 );
 }
         }
-      } on AuthException catch (e) {
+      } on FirebaseAuthException catch (e) {
         if (mounted) Navigator.pop(context); // Close Loader
 
         String errorMessage = friendlyErrorMessage(e, fallback: "We couldn’t sign you in. Please check your details and try again.");
 
-        if (e.message.toLowerCase().contains('email not confirmed')) {
-          if (mounted) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => VerifyEmailPage(email: email, password: password),
-              ),
-            );
-          }
-          return;
-        } else if (e.message.toLowerCase().contains('invalid login credentials')) {
+        if (e.code == 'user-not-found' ||
+            e.code == 'wrong-password' ||
+            e.code == 'invalid-credential') {
           errorMessage = "The email or password is incorrect. Check your details and try again.";
         }
 
@@ -456,20 +476,25 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       try {
-        AuthResponse authResponse = await Supabase.instance.client.auth.signUp(
-          email: email,
-          password: password,
-          data: {
-            'userName': signupUsername,
+        final provision = await Supabase.instance.client.functions.invoke(
+          'firebase-auth-provision',
+          body: {
+            'email': email,
+            'password': password,
+            'username': signupUsername,
             'termsAcceptedAt': DateTime.now().toUtc().toIso8601String(),
             'termsVersion': kCurrentTermsVersion,
             'referralCode': referralCodeController.text.trim().toUpperCase(),
           },
         );
-
-        if (authResponse.user != null) {
-          debugPrint("Signed up — user row will be created by the DB trigger.");
+        if (provision.status < 200 || provision.status >= 300) {
+          throw StateError((provision.data is Map ? provision.data['error'] : null)?.toString() ?? 'Account creation failed.');
         }
+        final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+        await credential.user?.sendEmailVerification();
 
         if (mounted) Navigator.pop(context); // Close Loader
 
@@ -484,11 +509,10 @@ class _LoginPageState extends State<LoginPage> {
             ),
           );
         }
-      } on AuthException catch (e) {
+      } on FirebaseAuthException catch (e) {
         if (mounted) Navigator.pop(context); // Close Loader
         String errorMessage = friendlyErrorMessage(e, fallback: "We couldn’t create your account. Please try again.");
-        if (e.message.toLowerCase().contains('already registered') ||
-            e.message.toLowerCase().contains('user already exists')) {
+        if (e.code == 'email-already-in-use') {
           errorMessage = "An account with this email already exists. Try signing in instead.";
         }
         if (mounted) {
@@ -789,7 +813,7 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     
-    isEmailVerified = Supabase.instance.client.auth.currentUser?.emailConfirmedAt != null;
+    isEmailVerified = FirebaseAuth.instance.currentUser?.emailVerified ?? false;
 
     if (!isEmailVerified) {
 
@@ -817,12 +841,12 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
 
   Future<void> _checkEmailVerifiedStatus() async {
     try {
-      final response = await Supabase.instance.client.auth.signInWithPassword(
-        email: widget.email,
-        password: widget.password,
-      );
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+      await user.reload();
+      final refreshed = FirebaseAuth.instance.currentUser;
 
-      if (response.user != null && response.user!.emailConfirmedAt != null) {
+      if (refreshed != null && refreshed.emailVerified) {
         _timer?.cancel();
         _countdownTimer?.cancel();
 
@@ -870,10 +894,9 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
     if (!canResendEmail) return;
 
     try {
-      await Supabase.instance.client.auth.resend(
-        type: OtpType.signup,
-        email: widget.email,
-      );
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw StateError('Please sign in again to resend verification.');
+      await user.sendEmailVerification();
       _startResendTimer();
       
       if (mounted) {

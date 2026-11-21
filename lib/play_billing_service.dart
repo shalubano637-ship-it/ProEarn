@@ -1,8 +1,10 @@
+import 'package:proearn/firebase_user_compat.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 
 class PlayBillingService {
   PlayBillingService._();
@@ -39,7 +41,7 @@ class PlayBillingService {
   final ValueNotifier<String?> message = ValueNotifier(null);
 
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
-  StreamSubscription<AuthState>? _authSubscription;
+  StreamSubscription<User?>? _authSubscription;
   final Set<String> _processingTokens = <String>{};
   bool _initialized = false;
 
@@ -53,10 +55,9 @@ class PlayBillingService {
         debugPrint('Purchase stream error: $error');
       },
     );
-    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((state) {
-      if (state.session?.user != null) {
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null) {
         unawaited(refreshSubscription());
-      } else {
       }
     });
     await loadProducts();
@@ -88,7 +89,7 @@ class PlayBillingService {
   }
 
   Future<void> buy(String productId) async {
-    if (Supabase.instance.client.auth.currentUser == null) {
+    if (FirebaseAuth.instance.currentUser == null) {
       message.value = 'Please sign in before making a purchase.';
       return;
     }
@@ -124,7 +125,7 @@ class PlayBillingService {
   }
 
   Future<void> refreshSubscription() async {
-    if (Supabase.instance.client.auth.currentUser == null) return;
+    if (FirebaseAuth.instance.currentUser == null) return;
     try {
       await Supabase.instance.client.functions.invoke(
         'play-billing',

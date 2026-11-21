@@ -1,4 +1,6 @@
+import 'package:proearn/firebase_user_compat.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../service.dart';
 import '../theme/theme.dart';
@@ -50,7 +52,7 @@ class _LikeButtonState extends State<LikeButton> {
 
   @override
   Widget build(BuildContext context) {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) return const SizedBox.shrink();
     final liked = _optimisticLiked ?? widget.initiallyLiked;
     final count = _optimisticCount ?? widget.initialLikeCount;
