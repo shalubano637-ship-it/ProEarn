@@ -89,6 +89,26 @@ jobs:
       - name: Run Flutter tests
         run: flutter test --reporter expanded
 
+      - name: Restore existing Android release signing key for stable Debug signing
+        id: restore_debug_key
+        if: github.event_name != 'pull_request'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          test -n "$KEYSTORE_BASE64" || (echo "Missing ANDROID_KEYSTORE_BASE64 secret" && exit 1)
+          test -n "$KEYSTORE_PASSWORD" || (echo "Missing ANDROID_KEYSTORE_PASSWORD secret" && exit 1)
+          test -n "$KEY_ALIAS" || (echo "Missing ANDROID_KEY_ALIAS secret" && exit 1)
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/upload-keystore.jks
+          test -s android/upload-keystore.jks
+          cat > android/key.properties <<EOF
+          storeFile=upload-keystore.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEYSTORE_PASSWORD
+          EOF
+
       - name: Build debug APK
         run: flutter build apk --debug --verbose
 
