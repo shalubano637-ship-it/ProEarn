@@ -144,7 +144,9 @@ jobs:
           retention-days: 14
 
       - name: Restore existing Android release signing key
+        id: restore_release_key
         if: github.event_name != 'pull_request'
+        continue-on-error: true
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -163,7 +165,9 @@ jobs:
           EOF
 
       - name: Verify release signing certificate for Google Sign-In
-        if: github.event_name != 'pull_request'
+        id: verify_release_signing
+        if: github.event_name != 'pull_request' && steps.restore_release_key.outcome == 'success'
+        continue-on-error: true
         env:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -220,11 +224,11 @@ jobs:
           print("Firebase package, Android SHA-1 OAuth client, and Web OAuth client ID verified.")
           PY
       - name: Build signed release APK
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.verify_release_signing.outcome == 'success'
         run: flutter build apk --release --verbose
 
       - name: Upload signed release APK artifact
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.verify_release_signing.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: ProSN-Signed-Release-APK
@@ -233,11 +237,11 @@ jobs:
           retention-days: 14
 
       - name: Build signed Android App Bundle
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.verify_release_signing.outcome == 'success'
         run: flutter build appbundle --release --verbose
 
       - name: Upload signed AAB artifact for Play Console
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.verify_release_signing.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: ProSN-Internal-Testing-AAB
