@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -229,7 +230,23 @@ class _SecurityPageState extends State<SecurityPage> {
       } catch (error) {
         debugPrint('FCM token unlink skipped during account deletion: $error');
       }
-      await Supabase.instance.client.functions.invoke('delete-account');
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        throw StateError('Your session has expired. Please sign in again.');
+      }
+      final firebaseIdToken = await currentUser.getIdToken(true);
+      if (firebaseIdToken == null || firebaseIdToken.isEmpty) {
+        throw StateError('Could not verify your Firebase session. Please sign in again.');
+      }
+      await Supabase.instance.client.functions.invoke(
+        'delete-account',
+        headers: {'Authorization': 'Bearer $firebaseIdToken'},
+      );
+      try {
+        await GoogleSignIn().signOut();
+      } catch (error) {
+        debugPrint('Google session cleanup skipped after account deletion: $error');
+      }
       await FirebaseAuth.instance.signOut();
       resetLocalUserState();
 
