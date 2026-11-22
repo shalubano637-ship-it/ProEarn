@@ -206,7 +206,6 @@ class _LoginPageState extends State<LoginPage> {
   bool isSendingReset = false;
   bool resetLinkSent = false;
   bool isGoogleAuthStarting = false;
-  StreamSubscription<User?>? _authSubscription;
   final TextEditingController resetEmailController = TextEditingController();
   final TextEditingController signupUsername = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -218,17 +217,6 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) async {
-      if (user != null && isGoogleAuthStarting && mounted) {
-        isGoogleAuthStarting = false;
-        await FcmService.enableForCurrentUser();
-        if (!mounted) return;
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const SplashPage()),
-          (route) => false,
-        );
-      }
-    });
     if (widget.bannedMessage) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -245,7 +233,6 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    _authSubscription?.cancel();
     resetEmailController.dispose();
     signupUsername.dispose();
     emailController.dispose();
