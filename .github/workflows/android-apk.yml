@@ -143,7 +143,7 @@ jobs:
           APKSIGNER="$(find "$SDK_ROOT/build-tools" -name apksigner -print 2>/dev/null | sort -V | tail -n 1)"
           test -n "$APKSIGNER" && test -x "$APKSIGNER" || (echo "::error::apksigner is required to verify the APK certificate." && exit 1)
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/prosn-apk-cert.txt
-          ACTUAL_SHA1="$(awk -F': ' '/Signer #1 certificate SHA-1 digest:/ {print $2; exit}' /tmp/prosn-apk-cert.txt | tr '[:upper:]' '[:lower:]' | tr -d ':')"
+          ACTUAL_SHA1="$(grep -Eio 'certificate SHA-1 digest: [0-9a-f:]+' /tmp/prosn-apk-cert.txt | head -n 1 | sed -E 's/.*: //' | tr '[:upper:]' '[:lower:]' | tr -d ':')"
           test -n "$ACTUAL_SHA1" || (echo "::error::Could not read actual APK SHA-1." && exit 1)
           python3 - "$ACTUAL_SHA1" <<'PY'
           import json, re, sys
