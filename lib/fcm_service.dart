@@ -210,7 +210,13 @@ class FcmService {
   }
 
   static Future<void> signOutAndUnlink() async {
-    await unlinkCurrentUserToken();
+    // Remote token cleanup is best-effort: a network/RLS failure must never
+    // prevent the user from signing out locally.
+    try {
+      await unlinkCurrentUserToken();
+    } catch (error) {
+      debugPrint('FCM token unlink skipped during sign-out: $error');
+    }
     // Clear both identity sessions. Firebase sign-out alone leaves the
     // GoogleSignIn plugin's cached account session available for the next login.
     try {
