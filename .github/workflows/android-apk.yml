@@ -47,6 +47,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
+          cache-dependency-path: |
+            android/*.gradle.kts
+            android/gradle/wrapper/gradle-wrapper.properties
+            android/gradle/libs.versions.toml
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -110,8 +115,23 @@ jobs:
           keyPassword=$KEYSTORE_PASSWORD
           EOF
 
-      - name: Build debug APK
-        run: flutter build apk --debug --verbose
+      - name: Build debug APK (retry transient Maven rate limits)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "Debug APK build attempt $attempt/3"
+            if flutter build apk --debug --verbose; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              delay=$((attempt * 30))
+              echo "Build failed; retrying after ${delay}s (transient dependency repository errors may clear)."
+              sleep "$delay"
+            fi
+          done
+          echo "::error::Debug APK build failed after 3 attempts. See Gradle output above."
+          exit 1
 
       - name: Verify actual debug APK signer matches Firebase OAuth fingerprint
         shell: bash
