@@ -89,19 +89,20 @@ jobs:
       - name: Run Flutter tests
         run: flutter test --reporter expanded
 
-      - name: Restore existing Android release signing key for stable Debug signing
-        id: restore_debug_key
-        if: github.event_name != 'pull_request'
+      - name: Restore mandatory persistent Android signing key
+        id: restore_signing_key
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
-          test -n "$KEYSTORE_BASE64" || (echo "Missing ANDROID_KEYSTORE_BASE64 secret" && exit 1)
-          test -n "$KEYSTORE_PASSWORD" || (echo "Missing ANDROID_KEYSTORE_PASSWORD secret" && exit 1)
-          test -n "$KEY_ALIAS" || (echo "Missing ANDROID_KEY_ALIAS secret" && exit 1)
+          set -euo pipefail
+          test -n "$KEYSTORE_BASE64" || (echo "::error::Missing ANDROID_KEYSTORE_BASE64 secret; refusing to use a temporary debug key." && exit 1)
+          test -n "$KEYSTORE_PASSWORD" || (echo "::error::Missing ANDROID_KEYSTORE_PASSWORD secret." && exit 1)
+          test -n "$KEY_ALIAS" || (echo "::error::Missing ANDROID_KEY_ALIAS secret." && exit 1)
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/upload-keystore.jks
-          test -s android/upload-keystore.jks
+          test -s android/upload-keystore.jks || (echo "::error::Persistent keystore is empty or invalid." && exit 1)
+          keytool -list -keystore android/upload-keystore.jks -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
           cat > android/key.properties <<EOF
           storeFile=upload-keystore.jks
           storePassword=$KEYSTORE_PASSWORD
@@ -112,49 +113,37 @@ jobs:
       - name: Build debug APK
         run: flutter build apk --debug --verbose
 
-      - name: Verify actual debug APK signing certificate for Google Sign-In
+      - name: Verify actual debug APK signer matches Firebase OAuth fingerprint
         shell: bash
         run: |
           set -euo pipefail
           APK="build/app/outputs/flutter-apk/app-debug.apk"
           test -s "$APK"
-          echo "Actual debug APK signing certificate:"
           SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/.android}}"
-          echo "Android SDK root: $SDK_ROOT"
           APKSIGNER="$(find "$SDK_ROOT/build-tools" -name apksigner -print 2>/dev/null | sort -V | tail -n 1)"
-          if [ -n "$APKSIGNER" ] && [ -x "$APKSIGNER" ]; then
-            echo "APK signature details from apksigner:"
-            "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/prosn-apk-cert.txt
-          else
-            echo "apksigner not found; falling back to keytool APK certificate inspection."
-            keytool -printcert -jarfile "$APK" | tee /tmp/prosn-apk-cert.txt
-          fi
-          echo "Extracted certificate fingerprints:"
-          grep -Ei 'SHA-1|SHA1|SHA-256|SHA256' /tmp/prosn-apk-cert.txt || true
-          echo "Runner debug keystore SHA-1 (if present):"
-          DEBUG_KEYSTORE="$HOME/.android/debug.keystore"
-          if [ -f "$DEBUG_KEYSTORE" ]; then
-            keytool -list -v -keystore "$DEBUG_KEYSTORE" -storepass android -alias androiddebugkey | grep -i 'SHA1:' || true
-          else
-            echo "No runner debug keystore file; APK signer output above is authoritative."
-          fi
-          echo "Firebase OAuth SHA-1 for com.prosn.app:"
-          python3 - <<'PY'
-          import json
+          test -n "$APKSIGNER" && test -x "$APKSIGNER" || (echo "::error::apksigner is required to verify the APK certificate." && exit 1)
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/prosn-apk-cert.txt
+          ACTUAL_SHA1="$(awk -F': ' '/Signer #1 certificate SHA-1 digest:/ {print $2; exit}' /tmp/prosn-apk-cert.txt | tr '[:upper:]' '[:lower:]' | tr -d ':')"
+          test -n "$ACTUAL_SHA1" || (echo "::error::Could not read actual APK SHA-1." && exit 1)
+          python3 - "$ACTUAL_SHA1" <<'PY'
+          import json, re, sys
+          actual = re.sub(r"[^0-9a-f]", "", sys.argv[1].lower())
           with open("android/app/google-services.json", encoding="utf-8") as f:
               config = json.load(f)
-          clients = [
-              c for c in config.get("client", [])
-              if c.get("client_info", {}).get("android_client_info", {}).get("package_name") == "com.prosn.app"
-          ]
-          if not clients:
-              raise SystemExit("No Firebase config entry for com.prosn.app")
-          for client in clients:
-              for oauth in client.get("oauth_client", []):
-                  info = oauth.get("android_info", {})
-                  if info.get("package_name") == "com.prosn.app":
-                      print(info.get("certificate_hash", "No Android certificate_hash"))
+          clients = [c for c in config.get("client", [])
+                     if c.get("client_info", {}).get("android_client_info", {}).get("package_name") == "com.prosn.app"]
+          if len(clients) != 1:
+              raise SystemExit(f"Expected exactly one Firebase client for com.prosn.app; found {len(clients)}")
+          registered = {
+              re.sub(r"[^0-9a-f]", "", o.get("android_info", {}).get("certificate_hash", "").lower())
+              for o in clients[0].get("oauth_client", [])
+              if o.get("client_type") == 1 and o.get("android_info", {}).get("package_name") == "com.prosn.app"
+          }
+          if actual not in registered:
+              raise SystemExit(f"APK SHA-1 {actual} is NOT registered in Firebase for com.prosn.app. Build rejected.")
+          print(f"Verified: actual APK SHA-1 {actual} is registered in Firebase for com.prosn.app.")
           PY
+
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -163,31 +152,8 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Restore existing Android release signing key
-        id: restore_release_key
-        if: github.event_name != 'pull_request'
-        continue-on-error: true
-        env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-        run: |
-          test -n "$KEYSTORE_BASE64" || (echo "Missing ANDROID_KEYSTORE_BASE64 secret" && exit 1)
-          test -n "$KEYSTORE_PASSWORD" || (echo "Missing ANDROID_KEYSTORE_PASSWORD secret" && exit 1)
-          test -n "$KEY_ALIAS" || (echo "Missing ANDROID_KEY_ALIAS secret" && exit 1)
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/upload-keystore.jks
-          test -s android/upload-keystore.jks
-          cat > android/key.properties <<EOF
-          storeFile=upload-keystore.jks
-          storePassword=$KEYSTORE_PASSWORD
-          keyAlias=$KEY_ALIAS
-          keyPassword=$KEYSTORE_PASSWORD
-          EOF
-
       - name: Verify release signing certificate for Google Sign-In
         id: verify_release_signing
-        if: github.event_name != 'pull_request' && steps.restore_release_key.outcome == 'success'
-        continue-on-error: true
         env:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -244,11 +210,9 @@ jobs:
           print("Firebase package, Android SHA-1 OAuth client, and Web OAuth client ID verified.")
           PY
       - name: Build signed release APK
-        if: github.event_name != 'pull_request' && steps.verify_release_signing.outcome == 'success'
         run: flutter build apk --release --verbose
 
       - name: Upload signed release APK artifact
-        if: github.event_name != 'pull_request' && steps.verify_release_signing.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: ProSN-Signed-Release-APK
@@ -257,11 +221,9 @@ jobs:
           retention-days: 14
 
       - name: Build signed Android App Bundle
-        if: github.event_name != 'pull_request' && steps.verify_release_signing.outcome == 'success'
         run: flutter build appbundle --release --verbose
 
       - name: Upload signed AAB artifact for Play Console
-        if: github.event_name != 'pull_request' && steps.verify_release_signing.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: ProSN-Internal-Testing-AAB
