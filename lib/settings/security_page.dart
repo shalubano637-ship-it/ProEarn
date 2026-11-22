@@ -53,9 +53,19 @@ class _SecurityPageState extends State<SecurityPage> {
       return;
     }
 
-    if (password.isEmpty) {
+    final hasPasswordProvider = user.providerData.any((provider) => provider.providerId == 'password');
+    if (!hasPasswordProvider) {
+      if (!mounted) return;
+      setState(() => passwordMatched = true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter current password.")),
+        const SnackBar(content: Text("No password is set for this sign-in method. You can create one now."), backgroundColor: AppColors.info),
+      );
+      return;
+    }
+
+    if (password.isEmpty || user.email == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Enter your current account password.")),
       );
       return;
     }
