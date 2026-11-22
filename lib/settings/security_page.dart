@@ -116,7 +116,19 @@ class _SecurityPageState extends State<SecurityPage> {
     });
 
     try {
-      await user.updatePassword(newPassword);
+      final hasPasswordProvider = user.providerData.any((provider) => provider.providerId == 'password');
+      if (hasPasswordProvider) {
+        await user.updatePassword(newPassword);
+      } else {
+        // Google-created accounts do not have a password provider yet.
+        // Link an email/password credential instead of updating a non-existent password.
+        final email = user.email;
+        if (email == null || email.isEmpty) {
+          throw StateError('This account does not have an email address for password setup.');
+        }
+        final credential = EmailAuthProvider.credential(email: email, password: newPassword);
+        await user.linkWithCredential(credential);
+      }
 
       if (!mounted) return;
       setState(() {
