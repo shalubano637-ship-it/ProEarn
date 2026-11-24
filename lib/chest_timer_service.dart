@@ -1,5 +1,6 @@
 
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -37,7 +38,7 @@ class _SupabaseChestRepository implements ChestRepository {
   _SupabaseChestRepository(this._client, {required this.tableName, required this.syncRpcName});
 
   @override
-  String? get currentUserId => _client.auth.currentUser?.id;
+  String? get currentUserId => FirebaseAuth.instance.currentUser?.uid;
 
   @override
   Future<ChestProgress?> fetchProgress(String uid) async {
