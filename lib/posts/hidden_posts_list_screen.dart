@@ -106,7 +106,7 @@ class HiddenPostsListScreen extends StatelessWidget {
                       label: const Text("Unhide", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                       onPressed: () async {
                         await Supabase.instance.client.rpc('unhide_post', params: {
-                          'p_user_id': currentUser.id,
+                          'p_user_id': currentUser.uid,
                           'p_post_id': postId,
                         });
 
