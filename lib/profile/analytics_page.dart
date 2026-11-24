@@ -5,6 +5,7 @@ import 'package:universal_io/universal_io.dart';
 import 'package:flutter/material.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models.dart';
 import '../service.dart';
@@ -22,7 +23,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser = FirebaseAuth.instance.currentUser;
     _myPostsStream ??= currentUser == null
         ? null
         : Supabase.instance.client
