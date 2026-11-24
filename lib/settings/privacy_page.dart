@@ -47,7 +47,7 @@ class _PrivacyPageState extends State<PrivacyPage> {
   }
 
   Future<void> _save({bool? privateAccount, String? whoCanMessage}) async {
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
     final nextPrivate = privateAccount ?? _privateAccount;
     final nextWho = whoCanMessage ?? _whoCanMessage;
