@@ -956,13 +956,13 @@ class _RoomInfoPageState extends State<RoomInfoPage> {
           else
             ..._members.map(
               (m) {
-                final isMe = m['uid'] == Supabase.instance.client.auth.currentUser?.id;
+                final isMe = m['uid'] == FirebaseAuth.instance.currentUser?.uid;
                 return ListTile(
                 leading: GestureDetector(
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => ProfilePage(isOwnProfile: m['uid'] == Supabase.instance.client.auth.currentUser?.id, otherUser: m['uid']),
+                      builder: (_) => ProfilePage(isOwnProfile: m['uid'] == FirebaseAuth.instance.currentUser?.uid, otherUser: m['uid']),
                     ),
                   ),
                   child: CircleAvatar(
@@ -977,7 +977,7 @@ class _RoomInfoPageState extends State<RoomInfoPage> {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => ProfilePage(isOwnProfile: m['uid'] == Supabase.instance.client.auth.currentUser?.id, otherUser: m['uid']),
+                    builder: (_) => ProfilePage(isOwnProfile: m['uid'] == FirebaseAuth.instance.currentUser?.uid, otherUser: m['uid']),
                   ),
                 ),
               );
