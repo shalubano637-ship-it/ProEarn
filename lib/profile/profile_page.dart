@@ -46,7 +46,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<Map<String, dynamic>?>? _profileFuture;
   String? _loadedTargetUid;
-  Stream<List<Map<String, dynamic>>>? _postsStream;
+  Future<List<Map<String, dynamic>>>? _postsFuture;
 
   @override
   void initState() {
@@ -110,6 +110,7 @@ class _ProfilePageState extends State<ProfilePage> {
         selectionMode = false;
       });
       selectedPosts.clear();
+      if (_loadedTargetUid != null) _postsFuture = _loadPosts(_loadedTargetUid!);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -121,6 +122,14 @@ class _ProfilePageState extends State<ProfilePage> {
         const SnackBar(content: Text("Couldn't delete post — please try again.")),
       );
     }
+  }
+
+  Future<List<Map<String, dynamic>>> _loadPosts(String uid) async {
+    final rows = await Supabase.instance.client
+        .from(kPostsCollection)
+        .select()
+        .eq(kPostOwnerUidField, uid);
+    return List<Map<String, dynamic>>.from(rows);
   }
 
   Future<Map<String, dynamic>?> _loadProfileData(String uid) async {
@@ -164,14 +173,11 @@ class _ProfilePageState extends State<ProfilePage> {
     final targetUid = _loadedTargetUid;
     if (targetUid == null || targetUid.isEmpty) return;
     final profileFuture = _loadProfileData(targetUid);
-    final postsStream = Supabase.instance.client
-        .from(kPostsCollection)
-        .stream(primaryKey: ['id'])
-        .eq(kPostOwnerUidField, targetUid);
+    final postsFuture = _loadPosts(targetUid);
     if (mounted) {
       setState(() {
         _profileFuture = profileFuture;
-        _postsStream = postsStream;
+        _postsFuture = postsFuture;
       });
     }
     await profileFuture;
@@ -189,10 +195,7 @@ class _ProfilePageState extends State<ProfilePage> {
     if (_profileFuture == null || _loadedTargetUid != targetUid) {
       _loadedTargetUid = targetUid;
       _profileFuture = _loadProfileData(targetUid);
-      _postsStream = Supabase.instance.client
-          .from(kPostsCollection)
-          .stream(primaryKey: ['id'])
-          .eq(kPostOwnerUidField, targetUid);
+      _postsFuture = _loadPosts(targetUid);
     }
 
     return Scaffold(
@@ -612,8 +615,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
 
                 if (canSeePrivateProfile)
-                  StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: _postsStream,
+                  FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _postsFuture,
                   builder: (context, postSnapshot) {
                     if (postSnapshot.connectionState == ConnectionState.waiting) {
                       return const Padding(padding: EdgeInsets.all(20.0), child: Center(child: CircularProgressIndicator()));
@@ -623,7 +626,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         padding: const EdgeInsets.only(top: 30),
                         child: ErrorRetryView(
                           error: postSnapshot.error,
-                          onRetry: () => setState(() {}),
+                          onRetry: () => setState(() => _postsFuture = _loadPosts(targetUid)),
                         ),
                       );
                     }
