@@ -1,6 +1,7 @@
 
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -18,7 +19,7 @@ class MoreOptionsButton extends StatelessWidget {
   });
 
   void _openModerationSheet(BuildContext context) {
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
     if (currentUser.id == targetOwnerId) {
