@@ -1,0 +1,5 @@
+# Supabase Edge Functions configuration.
+# Firebase ID tokens are verified inside r2-upload with Firebase Admin SDK.
+# The gateway's legacy Supabase JWT verifier must not reject Firebase tokens first.
+[functions.r2-upload]
+verify_jwt = false
