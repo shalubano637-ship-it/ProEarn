@@ -3,3 +3,7 @@
 # The gateway's legacy Supabase JWT verifier must not reject Firebase tokens first.
 [functions.r2-upload]
 verify_jwt = false
+
+# The notify handler validates user JWTs itself and authenticates chest cron calls with CHEST_CRON_SECRET.
+[functions.notify]
+verify_jwt = false
