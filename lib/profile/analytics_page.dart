@@ -29,7 +29,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         : Supabase.instance.client
             .from(kPostsCollection)
             .stream(primaryKey: ['id'])
-            .eq(kPostOwnerUidField, currentUser.id);
+            .eq(kPostOwnerUidField, currentUser.uid);
     final theme = Theme.of(context);
 
     if (currentUser == null) {
