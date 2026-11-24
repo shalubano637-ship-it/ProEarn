@@ -252,7 +252,7 @@ class _MessagesListPageState extends State<MessagesListPage> {
 }
 
 void _openProfile(BuildContext context, String uid) {
-  final myUid = Supabase.instance.client.auth.currentUser?.id;
+  final myUid = FirebaseAuth.instance.currentUser?.uid;
   Navigator.push(
     context,
     MaterialPageRoute(
