@@ -51,7 +51,34 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
 
     Future.delayed(const Duration(seconds: 4), () async {
       if (mounted) {
-        final user = FirebaseAuth.instance.currentUser;
+        var user = FirebaseAuth.instance.currentUser;
+
+        if (user != null) {
+          try {
+            // Validate and refresh the persisted Firebase session before any
+            // Supabase/RLS request is made with its ID token.
+            await user.getIdToken(true);
+            await user.reload();
+            user = FirebaseAuth.instance.currentUser;
+          } on FirebaseAuthException catch (error) {
+            const invalidSessionCodes = {
+              'user-token-expired',
+              'invalid-user-token',
+              'user-disabled',
+              'user-not-found',
+            };
+            if (invalidSessionCodes.contains(error.code)) {
+              await FirebaseAuth.instance.signOut();
+              if (!mounted) return;
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginPage(sessionExpiredMessage: true)),
+              );
+              return;
+            }
+            debugPrint('Firebase session validation failed: ${error.code}');
+          }
+        }
 
         if (user != null && user.emailVerified) {
           final termsOk = await _ensureCurrentTermsAccepted(user.uid);
@@ -190,7 +217,8 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
       
 class LoginPage extends StatefulWidget {
   final bool bannedMessage;
-  const LoginPage({super.key, this.bannedMessage = false});
+  final bool sessionExpiredMessage;
+  const LoginPage({super.key, this.bannedMessage = false, this.sessionExpiredMessage = false});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -217,14 +245,16 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.bannedMessage) {
+    if (widget.bannedMessage || widget.sessionExpiredMessage) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Your account has been suspended by admin."),
+          SnackBar(
+            content: Text(widget.bannedMessage
+                ? "Your account has been suspended by admin."
+                : "Your session expired. Please sign in again."),
             backgroundColor: AppColors.error,
-            duration: Duration(seconds: 5),
+            duration: const Duration(seconds: 5),
           ),
         );
       });
@@ -834,6 +864,9 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> with WidgetsBindingOb
       final refreshed = FirebaseAuth.instance.currentUser;
 
       if (refreshed != null && refreshed.emailVerified) {
+         // Refresh the ID token so its email_verified claim is current before
+         // the app starts Supabase-backed requests.
+         await refreshed.getIdToken(true);
         _timer?.cancel();
         _countdownTimer?.cancel();
 
