@@ -30,9 +30,15 @@ class _RoomHubPageState extends State<RoomHubPage> with SingleTickerProviderStat
   void dispose() { _tabs.dispose(); super.dispose(); }
 
   Map<String, dynamic> _normalizeRoom(Map<String, dynamic> row) => {
-    'room_id': row['id'], 'room_number': row['number'], 'room_name': row['title'],
-    'owner_uid': row['owner_id'], 'owner_name': row['owner_name'], 'profile_url': row['avatar'],
-    'has_password': row['private_room'], 'member_count': row['members'],
+    // Support the current v2 RPC response as well as legacy RPC field names.
+    'room_id': row['id'] ?? row['room_id'],
+    'room_number': row['room_number'] ?? row['number'],
+    'room_name': row['name'] ?? row['title'] ?? row['room_name'],
+    'owner_uid': row['owner_uid'] ?? row['owner_id'],
+    'owner_name': row['owner_name'] ?? 'User',
+    'profile_url': row['avatar'] ?? row['profile_url'] ?? '',
+    'has_password': row['private_room'] ?? row['has_password'] ?? false,
+    'member_count': row['members'] ?? row['member_count'] ?? 0,
   };
 
   Future<List<Map<String, dynamic>>> _rooms(String kind) async {
