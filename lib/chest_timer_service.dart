@@ -62,23 +62,6 @@ class _SupabaseChestRepository implements ChestRepository {
     await _client.rpc(syncRpcName, params: {'p_remaining_seconds': remainingSeconds});
   }
 
-  @override
-  void _scheduleDailyIstRefresh() {
-    _dailyRefreshTimer?.cancel();
-    final nowUtc = DateTime.now().toUtc();
-    final nextResetUtc = _nextIstMidnightUtc(nowUtc);
-    final delay = nextResetUtc.difference(nowUtc);
-    _dailyRefreshTimer = Timer(delay, () {
-      _dailyRefreshTimer = null;
-      if (_repo.currentUserId != null) {
-        initialize();
-      }
-    });
-  }
-
-  @visibleForTesting
-  DateTime nextIstMidnightUtcForTest(DateTime nowUtc) => _nextIstMidnightUtc(nowUtc);
-
   Future<void> startTimer() async {
     if (tableName != 'chest_progress') throw StateError('Only gift chest timers can be started here');
     await _client.rpc('start_chest_timer');
@@ -225,6 +208,22 @@ class ChestTimerService extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  void _scheduleDailyIstRefresh() {
+    _dailyRefreshTimer?.cancel();
+    final nowUtc = DateTime.now().toUtc();
+    final nextResetUtc = _nextIstMidnightUtc(nowUtc);
+    final delay = nextResetUtc.difference(nowUtc);
+    _dailyRefreshTimer = Timer(delay, () {
+      _dailyRefreshTimer = null;
+      if (_repo.currentUserId != null) {
+        initialize();
+      }
+    });
+  }
+
+  @visibleForTesting
+  DateTime nextIstMidnightUtcForTest(DateTime nowUtc) => _nextIstMidnightUtc(nowUtc);
 
   Future<void> startTimer() async {
     if (isStarted || isUnlocked) return;
