@@ -7,6 +7,7 @@ on:
       - main
     paths:
       - 'web/policy/**'
+      - 'web/delete-account-request.html'
       - '.github/workflows/publish-policy-pages.yml'
 
 permissions:
@@ -36,7 +37,7 @@ jobs:
           mkdir -p _site/policy
           cp web/policy/*.html _site/policy/
           cp web/delete-account-request.html _site/delete-account-request.html
-          printf '%s\\n' 'prosn.in' > _site/CNAME
+          echo 'prosn.in' > _site/CNAME
           cat > _site/index.html <<'EOF'
           <!doctype html>
           <html lang="en">
