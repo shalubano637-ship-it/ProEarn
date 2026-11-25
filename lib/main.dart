@@ -208,6 +208,99 @@ class AiSocialApp extends StatelessWidget {
 }
 
 class _AppLifecycleObserver extends WidgetsBindingObserver {
+  static const Duration _sessionValidationInterval = Duration(seconds: 45);
+  static const Set<String> _invalidSessionCodes = {
+    'user-not-found',
+    'user-disabled',
+    'user-token-expired',
+    'invalid-user-token',
+  };
+
+  Timer? _sessionValidationTimer;
+  bool _sessionValidationInProgress = false;
+  bool _handlingRemoteAccountDeletion = false;
+
+  _AppLifecycleObserver() {
+    _sessionValidationTimer = Timer.periodic(
+      _sessionValidationInterval,
+      (_) {
+        if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+          unawaited(_validateRemoteFirebaseAccount());
+        }
+      },
+    );
+  }
+
+  Future<void> _validateRemoteFirebaseAccount() async {
+    if (_sessionValidationInProgress || _handlingRemoteAccountDeletion) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    _sessionValidationInProgress = true;
+    try {
+      // reload() calls Firebase's account lookup endpoint. If the account was
+      // deleted from the website or disabled by an administrator, Firebase
+      // rejects this cached client session with a definitive Auth error.
+      await user.reload();
+      final refreshedUser = FirebaseAuth.instance.currentUser;
+      if (refreshedUser == null) {
+        await _logoutAfterRemoteAccountDeletion();
+        return;
+      }
+
+      // Force a token refresh as a second server-side check so a deleted
+      // account cannot keep using a previously cached ID token.
+      await refreshedUser.getIdToken(true);
+    } on FirebaseAuthException catch (authError) {
+      if (_invalidSessionCodes.contains(authError.code)) {
+        debugPrint('Remote Firebase account is no longer valid (' + authError.code + '); signing out.');
+        await _logoutAfterRemoteAccountDeletion();
+      } else {
+        // Transient network/rate-limit failures must never sign out a valid user.
+        debugPrint('Firebase session revalidation deferred (' + authError.code + ').');
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Firebase session revalidation failed transiently: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    } finally {
+      _sessionValidationInProgress = false;
+    }
+  }
+
+  Future<void> _logoutAfterRemoteAccountDeletion() async {
+    if (_handlingRemoteAccountDeletion) return;
+    _handlingRemoteAccountDeletion = true;
+
+    try {
+      // FCM unlink is best-effort. The public profile may already be deleted.
+      await FcmService.signOutAndUnlink();
+    } catch (error) {
+      debugPrint('Remote-deletion cleanup failed; forcing local Firebase sign-out: $error');
+      try {
+        await FirebaseAuth.instance.signOut();
+      } catch (signOutError) {
+        debugPrint('Firebase local sign-out failed: $signOutError');
+      }
+    }
+
+    resetLocalUserState();
+    final navigator = navigatorKey.currentState;
+    if (navigator != null) {
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute<void>(
+          builder: (_) => const LoginPage(sessionExpiredMessage: true),
+        ),
+        (route) => false,
+      );
+    }
+    scaffoldMessengerKey.currentState?.showSnackBar(
+      const SnackBar(
+        content: Text('Your ProSN account is no longer available. Please sign in again.'),
+      ),
+    );
+    _handlingRemoteAccountDeletion = false;
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
@@ -218,6 +311,9 @@ class _AppLifecycleObserver extends WidgetsBindingObserver {
         });
       }
     } else if (state == AppLifecycleState.resumed) {
+      // Check immediately on return from background, then continue periodic
+      // checks while the app remains in the foreground.
+      unawaited(_validateRemoteFirebaseAccount());
       chestTimerService.resumeFromForeground();
       unawaited(AdFreeAccess.initialize());
       unawaited(PlayBillingService.instance.refreshSubscription().then((_) {
