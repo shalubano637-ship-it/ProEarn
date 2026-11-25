@@ -85,6 +85,7 @@ Deno.serve(async (req) => {
     if (allowed !== true) return json({ error: "Too many sign-in attempts. Please try again later." }, 429);
 
     let firebaseUser;
+    let isNewUser = false;
     try {
       firebaseUser = await auth.getUserByEmail(email);
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(firebaseUser.uid)) {
@@ -94,6 +95,7 @@ Deno.serve(async (req) => {
       if ((error as { code?: string }).code !== "auth/user-not-found") throw error;
       const uid = crypto.randomUUID();
       const username = safeUsername(email);
+      isNewUser = true;
       firebaseUser = await auth.createUser({
         uid, email, emailVerified: true, displayName: username, disabled: false,
       });
@@ -110,6 +112,7 @@ Deno.serve(async (req) => {
       const { error: insertError } = await db.from("users").insert({
         uid, userName: username, email, fullName: username,
         termsAcceptedAt, termsVersion, referralCode, isEmailVerified: true,
+        profileSetupCompleted: false,
       });
       if (insertError) {
         try { await auth.deleteUser(uid); } catch (_) { /* rollback best effort */ }
@@ -117,9 +120,37 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Existing Firebase identities may predate their public profile row. Create
+    // a gated starter row only when it is genuinely missing; existing profiles
+    // are never reset or forced through onboarding again.
+    const { data: profile, error: profileLookupError } = await db
+      .from("users")
+      .select("uid,profileSetupCompleted")
+      .eq("uid", firebaseUser.uid)
+      .maybeSingle();
+    if (profileLookupError) throw profileLookupError;
+
+    let needsProfileSetup = profile?.profileSetupCompleted === false;
+    if (!profile) {
+      const username = safeUsername(email);
+      const { error: profileInsertError } = await db.from("users").insert({
+        uid: firebaseUser.uid,
+        userName: username,
+        email,
+        fullName: username,
+        termsAcceptedAt,
+        termsVersion,
+        isEmailVerified: true,
+        profileSetupCompleted: false,
+      });
+      if (profileInsertError) throw profileInsertError;
+      needsProfileSetup = true;
+      isNewUser = true;
+    }
+
     await auth.setCustomUserClaims(firebaseUser.uid, { ...(firebaseUser.customClaims ?? {}), role: "authenticated" });
     const customToken = await auth.createCustomToken(firebaseUser.uid, { role: "authenticated" });
-    return json({ success: true, customToken, uid: firebaseUser.uid });
+    return json({ success: true, customToken, uid: firebaseUser.uid, isNewUser, needsProfileSetup });
   } catch (error) {
     console.error("firebase-google-bridge failed:", error);
     return json({ error: "Google sign-in could not be completed. Please try again." }, 500);
