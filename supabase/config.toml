@@ -7,3 +7,19 @@ verify_jwt = false
 # The notify handler validates user JWTs itself and authenticates chest cron calls with CHEST_CRON_SECRET.
 [functions.notify]
 verify_jwt = false
+
+# These endpoints validate Firebase/Google credentials inside the function.
+# Supabase's legacy gateway JWT check must not reject those tokens first.
+[functions.firebase-google-bridge]
+verify_jwt = false
+
+# Signup provisioning is protected by server-side validation and rate limiting.
+[functions.firebase-auth-provision]
+verify_jwt = false
+
+# Account deletion validates the Firebase ID token with Firebase Admin SDK.
+[functions.delete-account]
+verify_jwt = false
+
+[functions.delete-account-request]
+verify_jwt = false
