@@ -119,6 +119,9 @@ Deno.serve(async (req) => {
       return json({ error: "Unauthorized" }, 401);
     }
     firebaseUser = await firebaseAuth.getUser(decoded.uid);
+    if (firebaseUser.disabled || !firebaseUser.email || !firebaseUser.emailVerified) {
+      return json({ error: "Please verify your account email before deleting your account." }, 403);
+    }
   } catch (_) {
     return json({ error: "Unauthorized" }, 401);
   }
