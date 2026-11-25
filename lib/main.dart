@@ -20,6 +20,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'auth_screen.dart';
+import 'models.dart';
 import 'service.dart';
 import 'theme/theme.dart';
 import 'theme/theme_controller.dart';
