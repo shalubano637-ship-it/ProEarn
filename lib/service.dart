@@ -40,6 +40,7 @@ Future<void> ensureUserDocumentExists() async {
         'bio': 'No Bio Yet',
         'link': 'No Link',
         'profileUrl': '',
+        'profileSetupCompleted': false,
       });
       debugPrint("Supabase user row repaired successfully.");
     }
