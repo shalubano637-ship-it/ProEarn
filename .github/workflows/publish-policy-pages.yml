@@ -37,6 +37,13 @@ jobs:
           mkdir -p _site/policy _site/assets
           cp assets/icon/app_icon.svg _site/assets/prosn-app-icon.svg
           cp web/policy/*.html _site/policy/
+          # Normalize any literal escaped newline sequences before publishing.
+          python - <<'PY'
+          from pathlib import Path
+          for page in Path("_site/policy").glob("*.html"):
+              content = page.read_text(encoding="utf-8")
+              page.write_text(content.replace("\\n", "\n"), encoding="utf-8")
+          PY
           cp web/delete-account-request.html _site/delete-account-request.html
           echo 'prosn.in' > _site/CNAME
           cat > _site/index.html <<'EOF'
