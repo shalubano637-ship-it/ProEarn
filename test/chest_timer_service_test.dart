@@ -17,6 +17,21 @@ void main() {
     when(() => repo.sendChestReadyNotification(any())).thenAnswer((_) async {});
   });
 
+  group('India daily reset schedule', () {
+    test('computes the next midnight IST as 18:30 UTC', () {
+      final service = ChestTimerService(repository: repo);
+      expect(
+        service.nextIstMidnightUtcForTest(DateTime.utc(2026, 11, 25, 6, 1)),
+        DateTime.utc(2026, 11, 25, 18, 30),
+      );
+      expect(
+        service.nextIstMidnightUtcForTest(DateTime.utc(2026, 11, 25, 18, 31)),
+        DateTime.utc(2026, 11, 26, 18, 30),
+      );
+      service.dispose();
+    });
+  });
+
   group('timer start', () {
     test('brand-new user has no active chest timer until explicitly started', () {
       when(() => repo.fetchProgress(uid)).thenAnswer((_) async => null);
