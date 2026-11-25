@@ -9,6 +9,7 @@ import 'fcm_service.dart';
 import 'models.dart';
 import 'service.dart';
 import 'navigation_shell.dart';
+import 'profile_setup_page.dart';
 import 'chest_timer_service.dart';
 import 'dart:async';
 import 'theme/theme.dart';
@@ -81,6 +82,24 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
         }
 
         if (user != null && user.emailVerified) {
+          try {
+            final profile = await Supabase.instance.client
+                .from(kUsersCollection)
+                .select('profileSetupCompleted')
+                .eq('uid', user.uid)
+                .maybeSingle();
+            if (profile != null && profile['profileSetupCompleted'] == false) {
+              if (!mounted) return;
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileSetupPage()),
+              );
+              return;
+            }
+          } catch (error) {
+            debugPrint('Profile setup status check failed: $error');
+          }
+
           final termsOk = await _ensureCurrentTermsAccepted(user.uid);
           if (!mounted) return;
           if (!termsOk) {
@@ -316,11 +335,11 @@ class _LoginPageState extends State<LoginPage> {
       );
       return;
     }
-
     setState(() => isGoogleAuthStarting = true);
     try {
-      final google = GoogleSignIn(serverClientId: '449305618154-ii2bo0jsf8ner0oa4f6lv4eo3q4slft0.apps.googleusercontent.com');
-      // Refresh the Google plugin session before starting a fresh credential flow.
+      final google = GoogleSignIn(
+        serverClientId: '449305618154-ii2bo0jsf8ner0oa4f6lv4eo3q4slft0.apps.googleusercontent.com',
+      );
       await google.signOut();
       final account = await google.signIn();
       if (account == null) {
@@ -340,30 +359,57 @@ class _LoginPageState extends State<LoginPage> {
           'termsVersion': kCurrentTermsVersion,
         },
       );
-      final customToken = (bridge.data is Map) ? bridge.data['customToken']?.toString() : null;
+      final customToken = bridge.data is Map
+          ? bridge.data['customToken']?.toString()
+          : null;
       if (customToken == null || customToken.isEmpty) {
         throw StateError('Secure Firebase identity bridge did not return a token.');
       }
       await FirebaseAuth.instance.signInWithCustomToken(customToken);
-      await FirebaseAuth.instance.currentUser?.getIdToken(true);
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      if (firebaseUser == null) {
+        throw StateError('Firebase did not restore the Google account session.');
+      }
+      await firebaseUser.getIdToken(true);
+      try {
+        final googleCredential = GoogleAuthProvider.credential(
+          idToken: googleIdToken,
+          accessToken: googleAuth.accessToken,
+        );
+        await firebaseUser.linkWithCredential(googleCredential);
+      } on FirebaseAuthException catch (error) {
+        if (error.code != 'provider-already-linked') rethrow;
+      }
+      final needsProfileSetup =
+          bridge.data is Map && bridge.data['needsProfileSetup'] == true;
       if (mounted) setState(() => isGoogleAuthStarting = false);
-      await FcmService.enableForCurrentUser();
+      await FcmService.syncForCurrentUser();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const SplashPage()),
+        MaterialPageRoute(
+          builder: (_) => needsProfileSetup
+              ? const ProfileSetupPage()
+              : const SplashPage(),
+        ),
         (route) => false,
       );
     } on FunctionException catch (e) {
       if (!mounted) return;
       setState(() => isGoogleAuthStarting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(friendlyErrorMessage(e, fallback: "We couldn’t sign you in with Google. Please try again."))),
+        SnackBar(content: Text(friendlyErrorMessage(
+          e,
+          fallback: "We couldn’t sign you in with Google. Please try again.",
+        ))),
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => isGoogleAuthStarting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(friendlyErrorMessage(e, fallback: "We couldn’t sign you in with Google. Please try again."))),
+        SnackBar(content: Text(friendlyErrorMessage(
+          e,
+          fallback: "We couldn’t sign you in with Google. Please try again.",
+        ))),
       );
     }
   }
