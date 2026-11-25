@@ -131,6 +131,7 @@ Deno.serve(async (req) => {
       referralCode: ownReferralCode,
       referredBy,
       isEmailVerified: false,
+      profileSetupCompleted: true,
     });
     if (insertError) throw insertError;
 
