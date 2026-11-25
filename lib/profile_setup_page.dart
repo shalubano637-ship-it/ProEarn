@@ -1,5 +1,7 @@
 import 'dart:typed_data';
+import 'package:universal_io/universal_io.dart';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
@@ -13,6 +15,7 @@ import 'service.dart';
 import 'chest_timer_service.dart';
 import 'theme/theme.dart';
 import 'utils/friendly_error.dart';
+import 'profile/image_crop_page.dart';
 
 class ProfileSetupPage extends StatefulWidget {
   const ProfileSetupPage({super.key});
@@ -57,27 +60,46 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       final image = await _picker.pickImage(
         source: ImageSource.gallery,
         imageQuality: 88,
-        maxWidth: 1200,
-        maxHeight: 1200,
+        maxWidth: 1600,
+        maxHeight: 1600,
       );
       if (image == null) return;
-      final bytes = await image.readAsBytes();
-      if (!mounted) return;
-      final name = image.name.toLowerCase();
-      setState(() {
-        _imageBytes = bytes;
-        _imageContentType = name.endsWith('.png')
+
+      Uint8List bytes;
+      String contentType;
+      if (kIsWeb) {
+        bytes = await image.readAsBytes();
+        final lower = image.name.toLowerCase();
+        contentType = lower.endsWith('.png')
             ? 'image/png'
-            : name.endsWith('.webp')
+            : lower.endsWith('.webp')
                 ? 'image/webp'
                 : 'image/jpeg';
+      } else {
+        // Use the same Move and Scale crop interaction as Edit Profile:
+        // users can drag the picture into position and pinch to zoom.
+        final File? croppedFile = await Navigator.push<File?>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ImageCropPage(imageFile: File(image.path)),
+          ),
+        );
+        if (croppedFile == null) return;
+        bytes = await croppedFile.readAsBytes();
+        contentType = 'image/png';
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _imageBytes = bytes;
+        _imageContentType = contentType;
       });
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(friendlyErrorMessage(
           error,
-          fallback: "Couldn't select the profile image. Please try again.",
+          fallback: "Couldn't select or crop the profile image. Please try again.",
         ))),
       );
     }
@@ -237,14 +259,6 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                         color: theme.colorScheme.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Choose your username, create a password and add a profile photo.',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
                     const SizedBox(height: 28),
                     Center(
                       child: GestureDetector(
@@ -281,7 +295,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                       maxLength: 30,
                       decoration: const InputDecoration(
                         labelText: 'Username',
-                        hintText: 'e.g. nasir_01',
+                        hintText: 'e.g. your_username',
                         prefixIcon: Icon(Icons.alternate_email),
                       ),
                     ),
@@ -329,12 +343,47 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                             : const Text('Complete setup'),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Signed in as \${user?.email ?? ''}',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.caption.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      initialValue: user?.email ?? '',
+                      readOnly: true,
+                      enableInteractiveSelection: false,
+                      decoration: InputDecoration(
+                        labelText: 'Email',
+                        prefixIcon: const Icon(Icons.email_outlined),
+                        suffixIcon: user?.emailVerified == true
+                            ? const Padding(
+                                padding: EdgeInsets.only(right: 12),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Verified',
+                                      style: TextStyle(
+                                        color: AppColors.success,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    SizedBox(width: 6),
+                                    Icon(
+                                      Icons.verified,
+                                      color: AppColors.success,
+                                      size: 21,
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : const Padding(
+                                padding: EdgeInsets.only(right: 12),
+                                child: Text(
+                                  'Not verified',
+                                  style: TextStyle(
+                                    color: AppColors.error,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                        suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
                       ),
                     ),
                   ],
