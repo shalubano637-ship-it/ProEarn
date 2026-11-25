@@ -124,6 +124,9 @@ jobs:
         with:
           path: _site
 
+      - name: Wait for GitHub Pages artifact indexing
+        run: sleep 10
+
       - name: Deploy policy site
         id: deployment
         uses: actions/deploy-pages@v4
