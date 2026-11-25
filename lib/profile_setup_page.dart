@@ -202,11 +202,16 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final user = FirebaseAuth.instance.currentUser;
-    final ImageProvider? previewImage = _imageBytes != null
-        ? MemoryImage(_imageBytes!)
-        : (_googlePhotoUrl != null && _googlePhotoUrl!.isNotEmpty
-            ? NetworkImage(_googlePhotoUrl!)
-            : null);
+
+    // Give each concrete provider an explicit target type. A conditional
+    // combining MemoryImage and NetworkImage can infer Object? under analyzer
+    // instead of the ImageProvider<Object> required by CircleAvatar.
+    ImageProvider<Object>? previewImage;
+    if (_imageBytes != null) {
+      previewImage = MemoryImage(_imageBytes!);
+    } else if (_googlePhotoUrl != null && _googlePhotoUrl!.isNotEmpty) {
+      previewImage = NetworkImage(_googlePhotoUrl!);
+    }
 
     return PopScope(
       canPop: false,
