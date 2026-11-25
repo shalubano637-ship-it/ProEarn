@@ -246,11 +246,17 @@
         if (!result.idToken || !result.email) {
           throw new Error('Firebase did not return a valid account session. Please try again.');
         }
-        const normalizedEmail = String(result.email).trim().toLowerCase();
+        const accountInfo = await firebasePost('accounts:lookup', { idToken: result.idToken });
+        const user = accountInfo?.users?.[0];
+        if (!user || String(user.email || '').trim().toLowerCase() !== String(result.email).trim().toLowerCase()) {
+          throw new Error('Firebase could not confirm the signed-in account. Please try again.');
+        }
+
+        const normalizedEmail = String(user.email).trim().toLowerCase();
         const pending = savePendingVerification(normalizedEmail, result.idToken);
         passwordInput.value = '';
 
-        if (result.emailVerified === true) {
+        if (user.emailVerified === true) {
           showDeleteConfirmation(normalizedEmail, result.idToken);
           return;
         }
