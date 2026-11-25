@@ -9,6 +9,8 @@ import 'cloudflare_media_service.dart';
 import 'fcm_service.dart';
 import 'models.dart';
 import 'navigation_shell.dart';
+import 'service.dart';
+import 'chest_timer_service.dart';
 import 'theme/theme.dart';
 import 'utils/friendly_error.dart';
 
@@ -170,7 +172,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       currentUserEmail = refreshedUser.email ?? '';
       currentUserName = username;
       currentUserProfile = profileUrl;
-      await FcmService.syncForCurrentUser();
+      await loadUserDataOnStartup();
+      chestTimerService.initialize();
+      await FcmService.enableForCurrentUser();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
