@@ -120,6 +120,11 @@ Deno.serve(async (req) => {
       }
     }
 
+    // The Google ID token above has been verified by Google's tokeninfo endpoint,
+    // including email_verified=true and the expected OAuth audience. Sync that
+    // verified identity to Firebase even for accounts created before this bridge.
+    firebaseUser = await auth.updateUser(firebaseUser.uid, { emailVerified: true });
+
     // Existing Firebase identities may predate their public profile row. Create
     // a gated starter row only when it is genuinely missing; existing profiles
     // are never reset or forced through onboarding again.
@@ -129,6 +134,12 @@ Deno.serve(async (req) => {
       .eq("uid", firebaseUser.uid)
       .maybeSingle();
     if (profileLookupError) throw profileLookupError;
+    if (profile) {
+      const { error: verifiedProfileError } = await db.from("users")
+        .update({ isEmailVerified: true })
+        .eq("uid", firebaseUser.uid);
+      if (verifiedProfileError) throw verifiedProfileError;
+    }
 
     let needsProfileSetup = profile?.profileSetupCompleted === false;
     if (!profile) {
