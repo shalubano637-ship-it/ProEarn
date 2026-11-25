@@ -36,12 +36,14 @@
   <main class="wrap">
     <span class="eyebrow">Account control · Privacy</span>
     <h1>Delete your ProSN account and data</h1>
-    <p class="intro">You can request permanent deletion of your ProSN account using the secure verification process below. Enter the email address linked to your account. We will send you a secure sign-in link. Open that link on this page to verify account ownership, then confirm deletion. You can also delete your account in the app under <strong>Settings → Security → Delete Account</strong>.</p>
+    <p class="intro">Enter the email and password for your ProSN account to verify ownership, then confirm permanent deletion. Google sign-in users can delete their account in the app under <strong>Settings → Security → Delete Account</strong>.</p>
     <section class="panel" aria-label="Account deletion request">
       <form id="emailForm">
         <label for="email">Account email</label>
-        <input id="email" type="email" autocomplete="email" placeholder="you@example.com" required>
-        <button id="sendLink" type="submit">Send secure sign-in link →</button>
+        <input id="email" type="email" autocomplete="username" placeholder="you@example.com" required>
+        <label for="password">Account password</label>
+        <input id="password" type="password" autocomplete="current-password" placeholder="Enter your password" required>
+        <button id="sendLink" type="submit">Verify account →</button>
       </form>
       <form id="deleteForm" class="hidden">
         <p id="verifiedAccount"></p>
@@ -56,60 +58,53 @@
   </main>
   <footer><div class="wrap foot"><span>© 2026 ProSN. All rights reserved.</span><a href="/">ProSN Policies</a></div></footer>
   <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    const FIREBASE_API_KEY = 'AIzaSyBFR_jbBE_kviy2Ow_WF_X1pj0I9lfz4As';
+    const SUPABASE_URL = 'https://mltvpfqfhbhgkejcjpmq.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_3c2SHzm3Y8u_pjbmpWNSXw_5Rwkn5b_';
 
-    const supabase = createClient(
-      'https://mltvpfqfhbhgkejcjpmq.supabase.co',
-      'sb_publishable_3c2SHzm3Y8u_pjbmpWNSXw_5Rwkn5b_'
-    );
     const emailForm = document.getElementById('emailForm');
     const deleteForm = document.getElementById('deleteForm');
     const status = document.getElementById('status');
     const sendButton = document.getElementById('sendLink');
     const deleteButton = document.getElementById('deleteButton');
     let verifiedEmail = '';
-
-    function showVerifiedAccount(email) {
-      if (!email) return;
-      verifiedEmail = email.toLowerCase();
-      document.getElementById('verifiedAccount').textContent =
-        'Email verified for: ' + verifiedEmail + '. Review this carefully before confirming permanent deletion.';
-      emailForm.classList.add('hidden');
-      deleteForm.classList.remove('hidden');
-      status.textContent = 'Your email is verified. Account deletion will happen only after you confirm below.';
-    }
-
-    // Supabase consumes the magic-link token from the URL and creates a session.
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (sessionData.session?.user?.email) {
-      showVerifiedAccount(sessionData.session.user.email);
-    }
-    supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user?.email) {
-        showVerifiedAccount(session.user.email);
-        // Remove authentication tokens from the visible URL after Supabase processes them.
-        history.replaceState({}, document.title, window.location.pathname);
-      }
-    });
+    let firebaseIdToken = '';
 
     emailForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       const email = document.getElementById('email').value.trim().toLowerCase();
+      const password = document.getElementById('password').value;
       sendButton.disabled = true;
-      status.textContent = 'Sending a secure sign-in link…';
+      status.textContent = 'Verifying your ProSN account…';
       try {
-        const redirectTo = window.location.origin + window.location.pathname;
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: {
-            shouldCreateUser: false,
-            emailRedirectTo: redirectTo
-          }
+        const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ email, password, returnSecureToken: true })
         });
-        if (error) throw error;
-        status.textContent = 'If this email belongs to an existing ProSN account, a secure sign-in link has been sent. Open the link from the same device or browser.';
+        const result = await response.json();
+        if (!response.ok) {
+          const code = result?.error?.message || '';
+          if (code.includes('EMAIL_NOT_FOUND') || code.includes('INVALID_PASSWORD') || code.includes('INVALID_LOGIN_CREDENTIALS')) {
+            throw new Error('Email or password is incorrect. Please check your details and try again.');
+          }
+          if (code.includes('TOO_MANY_ATTEMPTS')) {
+            throw new Error('Too many attempts. Please wait a while and try again.');
+          }
+          throw new Error('Could not verify your account. Please try again or use account deletion inside the app.');
+        }
+        if (result.emailVerified !== true || !result.idToken) {
+          throw new Error('Please verify your email from the verification email before requesting account deletion.');
+        }
+        verifiedEmail = String(result.email || email).toLowerCase();
+        firebaseIdToken = result.idToken;
+        document.getElementById('verifiedAccount').textContent =
+          'Account verified for: ' + verifiedEmail + '. Review this carefully before confirming permanent deletion.';
+        emailForm.classList.add('hidden');
+        deleteForm.classList.remove('hidden');
+        status.textContent = 'Your account is verified. Deletion will happen only after you confirm below.';
       } catch (error) {
-        status.textContent = error?.message || 'Could not send the sign-in link. Please try again.';
+        status.textContent = error?.message || 'Could not verify your account. Please try again.';
       } finally {
         sendButton.disabled = false;
       }
@@ -117,26 +112,36 @@
 
     deleteForm.addEventListener('submit', async (event) => {
       event.preventDefault();
+      if (!firebaseIdToken || !verifiedEmail) {
+        status.textContent = 'Your verification session is missing. Please verify your account again.';
+        deleteForm.classList.add('hidden');
+        emailForm.classList.remove('hidden');
+        return;
+      }
       deleteButton.disabled = true;
       status.textContent = 'Submitting your account deletion…';
       try {
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        const sessionEmail = sessionData.session?.user?.email?.toLowerCase();
-        if (sessionError || !sessionEmail || sessionEmail !== verifiedEmail) {
-          throw sessionError || new Error('Your verified session is missing. Please request a new sign-in link.');
-        }
-        const { error: deletionError } = await supabase.functions.invoke('delete-account-request', {
-          body: {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/delete-account-request`, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + firebaseIdToken,
+            'apikey': SUPABASE_ANON_KEY,
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify({
             email: verifiedEmail,
             reason: document.getElementById('reason').value.trim()
-          }
+          })
         });
-        if (deletionError) throw deletionError;
-        await supabase.auth.signOut({ scope: 'local' });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || result.success !== true) {
+          throw new Error(result.error || 'Deletion could not be completed. Your account has not been deleted.');
+        }
+        firebaseIdToken = '';
         deleteForm.classList.add('hidden');
-        status.textContent = 'Your account deletion request was submitted successfully.';
+        status.textContent = 'Your account and associated data deletion request was completed successfully.';
       } catch (error) {
-        status.textContent = error?.message || 'Deletion request failed. Your account has not been confirmed as deleted. Please contact support or try again.';
+        status.textContent = error?.message || 'Deletion request failed. Your account has not been confirmed as deleted. Please try again or contact support.';
         deleteButton.disabled = false;
       }
     });
