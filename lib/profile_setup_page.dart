@@ -126,16 +126,20 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         throw StateError('That username is already taken. Choose another one.');
       }
 
-      final hasPasswordProvider = user.providerData.any(
+      await user.reload();
+      final activeUser = FirebaseAuth.instance.currentUser ?? user;
+      final hasPasswordProvider = activeUser.providerData.any(
         (provider) => provider.providerId == 'password',
       );
-      if (!hasPasswordProvider) {
+      if (hasPasswordProvider) {
+        await activeUser.updatePassword(password);
+      } else {
         final credential = EmailAuthProvider.credential(
-          email: user.email!,
+          email: activeUser.email!,
           password: password,
         );
         try {
-          await user.linkWithCredential(credential);
+          await activeUser.linkWithCredential(credential);
         } on FirebaseAuthException catch (error) {
           if (error.code != 'provider-already-linked') rethrow;
         }
