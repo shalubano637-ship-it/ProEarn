@@ -1,8 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { cert, getApps, initializeApp } from "npm:firebase-admin@13.2.0/app";
+import { getAuth } from "npm:firebase-admin@13.2.0/auth";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+
 const mediaGatewayUrl = Deno.env.get("MEDIA_GATEWAY_URL") ?? "https://proearn-media-gateway.0nasir07860.workers.dev";
 const mediaInternalToken = Deno.env.get("MEDIA_INTERNAL_TOKEN") ?? "";
 
@@ -26,6 +28,15 @@ function assertNoError(operation: string, error: { message: string } | null) {
 const admin = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
+
+function firebaseAdminAuth() {
+  const raw = Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON");
+  if (!raw) throw new Error("Firebase Admin service account is not configured");
+  const serviceAccount = JSON.parse(raw);
+  if (serviceAccount.project_id !== "proearn-6acdd") throw new Error("Firebase project mismatch");
+  const app = getApps()[0] ?? initializeApp({ credential: cert(serviceAccount), projectId: serviceAccount.project_id });
+  return getAuth(app);
+}
 
 async function deleteWhere(table: string, column: string, value: string) {
   const { error } = await admin.from(table).delete().eq(column, value);
@@ -96,16 +107,25 @@ async function removeUserReferences(uid: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
-  if (!supabaseUrl || !serviceRoleKey || !anonKey) return json({ error: "Account deletion service is not configured" }, 503);
+  if (!supabaseUrl || !serviceRoleKey || !Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON")) return json({ error: "Account deletion service is not configured" }, 503);
   const authorization = req.headers.get("Authorization") ?? "";
   if (!authorization.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authorization } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const { data: authData, error: authError } = await userClient.auth.getUser();
-  if (authError || !authData.user) return json({ error: "Unauthorized" }, 401);
-  const uid = authData.user.id;
+  let firebaseUser;
+  try {
+    const firebaseAuth = firebaseAdminAuth();
+    const decoded = await firebaseAuth.verifyIdToken(authorization.slice(7), true);
+    if (decoded.role !== "authenticated" ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(decoded.uid)) {
+      return json({ error: "Unauthorized" }, 401);
+    }
+    firebaseUser = await firebaseAuth.getUser(decoded.uid);
+    if (firebaseUser.disabled || !firebaseUser.email || !firebaseUser.emailVerified) {
+      return json({ error: "Please verify your account email before deleting your account." }, 403);
+    }
+  } catch (_) {
+    return json({ error: "Unauthorized" }, 401);
+  }
+  const uid = firebaseUser.uid;
   try {
     await removeCommentReferences(uid);
     const { error: commentError } = await admin.from("comments").delete().eq("userId", uid);
@@ -154,13 +174,15 @@ Deno.serve(async (req) => {
       const detail = await mediaResponse.text().catch(() => "");
       throw new Error(`Media deletion failed (HTTP ${mediaResponse.status}): ${detail.slice(0, 200)}`);
     }
-    const email = authData.user.email?.toLowerCase();
+    const email = firebaseUser.email?.toLowerCase();
     if (email) {
       const { error: adminCleanupError } = await admin.from("admins").delete().eq("email", email);
       assertNoError("Remove admin mapping", adminCleanupError);
     }
-    // Remove the public profile explicitly: this schema does not cascade public.users from auth.users.\n    await deleteWhere("users", "uid", uid);\n    const { error: authDeleteError } = await admin.auth.admin.deleteUser(uid);
-    assertNoError("Delete authentication account", authDeleteError);
+    // Remove the public profile explicitly before deleting the Firebase identity.
+    await deleteWhere("users", "uid", uid);
+    // Firebase identity is deleted only after all application data and media cleanup succeeds.
+    await firebaseAdminAuth().deleteUser(uid);
     return json({ success: true, r2MediaDeleted: true });
   } catch (error) {
     console.error("delete-account failed", { userId: uid, error });
