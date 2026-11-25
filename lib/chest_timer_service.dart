@@ -27,8 +27,6 @@ abstract class ChestRepository {
   Future<void> syncRemaining(int remainingSeconds);
   Future<void> startTimer();
 
-  Future<void> sendChestReadyNotification(String uid);
-  Future<bool> hasChestReadyNotificationSince(String uid, DateTime unlockAt);
 }
 
 class _SupabaseChestRepository implements ChestRepository {
@@ -67,39 +65,7 @@ class _SupabaseChestRepository implements ChestRepository {
     await _client.rpc('start_chest_timer');
   }
 
-  @override
-  Future<void> sendChestReadyNotification(String uid) async {
-    // Do not use the shared sendNotification helper here: it catches errors
-    // internally, which made the timer mark a failed notification as sent.
-    final response = await _client.functions.invoke(
-      'notify',
-      body: {
-        'targetOwnerId': uid,
-        'type': 'chest_ready',
-        'message': 'Your chest is ready to open! 🎁',
-      },
-    );
-    if (response.status < 200 || response.status >= 300) {
-      throw StateError('Chest notification failed with HTTP ${response.status}');
-    }
-    final data = response.data;
-    if (data is Map && data['success'] == false) {
-      throw StateError('Chest notification was not accepted');
-    }
-  }
 
-  @override
-  Future<bool> hasChestReadyNotificationSince(String uid, DateTime unlockAt) async {
-    final row = await _client
-        .from('notifications')
-        .select('id')
-        .eq('targetOwnerId', uid)
-        .eq('type', 'chest_ready')
-        .gte('timestamp', unlockAt.toUtc().toIso8601String())
-        .limit(1)
-        .maybeSingle();
-    return row != null;
-  }
 }
 
 DateTime _nextIstMidnightUtc(DateTime nowUtc) {
@@ -128,11 +94,6 @@ class ChestTimerService extends ChangeNotifier {
   bool isLoaded = false;
   String? loadError;
   DateTime? _unlockAt;
-
-  bool _notifiedThisUnlock = false; // avoid duplicate chest_ready notifications for the same unlock
-
-  @visibleForTesting
-  bool get notifiedThisUnlockForTest => _notifiedThisUnlock;
 
   @visibleForTesting
   bool get isTickingForTest => _localTicker?.isActive ?? false;
@@ -187,18 +148,9 @@ class ChestTimerService extends ChangeNotifier {
 
       isLoaded = true;
       loadError = null;
-      _notifiedThisUnlock = false;
       notifyListeners();
 
-      if (isUnlocked) {
-        if (_unlockAt != null) {
-          await _sendReadyNotificationOnce(checkDatabase: true);
-        } else {
-          // Legacy unlocked rows without an unlockAt have no notification
-          // event to replay. Mark this state handled to avoid duplicate pushes.
-          _notifiedThisUnlock = true;
-        }
-      } else if (isStarted) {
+      if (!isUnlocked && isStarted) {
         _startTicking();
       }
     } catch (e) {
@@ -245,7 +197,6 @@ class ChestTimerService extends ChangeNotifier {
         isUnlocked = true;
         notifyListeners();
         _persistRemaining();
-        _sendReadyNotificationOnce();
         return;
       }
 
@@ -260,27 +211,6 @@ class ChestTimerService extends ChangeNotifier {
     }
   }
 
-  Future<void> _sendReadyNotificationOnce({bool checkDatabase = false}) async {
-    if (_notifiedThisUnlock) return;
-    final uid = _repo.currentUserId;
-    if (uid == null) return;
-
-    if (checkDatabase && _unlockAt != null) {
-      try {
-        // Inbox notification rows do not confirm OneSignal push delivery.
-        // Keep trying the push endpoint; server-side delivery is deduplicated.
-      } catch (e) {
-        debugPrint('chest ready notification lookup failed: $e');
-      }
-    }
-
-    try {
-      await _repo.sendChestReadyNotification(uid);
-      _notifiedThisUnlock = true;
-    } catch (e) {
-      debugPrint('chest ready notification send failed: $e');
-    }
-  }
 
   void pauseAndPersist() {
     if (!isUnlocked) {
@@ -299,7 +229,6 @@ class ChestTimerService extends ChangeNotifier {
     isStarted = false;
     _unlockAt = null;
     remainingSeconds = 0;
-    _notifiedThisUnlock = false;
     notifyListeners();
     await initialize();
   }
