@@ -63,6 +63,22 @@ class _SupabaseChestRepository implements ChestRepository {
   }
 
   @override
+  void _scheduleDailyIstRefresh() {
+    _dailyRefreshTimer?.cancel();
+    final nowUtc = DateTime.now().toUtc();
+    final nextResetUtc = _nextIstMidnightUtc(nowUtc);
+    final delay = nextResetUtc.difference(nowUtc);
+    _dailyRefreshTimer = Timer(delay, () {
+      _dailyRefreshTimer = null;
+      if (_repo.currentUserId != null) {
+        initialize();
+      }
+    });
+  }
+
+  @visibleForTesting
+  DateTime nextIstMidnightUtcForTest(DateTime nowUtc) => _nextIstMidnightUtc(nowUtc);
+
   Future<void> startTimer() async {
     if (tableName != 'chest_progress') throw StateError('Only gift chest timers can be started here');
     await _client.rpc('start_chest_timer');
@@ -103,6 +119,12 @@ class _SupabaseChestRepository implements ChestRepository {
   }
 }
 
+DateTime _nextIstMidnightUtc(DateTime nowUtc) {
+  final istNow = nowUtc.toUtc().add(const Duration(hours: 5, minutes: 30));
+  final nextMidnightAsUtc = DateTime.utc(istNow.year, istNow.month, istNow.day + 1);
+  return nextMidnightAsUtc.subtract(const Duration(hours: 5, minutes: 30));
+}
+
 class ChestTimerService extends ChangeNotifier {
   ChestTimerService({
     ChestRepository? repository,
@@ -113,6 +135,7 @@ class ChestTimerService extends ChangeNotifier {
   final ChestRepository _repo;
 
   Timer? _localTicker;
+  Timer? _dailyRefreshTimer;
   Future<void>? _initialization;
 
   int currentChestIndex = 0;
@@ -147,6 +170,12 @@ class ChestTimerService extends ChangeNotifier {
   Future<void> _initializeInternal() async {
     final uid = _repo.currentUserId;
     if (uid == null) return;
+
+    // A daily server reset also needs to refresh in-memory state when the app
+    // remains open across midnight. Server cron remains authoritative if the
+    // app is suspended or closed.
+    _localTicker?.cancel();
+    _scheduleDailyIstRefresh();
 
     try {
       final existing = await _repo.fetchProgress(uid);
@@ -279,6 +308,7 @@ class ChestTimerService extends ChangeNotifier {
   @override
   void dispose() {
     _localTicker?.cancel();
+    _dailyRefreshTimer?.cancel();
     super.dispose();
   }
 }
