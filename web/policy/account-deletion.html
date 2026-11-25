@@ -20,6 +20,9 @@
     .intro{font-size:16px;color:var(--muted);margin:0 0 28px}.panel{padding:clamp(20px,5vw,32px);border:1px solid var(--line);border-radius:20px;background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.025));box-shadow:0 20px 60px rgba(0,0,0,.16)}
     label{display:block;font-weight:700;margin:12px 0 8px}input,textarea{display:block;width:100%;box-sizing:border-box;padding:14px 15px;border:1px solid rgba(255,255,255,.2);border-radius:11px;background:#0b1223;color:var(--text);font:inherit;outline:none}
     input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(139,156,255,.13)}
+    .password-field{position:relative}.password-field input{padding-right:58px}
+    .password-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);margin:0;padding:8px 10px;border:0;background:transparent;color:var(--muted);font-size:19px;line-height:1;cursor:pointer}
+    .password-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
     button{margin-top:18px;padding:13px 19px;border:0;border-radius:11px;background:linear-gradient(110deg,#8798ff,#62dcca);color:#0c1425;font:inherit;font-weight:800;cursor:pointer}
     button:disabled{opacity:.55;cursor:wait}.secondary-button{margin-left:8px;background:rgba(255,255,255,.08);border:1px solid var(--line);color:var(--text)}.hidden{display:none}#status{margin-top:16px;padding:12px 14px;border-radius:10px;background:rgba(139,156,255,.08);color:#d5dcff;white-space:pre-wrap;font-size:14px}
     .notice{margin:22px 0 0;padding:17px 18px;border:1px solid var(--line);border-radius:14px;color:var(--muted);font-size:14px;background:rgba(255,255,255,.025)}
@@ -36,13 +39,16 @@
   <main class="wrap">
     <span class="eyebrow">Account control · Privacy</span>
     <h1>Delete your ProSN account and data</h1>
-    <p class="intro">Enter the email and password for your ProSN account. If your email is not verified, ProSN will send a Firebase verification link. Open the link, return to this page, and verify your account status before confirming permanent deletion. Google sign-in users can delete their account in the app under <strong>Settings → Security → Delete Account</strong>.</p>
+    <p class="intro">Enter the email and password for your ProSN account. ProSN sends a fresh Firebase verification email for every website deletion request, even when Firebase already shows the address as verified. Open the newest link and return to this page; the deletion confirmation stays locked until the verification return is checked. Google sign-in users can continue deleting their account in the app under <strong>Settings → Security → Delete Account</strong>.</p>
     <section class="panel" aria-label="Account deletion request">
       <form id="emailForm">
         <label for="email">Account email</label>
         <input id="email" type="email" autocomplete="username" placeholder="you@example.com" required>
         <label for="password">Account password</label>
-        <input id="password" type="password" autocomplete="current-password" placeholder="Enter your password" required>
+        <div class="password-field">
+          <input id="password" type="password" autocomplete="current-password" placeholder="Enter your password" required>
+          <button id="togglePassword" class="password-toggle" type="button" aria-label="Show password" aria-pressed="false" title="Show password">◉</button>
+        </div>
         <button id="sendLink" type="submit">Verify account / Send verification email →</button>
       </form>
       <section id="verificationPanel" class="notice hidden" aria-live="polite" aria-label="Email verification">
@@ -63,9 +69,42 @@
   </main>
   <footer><div class="wrap foot"><span>© 2026 ProSN. All rights reserved.</span><a href="/">ProSN Policies</a></div></footer>
   <script type="module">
-    const FIREBASE_API_KEY = 'AIzaSyBFR_jbBE_kviy2Ow_WF_X1pj0I9lfz4As';
     const SUPABASE_URL = 'https://mltvpfqfhbhgkejcjpmq.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_3c2SHzm3Y8u_pjbmpWNSXw_5Rwkn5b_';
+    const PUBLIC_CONFIG_URLS = {
+      firebase: 'https://raw.githubusercontent.com/shalubano637-ship-it/ProEarn/main/android/app/google-services.json',
+      app: 'https://raw.githubusercontent.com/shalubano637-ship-it/ProEarn/main/lib/main.dart'
+    };
+    let publicConfigPromise = null;
+
+    async function loadPublicConfig() {
+      if (!publicConfigPromise) {
+        publicConfigPromise = (async () => {
+          const [firebaseResponse, appResponse] = await Promise.all([
+            fetch(PUBLIC_CONFIG_URLS.firebase, { cache: 'no-store' }),
+            fetch(PUBLIC_CONFIG_URLS.app, { cache: 'no-store' })
+          ]);
+          if (!firebaseResponse.ok || !appResponse.ok) {
+            throw new Error('ProSN configuration could not be loaded. Please retry later.');
+          }
+          const firebaseConfig = await firebaseResponse.json();
+          const appSource = await appResponse.text();
+          const firebaseClient = firebaseConfig.client?.find((client) =>
+            client.client_info?.android_client_info?.package_name === 'com.prosn.app'
+          );
+          const firebaseApiKey = firebaseClient?.api_key?.[0]?.current_key;
+          const urlMatch = appSource.match(/SUPABASE_URL[\s\S]*?defaultValue:\s*'([^']+)'/);
+          const anonKeyMatch = appSource.match(/SUPABASE_ANON_KEY[\s\S]*?defaultValue:\s*'([^']+)'/);
+          if (!firebaseApiKey || !urlMatch?.[1] || !anonKeyMatch?.[1]) {
+            throw new Error('ProSN public authentication configuration is incomplete.');
+          }
+          return { firebaseApiKey, supabaseUrl: urlMatch[1], supabaseAnonKey: anonKeyMatch[1] };
+        })().catch((error) => {
+          publicConfigPromise = null;
+          throw error;
+        });
+      }
+      return publicConfigPromise;
+    }
     const PENDING_KEY = 'prosn_account_deletion_email_verification';
     const TOKEN_TTL_MS = 55 * 60 * 1000;
 
@@ -80,6 +119,15 @@
     const deleteButton = document.getElementById('deleteButton');
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
+    const togglePassword = document.getElementById('togglePassword');
+
+    togglePassword.addEventListener('click', () => {
+      const show = passwordInput.type === 'password';
+      passwordInput.type = show ? 'text' : 'password';
+      togglePassword.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      togglePassword.setAttribute('aria-pressed', String(show));
+      togglePassword.title = show ? 'Hide password' : 'Show password';
+    });
 
     let verifiedEmail = '';
     let firebaseIdToken = '';
@@ -113,8 +161,9 @@
     }
 
     async function firebasePost(method, payload) {
+      const { firebaseApiKey } = await loadPublicConfig();
       const response = await fetch(
-        `https://identitytoolkit.googleapis.com/v1/${method}?key=${FIREBASE_API_KEY}`,
+        `https://identitytoolkit.googleapis.com/v1/${method}?key=${firebaseApiKey}`,
         {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -256,12 +305,9 @@
         const pending = savePendingVerification(normalizedEmail, result.idToken);
         passwordInput.value = '';
 
-        if (user.emailVerified === true) {
-          showDeleteConfirmation(normalizedEmail, result.idToken);
-          return;
-        }
-
-        // The Verify account action sends the verification email immediately for unverified accounts.
+        // Always send a fresh verification message. Do not expose the destructive
+        // confirmation after password sign-in alone, even when the existing profile
+        // already has emailVerified=true.
         await sendVerificationEmail(pending);
       } catch (error) {
         status.textContent = error?.message || 'Could not verify your account. Please try again.';
@@ -298,11 +344,12 @@
       deleteButton.disabled = true;
       status.textContent = 'Submitting your account deletion…';
       try {
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/delete-account-request`, {
+        const { supabaseUrl, supabaseAnonKey } = await loadPublicConfig();
+        const response = await fetch(`${supabaseUrl}/functions/v1/delete-account-request`, {
           method: 'POST',
           headers: {
             'Authorization': 'Bearer ' + firebaseIdToken,
-            'apikey': SUPABASE_ANON_KEY,
+            'apikey': supabaseAnonKey,
             'content-type': 'application/json'
           },
           body: JSON.stringify({
