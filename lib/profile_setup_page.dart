@@ -131,9 +131,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       final hasPasswordProvider = activeUser.providerData.any(
         (provider) => provider.providerId == 'password',
       );
-      if (hasPasswordProvider) {
-        await activeUser.updatePassword(password);
-      } else {
+      if (!hasPasswordProvider) {
         final credential = EmailAuthProvider.credential(
           email: activeUser.email!,
           password: password,
