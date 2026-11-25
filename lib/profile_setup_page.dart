@@ -322,7 +322,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                     Text(
                       'Signed in as \${user?.email ?? ''}',
                       textAlign: TextAlign.center,
-                      style: AppTextStyles.bodySmall.copyWith(
+                      style: AppTextStyles.caption.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
