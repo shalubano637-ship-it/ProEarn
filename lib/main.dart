@@ -224,7 +224,8 @@ class _AppLifecycleObserver extends WidgetsBindingObserver {
     _sessionValidationTimer = Timer.periodic(
       _sessionValidationInterval,
       (_) {
-        if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+        if (_sessionValidationTimer?.isActive == true &&
+            WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
           unawaited(_validateRemoteFirebaseAccount());
         }
       },
