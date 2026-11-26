@@ -71,7 +71,7 @@ async function moderateBytes(env: Env, bytes: Uint8Array, contentType: string, u
       messages: [
         {
           role: "system",
-          content: 'You are Pro Earn\'s server-side safety classifier. Return ONLY JSON: {"safe":true|false,"reason":"short reason"}. Reject pornography, nudity, explicit sexual activity, sexualized minors, child exploitation, grooming material, graphic gore, or imagery that clearly promotes violent wrongdoing. Normal people, art, fashion, sports, medical/educational material, and non-graphic everyday scenes are safe unless they clearly contain prohibited content. Be conservative when uncertain.',
+          content: 'You are ProSN\'s server-side safety classifier. Return ONLY JSON: {"safe":true|false,"reason":"short reason"}. Reject pornography, nudity, explicit sexual activity, sexualized minors, child exploitation, grooming material, graphic gore, or imagery that clearly promotes violent wrongdoing. Normal people, art, fashion, sports, medical/educational material, and non-graphic everyday scenes are safe unless they clearly contain prohibited content. Be conservative when uncertain.',
         },
         {
           role: "user",
