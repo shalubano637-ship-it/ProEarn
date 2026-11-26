@@ -8,6 +8,7 @@ on:
     paths:
       - 'web/policy/**'
       - 'web/delete-account-request.html'
+      - 'web/auth/action/**'
       - '.github/workflows/publish-policy-pages.yml'
 
 permissions:
@@ -34,7 +35,7 @@ jobs:
 
       - name: Prepare policy site
         run: |
-          mkdir -p _site/policy _site/assets
+          mkdir -p _site/policy _site/assets _site/__/auth/action
           cp assets/icon/app_icon.svg _site/assets/prosn-app-icon.svg
           cp web/policy/*.html _site/policy/
           # Normalize any literal escaped newline sequences before publishing.
@@ -45,6 +46,8 @@ jobs:
               page.write_text(content.replace("\\n", "\n"), encoding="utf-8")
           PY
           cp web/delete-account-request.html _site/delete-account-request.html
+          cp web/auth/action/index.html _site/__/auth/action/index.html
+          touch _site/.nojekyll
           echo 'prosn.in' > _site/CNAME
           cat > _site/index.html <<'EOF'
           <!doctype html>
