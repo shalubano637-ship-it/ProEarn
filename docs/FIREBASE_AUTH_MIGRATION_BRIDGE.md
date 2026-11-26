@@ -1,7 +1,7 @@
 # Firebase Authentication Migration Bridge
 
 ## Status
-Preparation only. This branch does not switch production authentication and does not modify the live Supabase project.
+Preparation only. This branch does not switch production authentication or deploy code. Existing Supabase Auth test accounts are intentionally not migrated or linked.
 
 ## Required identity invariant
 The application stores user identity as UUID values in `public.users.uid` and relies on Supabase RLS policies using `auth.uid()`. A normal Firebase client signup generates a Firebase UID that is not guaranteed to be a UUID. Passing that token to Supabase without provisioning a matching UUID will break profile access and RLS-protected queries.
@@ -17,7 +17,7 @@ The application stores user identity as UUID values in `public.users.uid` and re
 ## Cutover blockers
 - Confirm the Firebase Admin SDK can run safely in the chosen server environment and can create a user with an explicit UUID UID.
 - Implement and test provisioning, email/password signup/login, Google credential linking, token refresh, logout, and duplicate-email handling.
-- Update all auth-dependent Flutter code, including splash/session restoration, FCM token ownership, profile services, settings, billing entitlements, and account deletion.
+- Update all auth-dependent Flutter code, including splash/session restoration, FCM token ownership, profile services, settings, billing entitlements, and account deletion. New users are provisioned as fresh Firebase UUID identities; legacy test accounts are not imported.
 - Verify Supabase third-party Firebase auth accepts the token and RLS resolves `auth.uid()` to the expected UUID.
 - Verify email verification and password reset flows.
 - Run Flutter analyzer, unit/widget tests, and a real-device integration test.
@@ -25,4 +25,4 @@ The application stores user identity as UUID values in `public.users.uid` and re
 ## Safety rules
 - Do not change `main`, deploy Edge Functions, modify Supabase Auth settings, alter RLS policies, or delete user/database records as part of preparation.
 - Do not report the migration as complete until real Firebase signup/login and database RLS tests pass.
-- Keep the existing Supabase Auth path available until the migration is explicitly approved for cutover.
+- Legacy Supabase Auth test accounts are deliberately out of scope. Do not import or link them; create new test accounts through Firebase signup.
