@@ -102,8 +102,8 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
       }
 
       // Firebase Core must be ready before Supabase Auth is bridged to Firebase.
-      // Keep FCM listeners until after Supabase initialization because the
-      // current auth UI is still being migrated from Supabase Auth.
+      // Supabase uses Firebase ID tokens as its third-party user JWT. Initialize
+      // Firebase before Supabase so authenticated requests use the correct token.
       try {
         if (defaultTargetPlatform == TargetPlatform.android) {
           await Firebase.initializeApp();
