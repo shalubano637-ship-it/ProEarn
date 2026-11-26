@@ -26,10 +26,13 @@ function b64url(value: string | Uint8Array): string {
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
-function pemBytes(pem: string): Uint8Array {
+function pemBytes(pem: string): ArrayBuffer {
   const raw = atob(pem.replace(/\\n/g, "\n")
     .replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----/g, "").replace(/\s/g, ""));
-  return Uint8Array.from(raw, c => c.charCodeAt(0));
+  const bytes = Uint8Array.from(raw, c => c.charCodeAt(0));
+  const buffer = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(buffer).set(bytes);
+  return buffer;
 }
 let googleToken = "";
 let googleTokenExpiry = 0;
