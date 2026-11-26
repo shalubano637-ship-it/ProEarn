@@ -43,8 +43,8 @@ class _ShareButtonState extends State<ShareButton> {
   Future<void> _handleAppShare(BuildContext context) async {
     try {
       final ShareResult result = await Share.share(
-        'Check out this amazing AI Generation on PRO EARN!\nPost Link: ${widget.postLink}',
-        subject: 'PRO EARN',
+        'Check out this amazing AI Generation on ProSN!\nPost Link: ${widget.postLink}',
+        subject: 'ProSN',
       );
 
       if (result.status == ShareResultStatus.success) {
