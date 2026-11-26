@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
           : await userClient.rpc("consume_voice_message", { p_message_id: messageId });
         if (rpc.error || !rpc.data?.length) return response({ error: rpc.error?.message ?? "Voice message is no longer available" }, 410);
         const row = rpc.data[0];
-        const key = String(row.voice_path ?? "");
+        const key = String(room ? row.voice_path ?? "" : row.voicePath ?? "");
         if (!key.startsWith("voice/") || key.includes("..")) return response({ error: "Invalid voice object reference" }, 500);
         return response({
           url: await signedVoiceUrl(key),
