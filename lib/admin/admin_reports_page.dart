@@ -2,6 +2,7 @@ import 'dart:convert';
 
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models.dart';
@@ -458,7 +459,7 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final currentEmail = _client.auth.currentUser?.email?.toLowerCase().trim();
+    final currentEmail = FirebaseAuth.instance.currentUser?.email?.toLowerCase().trim();
     if (currentEmail != kAdminEmail.toLowerCase()) {
       return const Scaffold(body: Center(child: Text("Not authorized.")));
     }

@@ -1,10 +1,13 @@
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
+import 'package:proearn/firebase_user_compat.dart';
 import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -14,7 +17,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 class FcmService {
   static StreamSubscription<String>? _tokenSubscription;
-  static StreamSubscription<AuthState>? _authSubscription;
+  static StreamSubscription<User?>? _authSubscription;
   static StreamSubscription<RemoteMessage>? _messageSubscription;
   static bool _initialized = false;
   static String? lastEnableError;
@@ -35,10 +38,8 @@ class FcmService {
     unawaited(FirebaseMessaging.instance.setAutoInitEnabled(true));
     unawaited(_initializeLocalNotifications());
 
-    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((event) {
-      if (event.event == AuthChangeEvent.signedIn ||
-          event.event == AuthChangeEvent.initialSession ||
-          event.event == AuthChangeEvent.tokenRefreshed) {
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null) {
         unawaited(syncForCurrentUser());
       }
     });
@@ -96,7 +97,7 @@ class FcmService {
 
   // Silent startup sync: save the device token without showing a permission prompt.
   static Future<void> syncForCurrentUser() async {
-    if (Supabase.instance.client.auth.currentUser == null) return;
+    if (FirebaseAuth.instance.currentUser == null) return;
     try {
       final token = await FirebaseMessaging.instance.getToken();
       if (token == null || token.isEmpty) {
@@ -112,9 +113,9 @@ class FcmService {
 
   // Explicit login/settings action: request permission and persist preference.
   static Future<bool> enableForCurrentUser() async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      debugPrint('FCM registration skipped: no signed-in Supabase user.');
+      debugPrint('FCM registration skipped: no signed-in Firebase user.');
       return false;
     }
     var stage = 'checking notification permission';
@@ -153,7 +154,7 @@ class FcmService {
       await Supabase.instance.client
           .from('users')
           .update({'pushNotificationsEnabled': allowed})
-          .eq('uid', user.id);
+          .eq('uid', user.uid);
 
       debugPrint('FCM registration and preference update succeeded.');
       return true;
@@ -166,9 +167,9 @@ class FcmService {
   }
 
   static Future<bool> _saveToken(String token) async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null || token.isEmpty) {
-      lastTokenSaveError = 'No authenticated Supabase user or empty FCM token.';
+      lastTokenSaveError = 'No authenticated Firebase user or empty FCM token.';
       return false;
     }
     lastTokenSaveError = null;
@@ -176,11 +177,11 @@ class FcmService {
       final saved = await Supabase.instance.client
           .from('users')
           .update({'fcmToken': token})
-          .eq('uid', user.id)
+          .eq('uid', user.uid)
           .select('uid')
           .maybeSingle();
       if (saved == null) {
-        lastTokenSaveError = 'Supabase UPDATE matched 0 rows for the signed-in user. Check public.users.uid against auth.uid().';
+        lastTokenSaveError = 'Profile UPDATE matched 0 rows for the Firebase UID. Check public.users.uid and Firebase JWT sub.';
         debugPrint('FCM token save failed: $lastTokenSaveError');
         return false;
       }
@@ -199,28 +200,41 @@ class FcmService {
   // Keep the user's notification preference unchanged so it works again
   // automatically the next time this account is signed in.
   static Future<void> unlinkCurrentUserToken() async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     await Supabase.instance.client
         .from('users')
         .update({'fcmToken': null})
-        .eq('uid', user.id);
-    debugPrint('FCM token unlinked from user ${user.id} before sign out.');
+        .eq('uid', user.uid);
+    debugPrint('FCM token unlinked from user ${user.uid} before sign out.');
   }
 
   static Future<void> signOutAndUnlink() async {
-    await unlinkCurrentUserToken();
-    await Supabase.instance.client.auth.signOut();
+    // Remote token cleanup is best-effort: a network/RLS failure must never
+    // prevent the user from signing out locally.
+    try {
+      await unlinkCurrentUserToken();
+    } catch (error) {
+      debugPrint('FCM token unlink skipped during sign-out: $error');
+    }
+    // Clear both identity sessions. Firebase sign-out alone leaves the
+    // GoogleSignIn plugin's cached account session available for the next login.
+    try {
+      await GoogleSignIn().signOut();
+    } catch (error) {
+      debugPrint('Google session sign-out failed: $error');
+    }
+    await FirebaseAuth.instance.signOut();
   }
 
   static Future<void> disableForCurrentUser() async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     try {
       await Supabase.instance.client
           .from('users')
           .update({'pushNotificationsEnabled': false, 'fcmToken': null})
-          .eq('uid', user.id);
+          .eq('uid', user.uid);
     } catch (error) {
       debugPrint('Could not disable push notifications: $error');
     }

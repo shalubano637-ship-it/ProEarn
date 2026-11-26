@@ -4,6 +4,7 @@ import 'package:universal_io/universal_io.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class CloudflareMediaService {
   static const gatewayUrl = String.fromEnvironment(
@@ -15,8 +16,10 @@ class CloudflareMediaService {
     String path,
     Map<String, dynamic> body,
   ) async {
-    final token = Supabase.instance.client.auth.currentSession?.accessToken;
-    if (token == null) throw StateError('Not authenticated');
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw StateError('Please sign in again.');
+    final token = await user.getIdToken();
+    if (token == null || token.isEmpty) throw StateError('Could not refresh your sign-in token. Please sign in again.');
 
     final response = await http.post(
       Uri.parse('$gatewayUrl$path'),
@@ -90,8 +93,16 @@ class CloudflareMediaService {
       throw StateError('Image is too large');
     }
 
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw StateError('Please sign in again.');
+    final firebaseIdToken = await user.getIdToken();
+    if (firebaseIdToken == null || firebaseIdToken.isEmpty) {
+      throw StateError('Could not refresh your sign-in token. Please sign in again.');
+    }
+
     final response = await Supabase.instance.client.functions.invoke(
       'r2-upload',
+      headers: {'Authorization': 'Bearer $firebaseIdToken'},
       body: {
         'imageBase64': base64Encode(bytes),
         'folder': folder,

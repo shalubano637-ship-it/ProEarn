@@ -1,8 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { FirebaseRequestAuthError, verifyFirebaseRequest } from "../_shared/firebase_auth.ts";
 import { AwsClient } from "npm:aws4fetch@1.0.20";
 
 const URL = Deno.env.get("SUPABASE_URL") ?? "";
-const ANON = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const R2_ACCOUNT_ID = Deno.env.get("R2_ACCOUNT_ID") ?? "";
 const R2_ACCESS_KEY_ID = Deno.env.get("R2_ACCESS_KEY_ID") ?? "";
@@ -59,17 +59,18 @@ async function notifyReporter(reporterId: string, reportId: string, message: str
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
-  if (![URL, ANON, SERVICE].every(Boolean)) return json({ error: "Moderation service is not configured" }, 503);
-  const authorization = req.headers.get("Authorization") ?? "";
-  if (!authorization.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
-  const caller = createClient(URL, ANON, {
-    global: { headers: { Authorization: authorization } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const { data: auth, error: authError } = await caller.auth.getUser();
-  if (authError || !auth.user?.email) return json({ error: "Unauthorized" }, 401);
+  if (![URL, SERVICE].every(Boolean)) return json({ error: "Moderation service is not configured" }, 503);
+  let caller;
+  try {
+    caller = await verifyFirebaseRequest(req, { requireEmailVerified: true });
+  } catch (error) {
+    if (error instanceof FirebaseRequestAuthError) return json({ error: error.message }, 401);
+    console.error("admin-moderate-report Firebase verifier unavailable", error);
+    return json({ error: "Authentication service is unavailable" }, 503);
+  }
+  if (!caller.email) return json({ error: "Unauthorized" }, 401);
   const { data: adminRow, error: adminError } = await admin.from("admins")
-    .select("email").eq("email", auth.user.email.toLowerCase()).maybeSingle();
+    .select("email").eq("email", caller.email).maybeSingle();
   if (adminError || !adminRow) return json({ error: "Forbidden" }, 403);
 
   const body = await req.json().catch(() => ({}));
@@ -89,7 +90,7 @@ Deno.serve(async (req) => {
       if (banError) throw banError;
       const { error: updateError } = await admin.from("reports").update({
         status: "actioned", actionTaken: "user_banned", reviewedAt: new Date().toISOString(),
-        reviewedBy: auth.user.id,
+        reviewedBy: caller.uid,
       }).eq("id", reportId);
       if (updateError) throw updateError;
       await notifyReporter(String(report.reportedBy ?? ""), reportId,
@@ -108,7 +109,7 @@ Deno.serve(async (req) => {
 
         const { error: updateError } = await admin.from("reports").update({
           status: "actioned", actionTaken: "post_removed", reviewedAt: new Date().toISOString(),
-          reviewedBy: auth.user.id,
+          reviewedBy: caller.uid,
         }).eq("id", reportId);
         if (updateError) throw updateError;
 
@@ -137,7 +138,7 @@ Deno.serve(async (req) => {
       }
       const { error: updateError } = await admin.from("reports").update({
         status: "actioned", actionTaken: "comment_removed", reviewedAt: new Date().toISOString(),
-        reviewedBy: auth.user.id,
+        reviewedBy: caller.uid,
       }).eq("id", reportId);
       if (updateError) throw updateError;
       await notifyReporter(String(report.reportedBy ?? ""), reportId,
@@ -162,7 +163,7 @@ Deno.serve(async (req) => {
       }
       const { error: updateError } = await admin.from("reports").update({
         status: "actioned", actionTaken: "chat_message_removed", reviewedAt: new Date().toISOString(),
-        reviewedBy: auth.user.id,
+        reviewedBy: caller.uid,
       }).eq("id", reportId);
       if (updateError) throw updateError;
       return json({ success: true, actionTaken: "chat_message_removed" });
@@ -171,7 +172,7 @@ Deno.serve(async (req) => {
     if (action === "dismiss") {
       const { error } = await admin.from("reports").update({
         status: "dismissed", actionTaken: "dismissed", reviewedAt: new Date().toISOString(),
-        reviewedBy: auth.user.id,
+        reviewedBy: caller.uid,
       }).eq("id", reportId);
       if (error) throw error;
       return json({ success: true, actionTaken: "dismissed" });

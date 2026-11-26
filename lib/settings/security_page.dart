@@ -3,6 +3,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -34,14 +36,14 @@ class _SecurityPageState extends State<SecurityPage> {
   @override
   void initState() {
     super.initState();
-    final currentUserEmail = Supabase.instance.client.auth.currentUser?.email;
+    final currentUserEmail = FirebaseAuth.instance.currentUser?.email;
     if (currentUserEmail != null) {
       emailController.text = currentUserEmail;
     }
   }
 
   Future<void> verifyCurrentPassword() async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     final password = currentPasswordController.text.trim();
 
     if (user == null) {
@@ -51,9 +53,19 @@ class _SecurityPageState extends State<SecurityPage> {
       return;
     }
 
-    if (password.isEmpty) {
+    final hasPasswordProvider = user.providerData.any((provider) => provider.providerId == 'password');
+    if (!hasPasswordProvider) {
+      if (!mounted) return;
+      setState(() => passwordMatched = true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter current password.")),
+        const SnackBar(content: Text("No password is set for this sign-in method. You can create one now."), backgroundColor: AppColors.info),
+      );
+      return;
+    }
+
+    if (password.isEmpty || user.email == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Enter your current account password.")),
       );
       return;
     }
@@ -63,10 +75,8 @@ class _SecurityPageState extends State<SecurityPage> {
     });
 
     try {
-      await Supabase.instance.client.auth.signInWithPassword(
-        email: user.email!,
-        password: password,
-      );
+      final credential = EmailAuthProvider.credential(email: user.email!, password: password);
+      await user.reauthenticateWithCredential(credential);
 
       if (!mounted) return;
       setState(() {
@@ -89,14 +99,14 @@ class _SecurityPageState extends State<SecurityPage> {
   }
 
   Future<void> saveNewPassword() async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     final newPassword = newPasswordController.text.trim();
 
     if (user == null) return;
 
-    if (newPassword.isEmpty || newPassword.length < 6) {
+    if (newPassword.isEmpty || newPassword.length < 8) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("The new password must be at least 6 characters long.")),
+        const SnackBar(content: Text("The new password must be at least 8 characters long.")),
       );
       return;
     }
@@ -106,9 +116,19 @@ class _SecurityPageState extends State<SecurityPage> {
     });
 
     try {
-      await Supabase.instance.client.auth.updateUser(
-        UserAttributes(password: newPassword),
-      );
+      final hasPasswordProvider = user.providerData.any((provider) => provider.providerId == 'password');
+      if (hasPasswordProvider) {
+        await user.updatePassword(newPassword);
+      } else {
+        // Google-created accounts do not have a password provider yet.
+        // Link an email/password credential instead of updating a non-existent password.
+        final email = user.email;
+        if (email == null || email.isEmpty) {
+          throw StateError('This account does not have an email address for password setup.');
+        }
+        final credential = EmailAuthProvider.credential(email: email, password: newPassword);
+        await user.linkWithCredential(credential);
+      }
 
       if (!mounted) return;
       setState(() {
@@ -147,7 +167,7 @@ class _SecurityPageState extends State<SecurityPage> {
     });
 
     try {
-      await Supabase.instance.client.auth.resetPasswordForEmail(email);
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
 
       if (!mounted) return;
       setState(() {
@@ -232,8 +252,24 @@ class _SecurityPageState extends State<SecurityPage> {
       } catch (error) {
         debugPrint('FCM token unlink skipped during account deletion: $error');
       }
-      await Supabase.instance.client.functions.invoke('delete-account');
-      await Supabase.instance.client.auth.signOut();
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        throw StateError('Your session has expired. Please sign in again.');
+      }
+      final firebaseIdToken = await currentUser.getIdToken(true);
+      if (firebaseIdToken == null || firebaseIdToken.isEmpty) {
+        throw StateError('Could not verify your Firebase session. Please sign in again.');
+      }
+      await Supabase.instance.client.functions.invoke(
+        'delete-account',
+        headers: {'Authorization': 'Bearer $firebaseIdToken'},
+      );
+      try {
+        await GoogleSignIn().signOut();
+      } catch (error) {
+        debugPrint('Google session cleanup skipped after account deletion: $error');
+      }
+      await FirebaseAuth.instance.signOut();
       resetLocalUserState();
 
       if (mounted) {
@@ -312,7 +348,7 @@ class _SecurityPageState extends State<SecurityPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser = FirebaseAuth.instance.currentUser;
 
     if (currentUser == null) {
       return const Scaffold(
@@ -341,7 +377,7 @@ class _SecurityPageState extends State<SecurityPage> {
                 stream: Supabase.instance.client
                     .from(kUsersCollection)
                     .stream(primaryKey: ['uid'])
-                    .eq('uid', currentUser.id),
+                    .eq('uid', currentUser.uid),
                 builder: (context, snapshot) {
                   int blockedCount = 0;
                   if (snapshot.hasData && snapshot.data!.isNotEmpty) {
@@ -398,7 +434,7 @@ StreamBuilder<List<Map<String, dynamic>>>(
   stream: Supabase.instance.client
       .from(kUsersCollection)
       .stream(primaryKey: ['uid'])
-      .eq('uid', currentUser.id),
+      .eq('uid', currentUser.uid),
   builder: (context, snapshot) {
     int hiddenCount = 0;
     if (snapshot.hasData && snapshot.data!.isNotEmpty) {

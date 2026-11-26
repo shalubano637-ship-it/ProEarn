@@ -2,6 +2,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart' show kDebugMode, defaultTargetPlatform, TargetPlatform;
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'firebase_supabase_token_bridge.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'dart:ui' show PlatformDispatcher;
 import 'fcm_service.dart';
@@ -18,6 +20,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'auth_screen.dart';
+import 'models.dart';
 import 'service.dart';
 import 'theme/theme.dart';
 import 'theme/theme_controller.dart';
@@ -25,6 +28,7 @@ import 'chest_timer_service.dart';
 import 'ad_preloader.dart';
 import 'ad_free_access.dart';
 import 'play_billing_service.dart';
+import 'utils/friendly_error.dart';
 
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -67,7 +71,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
                     ),
                     child: SingleChildScrollView(
                       child: Text(
-                        details.exceptionAsString(),
+                        diagnosticErrorMessage(details.exception),
                         style: const TextStyle(fontSize: 12, color: Colors.black87),
                         textAlign: TextAlign.center,
                       ),
@@ -97,24 +101,9 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
         Sentry.captureException(e, stackTrace: st);
       }
 
-      try {
-        await appThemeController.load();
-        await Supabase.initialize(
-          url: const String.fromEnvironment(
-            'SUPABASE_URL',
-            defaultValue: 'https://mltvpfqfhbhgkejcjpmq.supabase.co',
-          ),
-          anonKey: const String.fromEnvironment(
-            'SUPABASE_ANON_KEY',
-            defaultValue: 'sb_publishable_3c2SHzm3Y8u_pjbmpWNSXw_5Rwkn5b_',
-          ),
-        );
-      } catch (e, st) {
-        debugPrint("Supabase Init Error: $e");
-        Sentry.captureException(e, stackTrace: st);
-      }
-
-      // Start Firebase Messaging after Supabase is ready for auth restoration.
+      // Firebase Core must be ready before Supabase Auth is bridged to Firebase.
+      // Supabase uses Firebase ID tokens as its third-party user JWT. Initialize
+      // Firebase before Supabase so authenticated requests use the correct token.
       try {
         if (defaultTargetPlatform == TargetPlatform.android) {
           await Firebase.initializeApp();
@@ -127,10 +116,31 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
             Sentry.captureException(error, stackTrace: stackTrace);
             return true;
           };
+        }
+      } catch (e, st) {
+        debugPrint(diagnosticErrorMessage(e));
+        Sentry.captureException(e, stackTrace: st);
+      }
+
+      try {
+        await appThemeController.load();
+        await Supabase.initialize(
+          url: const String.fromEnvironment(
+            'SUPABASE_URL',
+            defaultValue: 'https://mltvpfqfhbhgkejcjpmq.supabase.co',
+          ),
+          anonKey: const String.fromEnvironment(
+            'SUPABASE_ANON_KEY',
+            defaultValue: 'sb_publishable_3c2SHzm3Y8u_pjbmpWNSXw_5Rwkn5b_',
+          ),
+          accessToken: FirebaseSupabaseTokenBridge().getAccessToken,
+        );
+        if (defaultTargetPlatform == TargetPlatform.android &&
+            Firebase.apps.isNotEmpty) {
           FcmService.initialize();
         }
       } catch (e, st) {
-        debugPrint('Firebase Init Error: $e');
+        debugPrint(diagnosticErrorMessage(e));
         Sentry.captureException(e, stackTrace: st);
       }
 
@@ -140,7 +150,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
       unawaited(_initializeDeferredServices());
     },
     (error, stackTrace) {
-      debugPrint('CRITICAL ASYNC ERROR: $error');
+      debugPrint('CRITICAL ASYNC ERROR: ${diagnosticErrorMessage(error)}');
       debugPrint('STACKTRACE: $stackTrace');
       Sentry.captureException(error, stackTrace: stackTrace);
       if (Firebase.apps.isNotEmpty) {
@@ -199,16 +209,113 @@ class AiSocialApp extends StatelessWidget {
 }
 
 class _AppLifecycleObserver extends WidgetsBindingObserver {
+  static const Duration _sessionValidationInterval = Duration(seconds: 45);
+  static const Set<String> _invalidSessionCodes = {
+    'user-not-found',
+    'user-disabled',
+    'user-token-expired',
+    'invalid-user-token',
+  };
+
+  Timer? _sessionValidationTimer;
+  bool _sessionValidationInProgress = false;
+  bool _handlingRemoteAccountDeletion = false;
+
+  _AppLifecycleObserver() {
+    _sessionValidationTimer = Timer.periodic(
+      _sessionValidationInterval,
+      (_) {
+        if (_sessionValidationTimer?.isActive == true &&
+            WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+          unawaited(_validateRemoteFirebaseAccount());
+        }
+      },
+    );
+  }
+
+  Future<void> _validateRemoteFirebaseAccount() async {
+    if (_sessionValidationInProgress || _handlingRemoteAccountDeletion) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    _sessionValidationInProgress = true;
+    try {
+      // reload() calls Firebase's account lookup endpoint. If the account was
+      // deleted from the website or disabled by an administrator, Firebase
+      // rejects this cached client session with a definitive Auth error.
+      await user.reload();
+      final refreshedUser = FirebaseAuth.instance.currentUser;
+      if (refreshedUser == null) {
+        await _logoutAfterRemoteAccountDeletion();
+        return;
+      }
+
+      // Force a token refresh as a second server-side check so a deleted
+      // account cannot keep using a previously cached ID token.
+      await refreshedUser.getIdToken(true);
+    } on FirebaseAuthException catch (authError) {
+      if (_invalidSessionCodes.contains(authError.code)) {
+        debugPrint('Remote Firebase account is no longer valid (' + authError.code + '); signing out.');
+        await _logoutAfterRemoteAccountDeletion();
+      } else {
+        // Transient network/rate-limit failures must never sign out a valid user.
+        debugPrint('Firebase session revalidation deferred (' + authError.code + ').');
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Firebase session revalidation failed transiently: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    } finally {
+      _sessionValidationInProgress = false;
+    }
+  }
+
+  Future<void> _logoutAfterRemoteAccountDeletion() async {
+    if (_handlingRemoteAccountDeletion) return;
+    _handlingRemoteAccountDeletion = true;
+
+    try {
+      // FCM unlink is best-effort. The public profile may already be deleted.
+      await FcmService.signOutAndUnlink();
+    } catch (error) {
+      debugPrint('Remote-deletion cleanup failed; forcing local Firebase sign-out: $error');
+      try {
+        await FirebaseAuth.instance.signOut();
+      } catch (signOutError) {
+        debugPrint('Firebase local sign-out failed: $signOutError');
+      }
+    }
+
+    resetLocalUserState();
+    final navigator = navigatorKey.currentState;
+    if (navigator != null) {
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute<void>(
+          builder: (_) => const LoginPage(sessionExpiredMessage: true),
+        ),
+        (route) => false,
+      );
+    }
+    scaffoldMessengerKey.currentState?.showSnackBar(
+      const SnackBar(
+        content: Text('Your ProSN account is no longer available. Please sign in again.'),
+      ),
+    );
+    _handlingRemoteAccountDeletion = false;
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
       chestTimerService.pauseAndPersist();
-      if (Supabase.instance.client.auth.currentUser != null) {
+      if (FirebaseAuth.instance.currentUser != null) {
         Supabase.instance.client.rpc('clear_my_conversations').catchError((e) {
           debugPrint('clear_my_conversations failed: $e');
         });
       }
     } else if (state == AppLifecycleState.resumed) {
+      // Check immediately on return from background, then continue periodic
+      // checks while the app remains in the foreground.
+      unawaited(_validateRemoteFirebaseAccount());
       chestTimerService.resumeFromForeground();
       unawaited(AdFreeAccess.initialize());
       unawaited(PlayBillingService.instance.refreshSubscription().then((_) {

@@ -1,6 +1,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'theme/theme.dart';
 import 'service.dart';
@@ -23,7 +24,7 @@ class _BagPageState extends State<BagPage> with SingleTickerProviderStateMixin {
   late Future<Map<String, dynamic>?> _viewProfileFuture;
 
   bool get _isOwnBag => widget.viewUid == null;
-  String get _uid => widget.viewUid ?? Supabase.instance.client.auth.currentUser?.id ?? '';
+  String get _uid => widget.viewUid ?? FirebaseAuth.instance.currentUser?.uid ?? '';
 
   @override
   void initState() {

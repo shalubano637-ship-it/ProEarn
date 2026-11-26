@@ -1,6 +1,7 @@
 
 
 import 'package:universal_io/universal_io.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:flutter/material.dart';
 
@@ -15,7 +16,7 @@ class HiddenPostsListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser = FirebaseAuth.instance.currentUser;
     final theme = Theme.of(context);
 
     if (currentUser == null) {
@@ -28,7 +29,7 @@ class HiddenPostsListScreen extends StatelessWidget {
         stream: Supabase.instance.client
             .from(kUsersCollection)
             .stream(primaryKey: ['uid'])
-            .eq('uid', currentUser.id),
+            .eq('uid', currentUser.uid),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -105,7 +106,7 @@ class HiddenPostsListScreen extends StatelessWidget {
                       label: const Text("Unhide", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                       onPressed: () async {
                         await Supabase.instance.client.rpc('unhide_post', params: {
-                          'p_user_id': currentUser.id,
+                          'p_user_id': currentUser.uid,
                           'p_post_id': postId,
                         });
 

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:universal_io/universal_io.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'fcm_service.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +17,7 @@ import 'models.dart';
 import 'theme/theme.dart';
 
 Future<void> ensureUserDocumentExists() async {
-  final currentUser = Supabase.instance.client.auth.currentUser;
+  final currentUser = FirebaseAuth.instance.currentUser;
   if (currentUser == null) return;
 
   final client = Supabase.instance.client;
@@ -25,20 +26,21 @@ Future<void> ensureUserDocumentExists() async {
     final existing = await client
         .from(kUsersCollection)
         .select('uid')
-        .eq('uid', currentUser.id)
+        .eq('uid', currentUser.uid)
         .maybeSingle();
 
     if (existing == null) {
       String defaultUsername = currentUser.email != null
           ? currentUser.email!.split('@')[0]
-          : "user_${currentUser.id.substring(0, 5)}";
+          : "user_${currentUser.uid.substring(0, 5)}";
 
       await client.from(kUsersCollection).insert({
-        'uid': currentUser.id,
+        'uid': currentUser.uid,
         'userName': defaultUsername,
         'bio': 'No Bio Yet',
         'link': 'No Link',
         'profileUrl': '',
+        'profileSetupCompleted': false,
       });
       debugPrint("Supabase user row repaired successfully.");
     }
@@ -49,7 +51,7 @@ Future<void> ensureUserDocumentExists() async {
 
 class PushService {
   static Future<void> togglePushNotificationStatus(bool isEnabled) async {
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
     final client = Supabase.instance.client;
@@ -65,7 +67,7 @@ class PushService {
           'notifyGets': true,
           'notifyFollow': true,
           'notifyMessages': true,
-        }).eq('uid', currentUser.id);
+        }).eq('uid', currentUser.uid);
         debugPrint("Push notifications enabled with FCM.");
       } else {
         debugPrint("Push notifications were not enabled because permission was denied.");
@@ -74,32 +76,32 @@ class PushService {
       await FcmService.disableForCurrentUser();
       await client.from(kUsersCollection).update({
         'pushNotificationsEnabled': false,
-      }).eq('uid', currentUser.id);
+      }).eq('uid', currentUser.uid);
     }
   }
 
   static Future<void> updateSinglePreference(String fieldKey, bool value) async {
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
     await Supabase.instance.client
         .from(kUsersCollection)
         .update({fieldKey: value})
-        .eq('uid', currentUser.id);
+        .eq('uid', currentUser.uid);
   }
 }
 
 Future<void> loadUserDataOnStartup() async {
-  final user = Supabase.instance.client.auth.currentUser;
+  final user = FirebaseAuth.instance.currentUser;
   if (user != null) {
-    currentUserId = user.id;
+    currentUserId = user.uid;
     currentUserEmail = user.email ?? "";
 
     try {
       final data = await Supabase.instance.client
           .from(kUsersCollection)
           .select()
-          .eq('uid', user.id)
+          .eq('uid', user.uid)
           .maybeSingle();
       if (data != null) {
         currentUserName = data['userName'] ?? user.email!.split("@")[0];
@@ -113,14 +115,14 @@ Future<void> loadUserDataOnStartup() async {
 }
 
 Future<bool> isCurrentUserBanned() async {
-  final user = Supabase.instance.client.auth.currentUser;
+  final user = FirebaseAuth.instance.currentUser;
   if (user == null) return false;
 
   try {
     final data = await Supabase.instance.client
         .from(kUsersCollection)
         .select('isBanned')
-        .eq('uid', user.id)
+        .eq('uid', user.uid)
         .maybeSingle();
     if (data != null && data['isBanned'] == true) {
       await FcmService.signOutAndUnlink();
@@ -139,9 +141,9 @@ Future<void> sendNotification({
   required String message,
   String targetPostId = '',
 }) async {
-  final currentUser = Supabase.instance.client.auth.currentUser;
+  final currentUser = FirebaseAuth.instance.currentUser;
   if (currentUser == null) return;
-  if (currentUser.id == targetOwnerId && type != 'chest_ready') return;
+  if (currentUser.uid == targetOwnerId && type != 'chest_ready') return;
 
   try {
     await Supabase.instance.client.functions.invoke(

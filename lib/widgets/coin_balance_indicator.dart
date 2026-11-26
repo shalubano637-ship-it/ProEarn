@@ -1,4 +1,6 @@
+import 'package:proearn/firebase_user_compat.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models.dart';
@@ -12,7 +14,7 @@ class WalletCoinBalance extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) return const SizedBox.shrink();
 
     return StreamBuilder<List<Map<String, dynamic>>>(

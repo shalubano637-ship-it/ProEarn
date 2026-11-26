@@ -1,6 +1,8 @@
+import 'package:proearn/firebase_user_compat.dart';
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../models.dart';
@@ -40,7 +42,7 @@ class _MessagesListPageState extends State<MessagesListPage> {
   RealtimeChannel? _chatUpdatesChannel;
 
   Future<List<Map<String, dynamic>>> _fetchConversations() async {
-    final currentUid = Supabase.instance.client.auth.currentUser?.id ?? '';
+    final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
     // Inbox rows and pending requests are independent reads.
     final results = await Future.wait([
       Supabase.instance.client
@@ -111,7 +113,7 @@ class _MessagesListPageState extends State<MessagesListPage> {
     final client = Supabase.instance.client;
     // Refresh the inbox whenever a conversation or message changes so the most
     // recently active chat moves to the top without reopening the page.
-    _chatUpdatesChannel = client.channel('messages-list-${client.auth.currentUser?.id ?? 'user'}')
+    _chatUpdatesChannel = client.channel('messages-list-${FirebaseAuth.instance.currentUser?.uid ?? 'user'}')
       ..onPostgresChanges(
         event: PostgresChangeEvent.all,
         schema: 'public',
@@ -179,7 +181,7 @@ class _MessagesListPageState extends State<MessagesListPage> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUid = Supabase.instance.client.auth.currentUser?.id ?? '';
+    final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
     if (currentUid.isEmpty) {
       return const Scaffold(body: Center(child: Text("Please log in.")));
     }
@@ -250,7 +252,7 @@ class _MessagesListPageState extends State<MessagesListPage> {
 }
 
 void _openProfile(BuildContext context, String uid) {
-  final myUid = Supabase.instance.client.auth.currentUser?.id;
+  final myUid = FirebaseAuth.instance.currentUser?.uid;
   Navigator.push(
     context,
     MaterialPageRoute(

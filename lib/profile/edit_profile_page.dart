@@ -1,3 +1,4 @@
+import 'package:proearn/firebase_user_compat.dart';
 
 
 import 'dart:async';
@@ -6,6 +7,7 @@ import 'package:universal_io/universal_io.dart';
 
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -53,7 +55,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _loadCurrentUserData() async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
         var userData = await Supabase.instance.client.from(kUsersCollection).select().eq('uid', user.id).maybeSingle();
@@ -226,7 +228,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   foregroundColor: theme.colorScheme.onPrimary,
                 ),
                 onPressed: () async {
-                  final user = Supabase.instance.client.auth.currentUser;
+                  final user = FirebaseAuth.instance.currentUser;
                   if (user == null) return;
 
                   

@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models.dart';
 import '../theme/theme.dart';
@@ -44,7 +45,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
 
   Future<void> _loadMuteState() async {
     try {
-      final myUid = Supabase.instance.client.auth.currentUser?.id;
+      final myUid = FirebaseAuth.instance.currentUser?.uid;
       if (myUid == null) return;
       final row = await Supabase.instance.client
           .from(kUsersCollection)
@@ -111,14 +112,14 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
     try {
       if (_isReportOn) {
         await Supabase.instance.client.from(kReportsCollection).insert({
-          'reportedBy': Supabase.instance.client.auth.currentUser!.id,
+          'reportedBy': FirebaseAuth.instance.currentUser!.uid,
           'reportedUserId': widget.otherUid,
           'reason': _selectedReason,
           'source': 'chat_settings',
         });
       }
       if (_isBlockOn && !_isAlreadyBlocked) {
-        final myUid = Supabase.instance.client.auth.currentUser!.id;
+        final myUid = FirebaseAuth.instance.currentUser!.uid;
         // Blocking also removes the existing follow relationship.
         await Supabase.instance.client.rpc('toggle_follow', params: {
           'p_follower_id': myUid,
@@ -126,7 +127,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
           'p_follow': false,
         });
         await Supabase.instance.client.rpc('block_user_and_hide_post', params: {
-          'p_blocker_id': Supabase.instance.client.auth.currentUser!.id,
+          'p_blocker_id': FirebaseAuth.instance.currentUser!.uid,
           'p_target_owner_id': widget.otherUid,
           'p_target_post_id': '',
         });

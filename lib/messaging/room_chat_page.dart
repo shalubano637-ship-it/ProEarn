@@ -1,7 +1,9 @@
+import 'package:proearn/firebase_user_compat.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:universal_io/universal_io.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -57,7 +59,7 @@ class _RoomChatPageState extends State<RoomChatPage> {
   late int _memberCount;
   Map<String, dynamic>? _replyingTo;
 
-  String get _myUid => Supabase.instance.client.auth.currentUser?.id ?? '';
+  String get _myUid => FirebaseAuth.instance.currentUser?.id ?? '';
   String _imageContentType(String name) {
     final lower = name.toLowerCase();
     if (lower.endsWith('.png')) return 'image/png';
@@ -954,13 +956,13 @@ class _RoomInfoPageState extends State<RoomInfoPage> {
           else
             ..._members.map(
               (m) {
-                final isMe = m['uid'] == Supabase.instance.client.auth.currentUser?.id;
+                final isMe = m['uid'] == FirebaseAuth.instance.currentUser?.uid;
                 return ListTile(
                 leading: GestureDetector(
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => ProfilePage(isOwnProfile: m['uid'] == Supabase.instance.client.auth.currentUser?.id, otherUser: m['uid']),
+                      builder: (_) => ProfilePage(isOwnProfile: m['uid'] == FirebaseAuth.instance.currentUser?.uid, otherUser: m['uid']),
                     ),
                   ),
                   child: CircleAvatar(
@@ -975,7 +977,7 @@ class _RoomInfoPageState extends State<RoomInfoPage> {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => ProfilePage(isOwnProfile: m['uid'] == Supabase.instance.client.auth.currentUser?.id, otherUser: m['uid']),
+                    builder: (_) => ProfilePage(isOwnProfile: m['uid'] == FirebaseAuth.instance.currentUser?.uid, otherUser: m['uid']),
                   ),
                 ),
               );
