@@ -1,9 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 
-/// Supplies a Firebase ID token to Supabase when the Firebase identity is
-/// available. This helper is intentionally not wired into Supabase.initialize
-/// yet: Firebase users must first be provisioned with UUID UIDs that match
-/// public.users.uid, and the third-party-auth/RLS integration must be tested.
+/// Supplies the current Firebase ID token to Supabase Data API, Storage,
+/// Realtime, RPC, and Edge Function requests through Supabase's accessToken
+/// callback. Firebase users are provisioned with UUID UIDs and the
+/// authenticated custom claim before the app establishes its session.
 class FirebaseSupabaseTokenBridge {
   FirebaseSupabaseTokenBridge({FirebaseAuth? firebaseAuth})
       : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
