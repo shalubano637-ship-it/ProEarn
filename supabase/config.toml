@@ -23,3 +23,18 @@ verify_jwt = false
 
 [functions.delete-account-request]
 verify_jwt = false
+
+# Firebase ID tokens are verified inside the affected Edge Functions. Disable the
+# legacy gateway verifier for these endpoints so Firebase tokens reach the handler.
+[auth.third_party.firebase]
+enabled = true
+project_id = "proearn-6acdd"
+
+[functions.admin-moderate-report]
+verify_jwt = false
+
+[functions.play-billing]
+verify_jwt = false
+
+[functions.voice-message]
+verify_jwt = false
