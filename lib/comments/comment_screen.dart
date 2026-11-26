@@ -841,6 +841,16 @@ class _CommentScreenState extends State<CommentScreen> {
 
                     final mainGroups = _groupConsecutiveImageComments(mainComments);
 
+                    // Group replies once per stream update instead of scanning every
+                    // comment again for each parent row (O(n) instead of O(parents * n)).
+                    final repliesByParent = <String, List<Map<String, dynamic>>>{};
+                    for (final comment in allDocs) {
+                      final replyParentId = comment['parentCommentId']?.toString();
+                      if (replyParentId != null && replyParentId.isNotEmpty) {
+                        (repliesByParent[replyParentId] ??= <Map<String, dynamic>>[]).add(comment);
+                      }
+                    }
+
                     return ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       itemCount: mainGroups.length,
@@ -894,11 +904,10 @@ class _CommentScreenState extends State<CommentScreen> {
                           );
                         }
 
-                        final childReplies = allDocs.where((data) {
-                          return data['parentCommentId'] == parentId;
-                        }).toList();
-
-                        final sortedChildReplies = childReplies.reversed.toList();
+                        final sortedChildReplies =
+                            (repliesByParent[parentId] ?? const <Map<String, dynamic>>[])
+                                .reversed
+                                .toList();
                         bool isExpanded = _expandedCommentIds.contains(parentId);
 
                         return Column(
