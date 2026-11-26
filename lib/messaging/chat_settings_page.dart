@@ -188,7 +188,7 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
             const Divider(height: 1),
             SwitchListTile(
               title: const Text("Report", style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
-              subtitle: const Text("Report this user to Pro Earn"),
+              subtitle: const Text("Report this user to ProSN"),
               secondary: const Icon(Icons.flag_outlined, color: AppColors.error),
               value: _isReportOn,
               onChanged: (v) {
