@@ -271,7 +271,7 @@ class _SignupRewardsPopupState extends State<SignupRewardsPopup> {
                         IconButton(tooltip: 'Share code', onPressed: () => _shareReferral(code), icon: const Icon(Icons.share_outlined)),
                       ]),
                       const SizedBox(height: 5),
-                      const Text('Invite a new user: you get a High gift and they get a Medium gift.', style: TextStyle(fontSize: 12)),
+                      const Text('Invite a new user: you get a Medium gift and they get a Low gift.', style: TextStyle(fontSize: 12)),
                     ],
                   ],
                 ),
