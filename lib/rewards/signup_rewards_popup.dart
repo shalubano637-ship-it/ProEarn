@@ -84,7 +84,7 @@ class _SignupRewardsPopupState extends State<SignupRewardsPopup> {
         _status = Map<String, dynamic>.from(status as Map);
         _message = firstMap['alreadyClaimed'] == true
             ? null
-            : 'Welcome! You received 50 coins + a random High gift.';
+            : 'Welcome! You received 50 coins + a random Low or Medium gift.';
         _loading = false;
       });
     } catch (e) {
