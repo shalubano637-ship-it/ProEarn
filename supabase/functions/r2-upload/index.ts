@@ -1,6 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { cert, getApps, initializeApp } from "npm:firebase-admin@13.2.0/app";
-import { getAuth } from "npm:firebase-admin@13.2.0/auth";
+import { FirebaseRequestAuthError, verifyFirebaseRequest } from "../_shared/firebase_auth.ts";
 import { AwsClient } from "npm:aws4fetch@1.0.20";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -44,24 +43,6 @@ function r2ObjectUrl(key: string) {
   return `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${R2_BUCKET_NAME}/${encodedKey}`;
 }
 
-function firebaseAdminAuth() {
-  const raw = Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON");
-  if (!raw) throw new Error("Firebase Admin service account is not configured");
-  const serviceAccount = JSON.parse(raw);
-  if (serviceAccount.project_id !== "proearn-6acdd") {
-    throw new Error("Firebase project mismatch");
-  }
-  const app = getApps()[0] ?? initializeApp({
-    credential: cert(serviceAccount),
-    projectId: serviceAccount.project_id,
-  });
-  return getAuth(app);
-}
-
-function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
 const r2 = new AwsClient({
   accessKeyId: R2_ACCESS_KEY_ID,
   secretAccessKey: R2_SECRET_ACCESS_KEY,
@@ -101,19 +82,18 @@ Deno.serve(async (req) => {
     }
 
     const authorization = req.headers.get("Authorization") ?? "";
-    if (!authorization.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
-
     let firebaseUser;
     try {
-      const decoded = await firebaseAdminAuth().verifyIdToken(authorization.slice(7), true);
-      if (decoded.role !== "authenticated" || !isUuid(decoded.uid)) {
-        return json({ error: "Unauthorized" }, 401);
-      }
-      firebaseUser = await firebaseAdminAuth().getUser(decoded.uid);
-      if (firebaseUser.disabled) return json({ error: "Account is disabled" }, 403);
+      firebaseUser = await verifyFirebaseRequest(req, { requireEmailVerified: true });
     } catch (error) {
+      if (error instanceof FirebaseRequestAuthError) {
+        const status = error.message === "Email verification required" ? 403 : 401;
+        return json({ error: error.message === "Email verification required"
+          ? "Please verify your email before uploading."
+          : "Your sign-in session is invalid or expired. Please sign in again." }, status);
+      }
       console.error("Firebase token verification failed for R2 upload", error);
-      return json({ error: "Your sign-in session is invalid or expired. Please sign in again." }, 401);
+      return json({ error: "Authentication service is unavailable" }, 503);
     }
 
     const body = await req.json().catch(() => ({}));
