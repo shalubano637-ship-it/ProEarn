@@ -154,10 +154,16 @@
     }
 
     async function initializeHandler() {
-      if (!actionCode || (suppliedApiKey && suppliedApiKey !== FIREBASE_API_KEY)) {
-        title.textContent = "Invalid email link";
-        description.textContent = "This link is incomplete or does not belong to ProSN. Open the newest email sent by ProSN.";
-        showStatus("No valid Firebase action code was provided.", "error");
+      if (!actionCode) {
+        title.textContent = "Open the link from your email";
+        description.textContent = "This is ProSN’s secure email-action page. To verify your address or reset your password, open the complete, newest action link sent to your inbox.";
+        showStatus("This page was opened without a Firebase action code. Return to your email and tap the complete verification or password-reset link.", "");
+        return;
+      }
+      if (suppliedApiKey && suppliedApiKey !== FIREBASE_API_KEY) {
+        title.textContent = "Link does not belong to ProSN";
+        description.textContent = "This Firebase action link was generated for a different project. Request a fresh email from ProSN.";
+        showStatus("The action link's project key did not match ProSN.", "error");
         return;
       }
 
