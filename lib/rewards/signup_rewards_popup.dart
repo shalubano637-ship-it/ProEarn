@@ -122,7 +122,7 @@ class _SignupRewardsPopupState extends State<SignupRewardsPopup> {
   }
 
   Future<void> _shareReferral(String code) async {
-    await Share.share('Join me on Pro Earn. Use my referral code: $code');
+    await Share.share('Join me on ProSN. Use my referral code: $code');
   }
 
   String _weekdayLabel(int day) {
