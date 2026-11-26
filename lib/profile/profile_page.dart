@@ -255,7 +255,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     .eq('uid', targetUid)
                     .maybeSingle();
                 final name = profile?['userName'] ?? 'this user';
-                Share.share('Check out @$name profile on PRO EARN! App Link: app://profile/$targetUid');
+                Share.share('Check out @$name\'s profile on ProSN!\nProfile Link: app://profile/$targetUid');
               },
             ),
             if (!widget.isOwnProfile)
