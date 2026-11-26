@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     }
 
     const authorization = req.headers.get("Authorization") ?? "";
-    let firebaseUser;
+    let firebaseUser: Awaited<ReturnType<typeof verifyFirebaseRequest>>;
     try {
       firebaseUser = await verifyFirebaseRequest(req, { requireEmailVerified: true });
     } catch (error) {
