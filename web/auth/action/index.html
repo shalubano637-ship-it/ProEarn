@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#000000">
+  <meta name="referrer" content="no-referrer">
+  <meta name="description" content="Secure ProSN account email actions.">
+  <title>ProSN · Secure account action</title>
+  <style>
+    :root{color-scheme:dark;--bg:#000;--panel:#090909;--line:#292929;--text:#f6f6f6;--muted:#a6a6a6;--gold:#d4af37;--gold2:#f1d77a;--danger:#ff8f8f}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#171717 0%,#000 58%);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;display:grid;place-items:center;padding:24px}
+    .shell{width:min(100%,480px)}
+    .brand{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:24px;font-size:22px;font-weight:800;letter-spacing:-.5px}
+    .mark{display:grid;place-items:center;width:42px;height:42px;border:1px solid #6c5b27;border-radius:13px;color:var(--gold2);font-weight:900}
+    .card{background:linear-gradient(155deg,#111 0%,#070707 100%);border:1px solid var(--line);border-radius:22px;padding:30px;box-shadow:0 24px 80px #000b}
+    .eyebrow{margin:0 0 12px;color:var(--gold2);font-size:12px;font-weight:800;letter-spacing:.13em;text-transform:uppercase}
+    h1{font-size:clamp(26px,7vw,34px);line-height:1.14;letter-spacing:-1px;margin:0 0 12px}
+    .copy{color:var(--muted);font-size:15px;line-height:1.65;margin:0 0 22px;overflow-wrap:anywhere}
+    .field{display:block;margin:16px 0 6px;font-size:13px;font-weight:700;color:#ddd}
+    input{width:100%;height:48px;border:1px solid #3b3b3b;border-radius:11px;background:#050505;color:#fff;padding:0 13px;font:inherit;outline:none}
+    input:focus{border-color:var(--gold)}
+    button,.continue{width:100%;min-height:48px;border:0;border-radius:11px;background:linear-gradient(110deg,var(--gold2),var(--gold));color:#111;font:inherit;font-weight:800;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;padding:12px 16px;margin-top:18px}
+    button:disabled{opacity:.55;cursor:wait}
+    .secondary{background:#171717;border:1px solid #393939;color:#eee}
+    .status{display:none;margin-top:17px;padding:13px 14px;border:1px solid #454545;border-radius:11px;color:#ddd;font-size:14px;line-height:1.55;overflow-wrap:anywhere}
+    .status.show{display:block}
+    .status.error{border-color:#713939;color:var(--danger)}
+    .status.success{border-color:#5b512d;color:#f2dfa0}
+    .hidden{display:none!important}
+    .footer{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;margin-top:22px;font-size:12px;color:var(--muted)}
+    .footer a{color:var(--muted);text-decoration:none}
+    .footer a:hover{color:var(--gold2)}
+    .fine{margin:18px 0 0;color:#737373;font-size:11px;line-height:1.5;text-align:center}
+    @media(max-width:480px){body{padding:16px}.card{padding:23px 20px;border-radius:18px}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="brand"><span class="mark" aria-hidden="true">P</span><span>ProSN</span></div>
+    <section class="card" aria-labelledby="title">
+      <p class="eyebrow">Secure account action</p>
+      <h1 id="title">One moment…</h1>
+      <p id="description" class="copy">Checking your secure Firebase link. This page will never ask for your existing password.</p>
+
+      <section id="verifyPanel" class="hidden">
+        <p id="verifyEmailText" class="copy">Confirm that you want to verify this email address for your ProSN account.</p>
+        <button id="verifyButton" type="button">Verify email address</button>
+      </section>
+
+      <section id="resetPanel" class="hidden">
+        <p id="resetEmailText" class="copy"></p>
+        <form id="resetForm">
+          <label class="field" for="newPassword">New password</label>
+          <input id="newPassword" type="password" autocomplete="new-password" minlength="6" required>
+          <label class="field" for="confirmPassword">Confirm new password</label>
+          <input id="confirmPassword" type="password" autocomplete="new-password" minlength="6" required>
+          <button id="resetButton" type="submit">Save new password</button>
+        </form>
+      </section>
+
+      <section id="recoverPanel" class="hidden">
+        <p id="recoverEmailText" class="copy"></p>
+        <button id="recoverButton" type="button">Restore previous email</button>
+      </section>
+
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+      <a id="continueButton" class="continue hidden" href="https://prosn.in/">Continue to ProSN</a>
+      <button id="retryButton" class="secondary hidden" type="button" onclick="window.location.reload()">Reload page</button>
+    </section>
+    <nav class="footer" aria-label="Footer links">
+      <a href="https://prosn.in/policy/privacy-policy.html">Privacy</a>
+      <a href="https://prosn.in/policy/terms-of-service.html">Terms</a>
+      <a href="mailto:support.prosn@gmail.com">Support</a>
+    </nav>
+    <p class="fine">ProSN will only complete an action after you confirm it on this page. Keep one-time email links private.</p>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import {
+      getAuth,
+      applyActionCode,
+      checkActionCode,
+      verifyPasswordResetCode,
+      confirmPasswordReset
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
+    const FIREBASE_API_KEY = "AIzaSyBFR_jbBE_kviy2Ow_WF_X1pj0I9lfz4As";
+    const firebaseApp = initializeApp({
+      apiKey: FIREBASE_API_KEY,
+      authDomain: "proearn-6acdd.firebaseapp.com",
+      projectId: "proearn-6acdd"
+    });
+    const auth = getAuth(firebaseApp);
+
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get("mode") || "";
+    const actionCode = params.get("oobCode") || "";
+    const suppliedApiKey = params.get("apiKey") || "";
+    const language = params.get("lang") || "en";
+    const rawContinueUrl = params.get("continueUrl") || "";
+    auth.languageCode = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/.test(language) ? language : "en";
+
+    // Remove one-time code and API-key query parameters from the visible URL
+    // immediately. The values remain only in this page's in-memory variables.
+    window.history.replaceState({}, document.title, window.location.pathname);
+
+    const $ = (id) => document.getElementById(id);
+    const title = $("title");
+    const description = $("description");
+    const statusBox = $("status");
+    const continueButton = $("continueButton");
+
+    function showStatus(message, kind) {
+      statusBox.textContent = message;
+      statusBox.className = "status show" + (kind ? " " + kind : "");
+    }
+
+    function showError(error) {
+      const code = error && error.code ? String(error.code) : "";
+      let message = "We could not complete this request. Please request a new email link and try again.";
+      if (code.includes("expired-action-code")) message = "This link has expired. Request a new verification or password-reset email from ProSN.";
+      else if (code.includes("invalid-action-code")) message = "This link is invalid or has already been used. Request a new email from ProSN.";
+      else if (code.includes("user-disabled")) message = "This ProSN account is disabled. Contact support for help.";
+      else if (code.includes("weak-password")) message = "That password is too weak. Choose a stronger password and try again.";
+      else if (code.includes("too-many-requests")) message = "Too many attempts were made. Please wait a little and try again.";
+      else if (code.includes("network-request-failed")) message = "A network error occurred. Check your connection and try again.";
+      else if (code.includes("operation-not-allowed")) message = "This account action is not enabled for the project. Contact ProSN support.";
+      showStatus(message, "error");
+    }
+
+    function showContinue() {
+      let destination = "https://prosn.in/";
+      if (rawContinueUrl) {
+        try {
+          const parsed = new URL(rawContinueUrl, "https://prosn.in");
+          if (parsed.protocol === "https:" && (parsed.hostname === "prosn.in" || parsed.hostname === "www.prosn.in")) {
+            destination = parsed.href;
+          }
+        } catch (_) {
+          // Fall back to the trusted ProSN home page for malformed continue URLs.
+        }
+      }
+      continueButton.href = destination;
+      continueButton.classList.remove("hidden");
+    }
+
+    function setBusy(button, busy, label) {
+      button.disabled = busy;
+      if (busy) button.dataset.originalLabel = button.textContent;
+      button.textContent = busy ? label : (button.dataset.originalLabel || button.textContent);
+    }
+
+    async function initializeHandler() {
+      if (!actionCode || (suppliedApiKey && suppliedApiKey !== FIREBASE_API_KEY)) {
+        title.textContent = "Invalid email link";
+        description.textContent = "This link is incomplete or does not belong to ProSN. Open the newest email sent by ProSN.";
+        showStatus("No valid Firebase action code was provided.", "error");
+        return;
+      }
+
+      if (mode === "verifyEmail") {
+        title.textContent = "Verify your email";
+        description.textContent = "Confirm your email address to finish securing your ProSN account.";
+        $("verifyPanel").classList.remove("hidden");
+        $("verifyButton").addEventListener("click", async () => {
+          const button = $("verifyButton");
+          setBusy(button, true, "Verifying…");
+          try {
+            await applyActionCode(auth, actionCode);
+            title.textContent = "Email verified successfully";
+            description.textContent = "Your email address has been confirmed for ProSN.";
+            $("verifyPanel").classList.add("hidden");
+            showStatus("Your ProSN email verification is complete. You can safely return to the page or app where you started.", "success");
+            showContinue();
+          } catch (error) {
+            showError(error);
+            setBusy(button, false);
+          }
+        });
+        return;
+      }
+
+      if (mode === "resetPassword") {
+        title.textContent = "Create a new password";
+        description.textContent = "Choose a new password for your ProSN account.";
+        try {
+          const email = await verifyPasswordResetCode(auth, actionCode);
+          $("resetEmailText").textContent = "Password reset requested for " + email + ". Enter a new password below.";
+          $("resetPanel").classList.remove("hidden");
+          $("resetForm").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const newPassword = $("newPassword").value;
+            const confirmPassword = $("confirmPassword").value;
+            if (newPassword.length < 6) {
+              showStatus("Your password must contain at least 6 characters.", "error");
+              return;
+            }
+            if (newPassword !== confirmPassword) {
+              showStatus("The passwords do not match. Check both fields and try again.", "error");
+              return;
+            }
+            const button = $("resetButton");
+            setBusy(button, true, "Updating password…");
+            try {
+              await confirmPasswordReset(auth, actionCode, newPassword);
+              $("resetPanel").classList.add("hidden");
+              title.textContent = "Password updated";
+              description.textContent = "Your ProSN password has been changed successfully.";
+              showStatus("You can now sign in to ProSN using your new password.", "success");
+              showContinue();
+            } catch (error) {
+              showError(error);
+              setBusy(button, false);
+            }
+          });
+        } catch (error) {
+          title.textContent = "Password link unavailable";
+          description.textContent = "This password-reset link could not be verified.";
+          showError(error);
+        }
+        return;
+      }
+
+      if (mode === "recoverEmail") {
+        title.textContent = "Restore your previous email";
+        description.textContent = "Review this request before restoring the previous email address on your ProSN account.";
+        try {
+          const info = await checkActionCode(auth, actionCode);
+          const email = info && info.data ? info.data.email : "";
+          $("recoverEmailText").textContent = email
+            ? "Firebase will restore the previous account email address: " + email + "."
+            : "Confirm that you want to restore the previous email address on this account.";
+          $("recoverPanel").classList.remove("hidden");
+          $("recoverButton").addEventListener("click", async () => {
+            const button = $("recoverButton");
+            setBusy(button, true, "Restoring…");
+            try {
+              await applyActionCode(auth, actionCode);
+              $("recoverPanel").classList.add("hidden");
+              title.textContent = "Email address restored";
+              description.textContent = "Your previous email address has been restored.";
+              showStatus("The account email recovery action is complete. For security, review your account sign-in settings.", "success");
+              showContinue();
+            } catch (error) {
+              showError(error);
+              setBusy(button, false);
+            }
+          });
+        } catch (error) {
+          title.textContent = "Recovery link unavailable";
+          description.textContent = "This email-recovery link could not be verified.";
+          showError(error);
+        }
+        return;
+      }
+
+      title.textContent = "Unsupported email action";
+      description.textContent = "This type of Firebase email action is not supported by this ProSN page.";
+      showStatus("Open the action link from the latest email or contact ProSN support.", "error");
+    }
+
+    initializeHandler().catch((error) => {
+      title.textContent = "Something went wrong";
+      description.textContent = "ProSN could not load the secure email action.";
+      showError(error);
+    });
+  </script>
+  <noscript><p style="color:#fff;text-align:center">JavaScript is required to complete this secure ProSN email action.</p></noscript>
+</body>
+</html>
