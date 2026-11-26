@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { FirebaseRequestAuthError, verifyFirebaseRequest } from "../_shared/firebase_auth.ts";
 
 const URL = Deno.env.get("SUPABASE_URL")!;
-const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const PACKAGE = Deno.env.get("GOOGLE_PLAY_PACKAGE_NAME") ?? "com.prosn.app";
 const ACCOUNT_JSON = Deno.env.get("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON") ?? "";
@@ -82,13 +82,16 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   try {
-    const authorization = req.headers.get("Authorization") ?? "";
-    if (!authorization.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
-    const userClient = createClient(URL, ANON, { global: { headers: { Authorization: authorization } } });
-    const { data: auth, error: authError } = await userClient.auth.getUser();
-    if (authError || !auth.user) return json({ error: "Unauthorized" }, 401);
-    const userId = auth.user.id;
-    const admin = createClient(URL, SERVICE);
+    let caller;
+    try {
+      caller = await verifyFirebaseRequest(req, { requireEmailVerified: true });
+    } catch (error) {
+      if (error instanceof FirebaseRequestAuthError) return json({ error: error.message }, 401);
+      console.error("play-billing Firebase verifier unavailable", error);
+      return json({ error: "Authentication service is unavailable" }, 503);
+    }
+    const userId = caller.uid;
+    const admin = createClient(URL, SERVICE, { auth: { persistSession: false, autoRefreshToken: false } });
     const body = await req.json().catch(() => ({}));
     const action = String(body.action ?? "verify");
     let productId = String(body.productId ?? "");
