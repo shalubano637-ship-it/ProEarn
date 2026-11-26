@@ -260,7 +260,7 @@ class GlobalCachedImage extends StatelessWidget {
   });
 
   static const Map<String, String> _imageHeaders = {
-    'User-Agent': 'ProEarn/1.0 (Android)',
+    'User-Agent': 'ProSN/1.0 (Android)',
     'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
   };
 
