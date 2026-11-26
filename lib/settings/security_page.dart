@@ -589,7 +589,7 @@ StreamBuilder<List<Map<String, dynamic>>>(
               TextButton.icon(
                 onPressed: () async {
                   final uri = Uri.parse(
-                    'https://shalubano637-ship-it.github.io/ProEarn/policy/account-deletion.html',
+                    'https://prosn.in/policy/account-deletion.html',
                   );
                   final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
                   if (!opened && mounted) {
