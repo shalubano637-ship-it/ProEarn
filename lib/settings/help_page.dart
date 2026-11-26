@@ -223,7 +223,7 @@ class HelpPage extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: () => _openPolicyUrl(
               context,
-              'https://shalubano637-ship-it.github.io/ProEarn/policy/privacy-policy.html',
+              'https://prosn.in/policy/privacy-policy.html',
             ),
             icon: const Icon(Icons.open_in_new),
             label: const Text('Open public Privacy Policy'),
