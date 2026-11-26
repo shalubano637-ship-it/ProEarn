@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { FirebaseRequestAuthError, verifyFirebaseRequest } from "../_shared/firebase_auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const ALLOWED_TYPES = new Set(["like", "comment", "follow", "follow_request", "get", "message", "chest_ready"]);
@@ -105,13 +105,14 @@ Deno.serve(async (req) => {
       if (!/^[0-9a-f-]{36}$/i.test(targetOwnerId)) return json({ error: "Invalid target" }, 400);
       senderId = targetOwnerId;
     } else {
-      const authHeader = req.headers.get("Authorization") ?? "";
-      const authed = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        global: { headers: { Authorization: authHeader } },
-      });
-      const { data: userData, error: authError } = await authed.auth.getUser();
-      if (authError || !userData?.user) return json({ error: "Unauthorized" }, 401);
-      senderId = userData.user.id;
+      try {
+        const caller = await verifyFirebaseRequest(req, { requireEmailVerified: true });
+        senderId = caller.uid;
+      } catch (error) {
+        if (error instanceof FirebaseRequestAuthError) return json({ error: error.message }, 401);
+        console.error("notify Firebase verifier unavailable", error);
+        return json({ error: "Authentication service is unavailable" }, 503);
+      }
     }
     const message = String(body.message ?? "").slice(0, MAX_MESSAGE_LENGTH);
     const targetPostId = String(body.targetPostId ?? "");
