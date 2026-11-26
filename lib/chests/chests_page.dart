@@ -288,7 +288,7 @@ class _ChestsPageState extends State<ChestsPage> {
                               ),
                               const SizedBox(height: 5),
                               Text(
-                                'Invite a new user. You get a High gift and they get a Medium gift.',
+                                'Invite a new user. You get a Medium gift and they get a Low gift.',
                                 style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface),
                               ),
                               const SizedBox(height: 10),
