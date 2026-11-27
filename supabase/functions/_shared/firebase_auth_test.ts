@@ -1,4 +1,4 @@
-import { hasSupabaseAuthenticatedRole, isFirebaseUuidUid } from "./firebase_auth.ts";
+import { hasSupabaseAuthenticatedRole, isFirebaseUuidUid } from "./firebase_auth_claims.ts";
 
 Deno.test("accepts UUID-shaped Firebase subjects", () => {
   if (!isFirebaseUuidUid("e4264a28-2fc3-18bf-8f75-78ee71dc889f")) {
