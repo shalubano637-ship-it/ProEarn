@@ -1,8 +1,10 @@
 import { cert, getApps, initializeApp } from "npm:firebase-admin@13.2.0/app";
 import { getAuth } from "npm:firebase-admin@13.2.0/auth";
+import { hasSupabaseAuthenticatedRole, isFirebaseUuidUid } from "./firebase_auth_claims.ts";
+
+export { hasSupabaseAuthenticatedRole, isFirebaseUuidUid } from "./firebase_auth_claims.ts";
 
 const EXPECTED_FIREBASE_PROJECT_ID = "proearn-6acdd";
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export class FirebaseRequestAuthError extends Error {
   constructor(message = "Unauthorized") {
@@ -29,16 +31,6 @@ function firebaseAdminAuth() {
     projectId: EXPECTED_FIREBASE_PROJECT_ID,
   });
   return getAuth(app);
-}
-
-export function isFirebaseUuidUid(value: unknown): value is string {
-  return typeof value === "string" && UUID_PATTERN.test(value);
-}
-
-export function hasSupabaseAuthenticatedRole(
-  claims: { uid?: unknown; role?: unknown },
-): boolean {
-  return claims.role === "authenticated" && isFirebaseUuidUid(claims.uid);
 }
 
 export async function verifyFirebaseRequest(
