@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
         const pathColumn = room ? "voice_path" : "voicePath";
         const { data: row, error } = await adminClient.from(table).select(pathColumn).eq("id", messageId).maybeSingle();
         if (error || !row) return response({ cleaned: false });
-        const key = String(row[pathColumn] ?? "");
+        const key = String((row as Record<string, unknown>)[pathColumn] ?? "");
         if (key) {
           if (!key.startsWith("voice/") || key.includes("..")) return response({ cleaned: false }, 500);
           await deleteVoiceObject(key);
