@@ -1,6 +1,7 @@
 
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -18,10 +19,10 @@ class MoreOptionsButton extends StatelessWidget {
   });
 
   void _openModerationSheet(BuildContext context) {
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
-    if (currentUser.id == targetOwnerId) {
+    if (currentUser.uid == targetOwnerId) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("You cannot moderate your own posts.")),
       );
@@ -187,7 +188,7 @@ class MoreOptionsButton extends StatelessWidget {
 
                         if (isReportOn) {
                           await client.from(kReportsCollection).insert({
-                            'reportedBy': currentUser.id,
+                            'reportedBy': currentUser.uid,
                             'reportedUserId': targetOwnerId,
                             'targetPostId': targetPostId,
                             'reason': selectedReason,
@@ -197,7 +198,7 @@ class MoreOptionsButton extends StatelessWidget {
 
                         if (isBlockOn || isHidePostOn) {
                           await client.rpc('block_user_and_hide_post', params: {
-                            'p_blocker_id': currentUser.id,
+                            'p_blocker_id': currentUser.uid,
                             'p_target_owner_id': isBlockOn ? targetOwnerId : '',
                             'p_target_post_id': isHidePostOn ? targetPostId : '',
                           });

@@ -6,6 +6,7 @@ import 'package:universal_io/universal_io.dart';
 import 'package:flutter/material.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -123,7 +124,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<Map<String, dynamic>?> _loadProfileData(String uid) async {
     // These reads are independent; run them together to avoid serial network latency.
-    final viewerUid = Supabase.instance.client.auth.currentUser?.id;
+    final viewerUid = FirebaseAuth.instance.currentUser?.uid;
     final results = await Future.wait<dynamic>([
       Supabase.instance.client.from('public_profiles').select().eq('uid', uid).maybeSingle(),
       Supabase.instance.client.rpc('get_follow_relationships', params: {'p_target_id': uid}),
@@ -178,7 +179,7 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser = FirebaseAuth.instance.currentUser;
     
     final String targetUid = widget.isOwnProfile
         ? (currentUser?.id ?? '')
@@ -312,7 +313,7 @@ class _ProfilePageState extends State<ProfilePage> {
             }
           }
 
-          final bool viewerIsFollowing = currentUser != null && userFollowersList.contains(currentUser.id);
+          final bool viewerIsFollowing = currentUser != null && userFollowersList.contains(currentUser.uid);
           final bool viewerBlockedTarget = userSnapshot.data?['viewerBlockedTarget'] == true;
           final bool canSeePrivateProfile = widget.isOwnProfile || !isPrivateAccount || viewerIsFollowing || viewerBlockedTarget;
           final bool canViewRelationships = widget.isOwnProfile ||
@@ -441,7 +442,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               ? const SizedBox.shrink()
                               : Builder(
                                   builder: (context) {
-                                    bool isFollowing = userFollowersList.contains(currentUser.id);
+                                    bool isFollowing = userFollowersList.contains(currentUser.uid);
                                     final requestStatus = userSnapshot.data?['followRequestStatus']?.toString() ?? 'none';
                                     final isPending = isPrivateAccount && requestStatus == 'pending';
 
@@ -461,7 +462,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                             Supabase.instance.client
                                                 .from(kUsersCollection)
                                                 .select('blockedUsers')
-                                                .eq('uid', currentUser.id)
+                                                .eq('uid', currentUser.uid)
                                                 .maybeSingle(),
                                             Supabase.instance.client.rpc(
                                               'is_blocked_by_user',
@@ -499,7 +500,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                             return;
                                           }
                                           await Supabase.instance.client.rpc('toggle_follow', params: {
-                                            'p_follower_id': currentUser.id,
+                                            'p_follower_id': currentUser.uid,
                                             'p_target_id': targetUid,
                                             'p_follow': !isFollowing,
                                           });
@@ -508,9 +509,9 @@ class _ProfilePageState extends State<ProfilePage> {
                                           // entire profile and recreating its posts realtime stream.
                                           final updatedFollowers = List<String>.from(userFollowersList);
                                           if (isFollowing) {
-                                            updatedFollowers.remove(currentUser.id);
+                                            updatedFollowers.remove(currentUser.uid);
                                           } else {
-                                            updatedFollowers.add(currentUser.id);
+                                            updatedFollowers.add(currentUser.uid);
                                           }
                                           final updatedProfile = Map<String, dynamic>.from(userSnapshot.data!)
                                             ..['followers'] = updatedFollowers;

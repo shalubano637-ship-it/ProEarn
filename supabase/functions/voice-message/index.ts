@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { FirebaseRequestAuthError, verifyFirebaseRequest } from "../_shared/firebase_auth.ts";
 import { AwsClient } from "npm:aws4fetch@1.0.20";
 
 const MAX_BYTES = 8 * 1024 * 1024;
@@ -69,16 +70,20 @@ Deno.serve(async (req) => {
         return response({ error: "Voice messaging is not configured" }, 503);
       }
       const authorization = req.headers.get("Authorization") ?? "";
-      if (!authorization.startsWith("Bearer ")) return response({ error: "Unauthorized" }, 401);
+      let caller;
+      try {
+        caller = await verifyFirebaseRequest(req, { requireEmailVerified: true });
+      } catch (error) {
+        if (error instanceof FirebaseRequestAuthError) return response({ error: error.message }, 401);
+        console.error("voice-message Firebase verifier unavailable", error);
+        return response({ error: "Authentication service is unavailable" }, 503);
+      }
+      // Keep the Firebase bearer token on Supabase RPC calls so RLS executes
+      // with the caller's UUID identity instead of service-role privileges.
       const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         global: { headers: { Authorization: authorization } },
         auth: { persistSession: false, autoRefreshToken: false },
       });
-      const { data: authData, error: authError } = await userClient.auth.getUser();
-      if (authError || !authData.user) {
-        console.error("voice-message authentication failed", authError?.message ?? "No user");
-        return response({ error: "Unauthorized" }, 401);
-      }
       const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
         auth: { persistSession: false, autoRefreshToken: false },
       });
@@ -99,7 +104,7 @@ Deno.serve(async (req) => {
         if ((!conversationId && !roomId) || (conversationId && roomId)) return response({ error: "Invalid destination" }, 400);
         const bytes = decodeBase64(audioBase64);
         if (!bytes.length || bytes.length > MAX_BYTES) return response({ error: "Audio is too large" }, 400);
-        const uid = authData.user.id;
+        const uid = caller.uid;
         if (!uid) return response({ error: "Unauthorized" }, 401);
         const key = `voice/${uid}/${crypto.randomUUID()}.m4a`;
         await putVoiceObject(key, bytes);
@@ -138,7 +143,7 @@ Deno.serve(async (req) => {
           : await userClient.rpc("consume_voice_message", { p_message_id: messageId });
         if (rpc.error || !rpc.data?.length) return response({ error: rpc.error?.message ?? "Voice message is no longer available" }, 410);
         const row = rpc.data[0];
-        const key = String(row.voice_path ?? "");
+        const key = String(room ? row.voice_path ?? "" : row.voicePath ?? "");
         if (!key.startsWith("voice/") || key.includes("..")) return response({ error: "Invalid voice object reference" }, 500);
         return response({
           url: await signedVoiceUrl(key),
@@ -159,7 +164,7 @@ Deno.serve(async (req) => {
         const pathColumn = room ? "voice_path" : "voicePath";
         const { data: row, error } = await adminClient.from(table).select(pathColumn).eq("id", messageId).maybeSingle();
         if (error || !row) return response({ cleaned: false });
-        const key = String(row[pathColumn] ?? "");
+        const key = String((row as Record<string, unknown>)[pathColumn] ?? "");
         if (key) {
           if (!key.startsWith("voice/") || key.includes("..")) return response({ cleaned: false }, 500);
           await deleteVoiceObject(key);

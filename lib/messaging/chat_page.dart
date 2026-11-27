@@ -1,8 +1,10 @@
+import 'package:proearn/firebase_user_compat.dart';
 
 import 'dart:async';
 import 'dart:convert';
 import 'package:universal_io/universal_io.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -96,7 +98,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   }
 
   Future<void> _loadBlockStatus() async {
-    final myUid = Supabase.instance.client.auth.currentUser?.id;
+    final myUid = FirebaseAuth.instance.currentUser?.id;
     if (myUid == null) return;
 
     try {
@@ -130,7 +132,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     setState(() { _isUnblocking = true; });
     try {
       await Supabase.instance.client.rpc('unblock_user', params: {
-        'p_user_id': Supabase.instance.client.auth.currentUser!.id,
+        'p_user_id': FirebaseAuth.instance.currentUser!.uid,
         'p_blocked_id': widget.otherUid,
       });
       if (mounted) setState(() { _iBlockedThem = false; });
@@ -501,7 +503,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                         Navigator.pop(sheetContext);
                         try {
                           await Supabase.instance.client.from(kReportsCollection).insert({
-                            'reportedBy': Supabase.instance.client.auth.currentUser!.id,
+                            'reportedBy': FirebaseAuth.instance.currentUser!.uid,
                             'reportedUserId': msg['senderId'],
                             'targetMessageId': msg['id'],
                             'messageSnapshot': jsonEncode({
@@ -696,7 +698,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   }
 
   void _viewImageGroupFullscreen(List<Map<String, dynamic>> group, int startIndex) {
-    final myUid = Supabase.instance.client.auth.currentUser?.id ?? '';
+    final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -726,7 +728,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final myUid = Supabase.instance.client.auth.currentUser?.id ?? '';
+    final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
     return Scaffold(
       appBar: AppBar(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PrivacyPage extends StatefulWidget {
@@ -21,7 +22,7 @@ class _PrivacyPageState extends State<PrivacyPage> {
   }
 
   Future<void> _load() async {
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
     try {
       final row = await Supabase.instance.client
@@ -46,7 +47,7 @@ class _PrivacyPageState extends State<PrivacyPage> {
   }
 
   Future<void> _save({bool? privateAccount, String? whoCanMessage}) async {
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
     final nextPrivate = privateAccount ?? _privateAccount;
     final nextWho = whoCanMessage ?? _whoCanMessage;

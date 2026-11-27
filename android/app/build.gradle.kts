@@ -46,20 +46,30 @@ android {
     signingConfigs {
         create("release") {
             val keyPropertiesFile = rootProject.file("key.properties")
-            if (keyPropertiesFile.isFile) {
-                val properties = Properties().apply {
-                    load(FileInputStream(keyPropertiesFile))
-                }
-                val storePath = properties.getProperty("storeFile")
-                if (!storePath.isNullOrBlank()) storeFile = rootProject.file(storePath)
-                storePassword = properties.getProperty("storePassword")
-                keyAlias = properties.getProperty("keyAlias")
-                keyPassword = properties.getProperty("keyPassword")
+            if (!keyPropertiesFile.isFile) {
+                throw GradleException("Persistent signing key is mandatory. android/key.properties is missing.")
+            }
+            val properties = Properties().apply { load(FileInputStream(keyPropertiesFile)) }
+            val storePath = properties.getProperty("storeFile")?.takeIf { it.isNotBlank() }
+                ?: throw GradleException("key.properties is missing storeFile")
+            storeFile = rootProject.file(storePath)
+            storePassword = properties.getProperty("storePassword")
+                ?: throw GradleException("key.properties is missing storePassword")
+            keyAlias = properties.getProperty("keyAlias")
+                ?: throw GradleException("key.properties is missing keyAlias")
+            keyPassword = properties.getProperty("keyPassword")
+                ?: throw GradleException("key.properties is missing keyPassword")
+            if (!storeFile!!.isFile) {
+                throw GradleException("Persistent signing keystore not found: $storePath")
             }
         }
     }
 
     buildTypes {
+        debug {
+            // No temporary/default Android debug keystore fallback is permitted.
+            signingConfig = signingConfigs.getByName("release")
+        }
         release {
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
@@ -69,17 +79,14 @@ android {
                 "proguard-rules.pro"
             )
         }
-    }
 }
 
 flutter {
     source = "../.."
 }
 
-// Validate signing only when a release task is requested.
+// Every Android build requires the persistent signing key; debug builds cannot fall back to a runner-generated key.
 gradle.taskGraph.whenReady {
-    val releaseRequested = allTasks.any { it.name.contains("Release", ignoreCase = true) }
-    if (releaseRequested) {
         val keyPropertiesFile = rootProject.file("key.properties")
         if (!keyPropertiesFile.isFile) {
             throw GradleException(

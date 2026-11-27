@@ -14,7 +14,21 @@ void main() {
     repo = MockChestRepository();
     when(() => repo.currentUserId).thenReturn(uid);
     when(() => repo.syncRemaining(any())).thenAnswer((_) async {});
-    when(() => repo.sendChestReadyNotification(any())).thenAnswer((_) async {});
+  });
+
+  group('India daily reset schedule', () {
+    test('computes the next midnight IST as 18:30 UTC', () {
+      final service = ChestTimerService(repository: repo);
+      expect(
+        service.nextIstMidnightUtcForTest(DateTime.utc(2026, 11, 25, 6, 1)),
+        DateTime.utc(2026, 11, 25, 18, 30),
+      );
+      expect(
+        service.nextIstMidnightUtcForTest(DateTime.utc(2026, 11, 25, 18, 31)),
+        DateTime.utc(2026, 11, 26, 18, 30),
+      );
+      service.dispose();
+    });
   });
 
   group('timer start', () {
@@ -186,7 +200,7 @@ void main() {
   });
 
   group('expiry', () {
-    test('counting down to zero unlocks the chest, persists 0, and notifies once', () {
+    test('counting down to zero unlocks locally and persists 0; server owns notification delivery', () {
       when(() => repo.fetchProgress(uid)).thenAnswer(
         (_) async => ChestProgress(currentChestIndex: 0, remainingSeconds: 3, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 3))),
       );
@@ -203,7 +217,6 @@ void main() {
         expect(service.remainingSeconds, 0);
         expect(service.isTickingForTest, isFalse); // timer.cancel() on expiry
         verify(() => repo.syncRemaining(0)).called(1);
-        verify(() => repo.sendChestReadyNotification(uid)).called(1);
       });
     });
   });
@@ -221,91 +234,6 @@ void main() {
 
         expect(service.isUnlocked, isTrue);
         expect(service.isTickingForTest, isFalse);
-        expect(service.notifiedThisUnlockForTest, isTrue); // marked, so no push fires later
-        expect(service.notifiedThisUnlockForTest, isTrue);
-      });
-    });
-  });
-
-  group('duplicate claim / duplicate unlock', () {
-    test('reloading twice while still unlocked never sends a second notification', () {
-      when(() => repo.fetchProgress(uid)).thenAnswer(
-        (_) async => ChestProgress(currentChestIndex: 0, remainingSeconds: 1, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 1))),
-      );
-
-      fakeAsync((async) {
-        final service = ChestTimerService(repository: repo);
-        service.initialize();
-        async.flushMicrotasks();
-
-        async.elapse(const Duration(seconds: 1)); // triggers unlock + 1 notification
-        async.flushMicrotasks();
-        verify(() => repo.sendChestReadyNotification(uid)).called(1);
-
-        when(() => repo.fetchProgress(uid)).thenAnswer(
-          (_) async => const ChestProgress(currentChestIndex: 0, remainingSeconds: 0, isUnlocked: true),
-        );
-
-        service.resumeFromForeground();
-        async.flushMicrotasks();
-        service.resumeFromForeground();
-        async.flushMicrotasks();
-
-        verifyNever(() => repo.sendChestReadyNotification(any()));
-      });
-    });
-
-    test('advanceToNextChest resets the notify-guard for the NEW chest', () {
-      when(() => repo.fetchProgress(uid)).thenAnswer(
-        (_) async => ChestProgress(currentChestIndex: 0, remainingSeconds: 1, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 1))),
-      );
-
-      fakeAsync((async) {
-        final service = ChestTimerService(repository: repo);
-        service.initialize();
-        async.flushMicrotasks();
-        async.elapse(const Duration(seconds: 1));
-        async.flushMicrotasks();
-        verify(() => repo.sendChestReadyNotification(uid)).called(1);
-
-        when(() => repo.fetchProgress(uid)).thenAnswer(
-          (_) async => ChestProgress(
-            currentChestIndex: 1,
-            remainingSeconds: 1,
-            isUnlocked: false,
-            unlockAt: DateTime.now().add(const Duration(seconds: 1)),
-          ),
-        );
-        service.advanceToNextChest();
-        async.flushMicrotasks();
-        expect(service.notifiedThisUnlockForTest, isFalse);
-
-        async.elapse(const Duration(seconds: 1));
-        async.flushMicrotasks();
-
-        verify(() => repo.sendChestReadyNotification(uid)).called(1);
-      });
-    });
-  });
-
-  group('notification trigger', () {
-    test('does not attempt to notify if the user becomes unauthenticated mid-countdown', () {
-      when(() => repo.fetchProgress(uid)).thenAnswer(
-        (_) async => ChestProgress(currentChestIndex: 0, remainingSeconds: 1, isUnlocked: false, unlockAt: DateTime.now().add(const Duration(seconds: 1))),
-      );
-
-      fakeAsync((async) {
-        final service = ChestTimerService(repository: repo);
-        service.initialize();
-        async.flushMicrotasks();
-
-        when(() => repo.currentUserId).thenReturn(null);
-
-        async.elapse(const Duration(seconds: 1));
-        async.flushMicrotasks();
-
-        expect(service.isUnlocked, isTrue); // local state still flips
-        verifyNever(() => repo.sendChestReadyNotification(any()));
       });
     });
   });

@@ -1,8 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { FirebaseRequestAuthError, verifyFirebaseRequest } from "../_shared/firebase_auth.ts";
 import { AwsClient } from "npm:aws4fetch@1.0.20";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const R2_ACCOUNT_ID = Deno.env.get("R2_ACCOUNT_ID")!;
 const R2_ACCESS_KEY_ID = Deno.env.get("R2_ACCESS_KEY_ID")!;
@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
-    if (![SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,
+    if (![SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON"),
       R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL]
       .every(Boolean)) {
       console.error("R2 upload function is missing required environment configuration");
@@ -82,12 +82,19 @@ Deno.serve(async (req) => {
     }
 
     const authorization = req.headers.get("Authorization") ?? "";
-    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authorization } },
-      auth: { persistSession: false },
-    });
-    const { data: authData, error: authError } = await userClient.auth.getUser();
-    if (authError || !authData.user) return json({ error: "Unauthorized" }, 401);
+    let firebaseUser: Awaited<ReturnType<typeof verifyFirebaseRequest>>;
+    try {
+      firebaseUser = await verifyFirebaseRequest(req, { requireEmailVerified: true });
+    } catch (error) {
+      if (error instanceof FirebaseRequestAuthError) {
+        const status = error.message === "Email verification required" ? 403 : 401;
+        return json({ error: error.message === "Email verification required"
+          ? "Please verify your email before uploading."
+          : "Your sign-in session is invalid or expired. Please sign in again." }, status);
+      }
+      console.error("Firebase token verification failed for R2 upload", error);
+      return json({ error: "Authentication service is unavailable" }, 503);
+    }
 
     const body = await req.json().catch(() => ({}));
     const encoded = String(body.imageBase64 ?? "").replace(/^data:[^;]+;base64,/, "");
@@ -124,7 +131,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const uid = authData.user.id;
+    const uid = firebaseUser.uid;
     const key = `${folder}/${uid}/${crypto.randomUUID()}.${extensionFor(contentType)}`;
     await putObject(key, bytes, contentType);
     const publicUrl = `${R2_PUBLIC_URL.replace(/\/$/, "")}/${key}`;
