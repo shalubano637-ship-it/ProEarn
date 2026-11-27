@@ -1,6 +1,6 @@
 import { cert, getApps, initializeApp } from "npm:firebase-admin@13.2.0/app";
 import { getAuth } from "npm:firebase-admin@13.2.0/auth";
-import { hasSupabaseAuthenticatedRole, isFirebaseUuidUid } from "./firebase_auth_claims.ts";
+import { hasSupabaseAuthenticatedRole } from "./firebase_auth_claims.ts";
 
 export { hasSupabaseAuthenticatedRole, isFirebaseUuidUid } from "./firebase_auth_claims.ts";
 
