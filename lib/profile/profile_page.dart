@@ -182,7 +182,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final currentUser = FirebaseAuth.instance.currentUser;
     
     final String targetUid = widget.isOwnProfile
-        ? (currentUser?.id ?? '')
+        ? (currentUser?.uid ?? '')
         : (widget.otherUser ?? '');
 
     if (_profileFuture == null || _loadedTargetUid != targetUid) {
