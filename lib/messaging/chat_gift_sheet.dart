@@ -102,8 +102,6 @@ class _ChatGiftSheetState extends State<_ChatGiftSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-
     return DraggableScrollableSheet(
       initialChildSize: 0.65,
       minChildSize: 0.4,
