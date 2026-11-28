@@ -1,8 +1,8 @@
-const String kCurrentTermsVersion = '2026-09';
+const String kCurrentTermsVersion = '2026-11-28';
 
 const String kTermsAndConditionsText = '''
 ProSN — TERMS OF USE
-Last Updated: September 2026
+Last Updated: 28 November 2026
 
 By creating an account or using ProSN, you agree to these Terms of Use and the Community Guidelines.
 
@@ -113,17 +113,26 @@ This standard applies regardless of whether the app is marketed to children. Use
 
 const String kPrivacyPolicyText = '''
 ProSN — PRIVACY POLICY
-Last Updated: November 2026
+Last Updated: 28 November 2026
 
 1. DATA WE PROCESS
 Depending on the features you use, ProSN may process:
 - Account information such as email, user ID, username, profile information, and verification state.
 - User-generated content such as posts, comments, messages, profile images, and report information.
 - Social activity such as follows, likes, shares, notifications, and in-app coin/gift activity.
-- Technical information needed for security, reliability, crash reporting, abuse prevention, and advertising.
+- Device and technical information such as push-notification tokens, app/device details, diagnostic events, crash information and security logs.
+- Purchase and subscription information such as product identifiers, purchase tokens, transaction status and entitlement records returned by Google Play Billing.
+- Advertising identifiers and ad-delivery or interaction signals processed by advertising providers.
 
 2. SERVICE PROVIDERS
-ProSN uses Supabase for authentication and database services; Cloudflare R2 and Workers AI for media storage, delivery, and moderation; Firebase for push notifications; Google Mobile Ads (AdMob) for advertising; Sentry for diagnostics where enabled;. These providers process information as needed to provide their services under their applicable terms and privacy policies.
+- Firebase Authentication provides email/password and Google-linked sign-in, account identity, user ID and email-verification status.
+- Supabase provides database and server-side function infrastructure for app data and backend operations. The app presents Firebase ID tokens to Supabase for authenticated requests; Supabase is not the primary sign-in identity provider.
+- Cloudflare provides R2 media storage and delivery, network infrastructure and Workers AI media moderation.
+- Firebase Cloud Messaging provides push-notification delivery and uses device notification tokens.
+- Firebase Crashlytics and Sentry provide crash, error and diagnostic reporting where enabled in the relevant build.
+- Google Mobile Ads (AdMob) provides advertising and rewarded-ad delivery.
+- Google Play Billing processes purchases and subscriptions. ProSN receives product and transaction information needed to verify purchases and apply entitlements; Google Play handles payment-card processing.
+These providers process information under their own terms and privacy documentation and as needed to provide the relevant service.
 
 3. MEDIA MODERATION
 Uploaded media is first checked on the device. Media that passes the device check is sent through a server-side media gateway where an additional moderation check is performed before publication. Content can also be reviewed after a safety report or other moderation signal.
@@ -141,5 +150,5 @@ We use authentication, access controls, row-level security, server-side authoriz
 You can request account and associated-data deletion through the in-app Security settings and the public deletion-request resource. Data that must be retained for legal, security, fraud-prevention, or other lawful reasons may be retained for the applicable period.
 
 8. CONTACT
-Privacy and safety questions: support.prosn@gmail.com
+For privacy questions, data requests, account deletion or safety concerns, contact support.prosn@gmail.com.
 ''';
