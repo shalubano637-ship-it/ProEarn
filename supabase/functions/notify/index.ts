@@ -203,7 +203,7 @@ Deno.serve(async (req) => {
     });
     if (dedupError) {
       // The chest cron may have reserved this event while only writing the
-      // in-app notification. That reservation must not suppress OneSignal push.
+      // in-app notification. That reservation must not suppress Firebase Cloud Messaging (FCM) push.
       if (dedupError.code === "23505" && type !== "chest_ready") return json({ success: true });
       if (dedupError.code !== "23505") {
         console.error("notification dedup insert failed", dedupError);
