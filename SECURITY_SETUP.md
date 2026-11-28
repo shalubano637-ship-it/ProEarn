@@ -43,8 +43,9 @@ injected automatically. Everything else:
 supabase secrets set \
   GMAIL_SENDER_EMAIL=proearn.in@gmail.com \
   GMAIL_APP_PASSWORD=<new-gmail-app-password> \
-  ONESIGNAL_APP_ID=09286c92-4d17-4f28-9953-dc5fd19f5683 \
-  ONESIGNAL_REST_API_KEY=<new-onesignal-rest-key> \
+  FIREBASE_PROJECT_ID=<firebase-project-id> \
+  FIREBASE_CLIENT_EMAIL=<firebase-service-account-email> \
+  FIREBASE_PRIVATE_KEY=<firebase-service-account-private-key> \
   GOOGLE_VISION_API_KEY=<new-google-vision-key>
 ```
 
