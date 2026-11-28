@@ -2,7 +2,7 @@
 
 `main.dart` now initializes Sentry via `SentryFlutter.init`, wired into the
 existing `runZonedGuarded` error zone plus the three startup try/catch
-blocks (Hive/Supabase/OneSignal init) and the outer async-error catch.
+blocks (Hive, Firebase, and Supabase/FCM initialization) and the outer async-error catch.
 Before this, every one of those failure paths only ever reached
 `debugPrint` — invisible once the app is in a real user's hands.
 
@@ -32,7 +32,7 @@ enabled in every build config, including CI, without needing a separate
   exceptions.
 - **Manual (added in this pass)**: the outer `runZonedGuarded` catch (async
   errors outside the Flutter framework's own error hooks), and the
-  Hive/Supabase/OneSignal startup `catch` blocks — these previously
+  Hive/Firebase/Supabase startup `catch` blocks — these previously
   swallowed real startup failures into a debug-only log line.
 
 `ErrorWidget.builder` (the red "App UI Error" screen) is unrelated to
