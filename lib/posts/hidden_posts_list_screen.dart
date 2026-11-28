@@ -48,7 +48,7 @@ class _HiddenPostsListScreenState extends State<HiddenPostsListScreen> {
         'p_user_id': uid,
         'p_post_id': postId,
       });
-    } catch (error) {
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
