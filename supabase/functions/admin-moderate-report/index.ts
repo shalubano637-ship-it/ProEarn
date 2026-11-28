@@ -146,6 +146,55 @@ Deno.serve(async (req) => {
       return json({ success: true, actionTaken: "comment_removed", notificationCreated: true });
     }
 
+    if (action === "remove_room_message") {
+      if (report.source !== "room_message") {
+        return json({ error: "This report is not a Room message report" }, 400);
+      }
+      const messageId = String(report.targetMessageId ?? "");
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(messageId)) {
+        return json({ error: "Report has no valid Room message target" }, 400);
+      }
+
+      const { data: roomMessage, error: roomMessageError } = await admin.from("room_messages")
+        .select("id,image_url,voice_path").eq("id", messageId).maybeSingle();
+      if (roomMessageError) throw roomMessageError;
+
+      if (roomMessage) {
+        // Room images are stored under chat/; room voice notes use voice/<uid>/... keys.
+        await removeR2(objectKeyFromUrl(roomMessage.image_url, "chat/"));
+        const voiceKey = String(roomMessage.voice_path ?? "");
+        if (voiceKey) {
+          if (!voiceKey.startsWith("voice/") || voiceKey.startsWith("/") || voiceKey.includes("..")) {
+            throw new Error("Room voice attachment has an invalid storage key");
+          }
+          await removeR2(voiceKey);
+        }
+
+        const { error: deleteRoomMessageError } = await admin.from("room_messages")
+          .delete().eq("id", messageId);
+        if (deleteRoomMessageError) throw deleteRoomMessageError;
+      }
+
+      const { error: updateRoomReportError } = await admin.from("reports").update({
+        status: "actioned", actionTaken: "room_message_removed", reviewedAt: new Date().toISOString(),
+        reviewedBy: caller.uid,
+      }).eq("id", reportId);
+      if (updateRoomReportError) throw updateRoomReportError;
+
+      await notifyReporter(
+        String(report.reportedBy ?? ""),
+        reportId,
+        roomMessage
+          ? "We have reviewed your report and removed the reported Room message."
+          : "We have reviewed your report. The reported Room message was already unavailable.",
+      );
+      return json({
+        success: true,
+        actionTaken: "room_message_removed",
+        messageAlreadyUnavailable: !roomMessage,
+      });
+    }
+
     if (action === "remove_message" || action === "delete_message") {
       const messageId = String(report.targetMessageId ?? "");
       if (!messageId) return json({ error: "Report has no message target" }, 400);
