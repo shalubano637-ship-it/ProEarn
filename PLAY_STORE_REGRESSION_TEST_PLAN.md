@@ -156,3 +156,34 @@ the test removed its temporary block before completing.
 - [x] Build a signed release AAB with the persistent private upload keystore (verified in the CI run linked above).
 - [ ] Verify the public Privacy Policy and account-deletion URLs open without login.
 - [ ] Complete Play Console Data Safety, Ads, Content Rating, Target Audience, and App Access declarations.
+
+## Historical manual retest confirmation (user-confirmed 2026-11-28)
+
+The user confirmed that the previously reported non-billing issues were fixed
+and manually retested successfully. Record this as historical user-reported
+manual test evidence; it is not independently reproduced by the 2026-11-28
+read-only/backend audit and does not replace a fresh-build release regression.
+
+- [x] APK installation/launch and the previously failing logout/relogin flow
+  were retested and reported passing.
+- [x] Email authentication and Google Sign-In, including the previously
+  reported Google login error, were retested and reported passing.
+- [x] Chat/message sending, previously reported as stopped, was retested and
+  reported passing.
+- [x] Block/unblock UI and related previously reported UI issues were retested
+  and reported passing.
+- [x] Chest reward/timer behavior, previously reported as failing/resetting,
+  was retested and reported passing.
+- [x] Account-deletion flow issues previously reported by the user were
+  retested and reported passing. This confirmation does not independently
+  establish every backend cleanup sub-step listed above.
+- [ ] Coins purchase and coin-credit flow — explicitly excluded by the user;
+  still not passing/confirmed.
+- [ ] Weekly Pass purchase/entitlement/ad behavior — explicitly excluded by
+  the user; still not passing/confirmed.
+
+The user reports all other previously tested flows as PASS after fixes.
+Keep the two billing items above open. Do not mark billing complete based on
+this confirmation. Detailed items that were never previously tested (for
+example, report-to-takedown, FCM delivery, refunds/renewals, or production
+AdMob delivery) remain subject to their own test evidence.
