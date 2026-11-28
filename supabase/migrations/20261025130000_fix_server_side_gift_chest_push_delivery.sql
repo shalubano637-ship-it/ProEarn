@@ -67,7 +67,7 @@ begin
     end if;
 
     -- Server-to-server call: works even when the user's app is closed.
-    -- The Edge Function validates this secret and sends the OneSignal push.
+    -- The Edge Function validates this secret and sends the Firebase Cloud Messaging (FCM) push.
     if r."pushSentAt" is null and v_secret is not null and length(v_secret) >= 16 then
       perform net.http_post(
         url := 'https://mltvpfqfhbhgkejcjpmq.supabase.co/functions/v1/notify',
