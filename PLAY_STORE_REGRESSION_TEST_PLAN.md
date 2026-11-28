@@ -46,12 +46,25 @@ remain open until tested on a real Android device with dedicated test accounts.
     state cleared. The test ended with 0 users having any blocked IDs; no block
     was left in place. This was a SQL-side smoke test with simulated JWT
     claims, not a Flutter/API-device test.
-- [ ] **Reporting and moderation** — no new report-to-admin-to-takedown flow
-  was executed.
-  - [x] Live `admin-moderate-report` function is ACTIVE (v9); its caller
-    authentication, admin check, and supported actions were inspected.
-  - [x] Existing database has 6 reports, all `dismissed`, and 0 pending reports.
-    This is historical state, not proof that a new report can be actioned.
+- [ ] **Reporting and moderation** — the full report-to-admin-to-takedown
+  flow has not yet been exercised end-to-end on a device with two test accounts.
+  - [x] Post, comment, direct-message, user, and Room Chat report UI paths are
+    present in the Flutter source.
+  - [x] Room Chat report snapshots now preserve message text, image URL, and
+    whether a voice attachment was present; the admin dashboard labels and
+    previews `room_message` reports and offers a dedicated removal action.
+  - [x] Live `admin-moderate-report` is ACTIVE (v10). The Room Chat action
+    verifies the report source and sender match, removes the `room_messages`
+    row, deletes its R2 chat image/voice object, marks the report actioned,
+    and notifies the reporter. The Edge Function verifies Firebase identity
+    and admin allow-list membership itself; gateway `verify_jwt` is disabled
+    to allow the Firebase token to reach that verifier.
+  - [ ] Device E2E remains open: submit a Room Chat text/image/voice report
+    from a non-admin test account, verify it appears with the correct sender
+    and preview in Admin → Reports, remove it as admin, then verify the row
+    and R2 media are gone and the reporter receives the action notification.
+  - [x] Existing database has 6 earlier reports, all `dismissed`, and 0
+    pending reports. This is historical state, not proof of the new flow.
 - [ ] **Billing and subscriptions** — not tested through Google Play.
   - [x] Live `play-billing` function is ACTIVE (v10); client product IDs and
     server verification/ledger code were inspected.
