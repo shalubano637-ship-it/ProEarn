@@ -135,7 +135,7 @@ the test removed its temporary block before completing.
 - [ ] Report a post, comment, chat message, and account.
 - [ ] Block a user and verify blocked interactions are prevented.
 - [ ] Confirm admin review can inspect report snapshots and remove reported content.
-- [ ] Verify legacy ImgBB content separately; old third-party media may need provider-side cleanup.
+- [ ] Verify historical externally hosted image URLs still load where expected; confirm legacy external objects are handled separately from managed R2 cleanup.
 
 ## Social and messaging
 
@@ -158,7 +158,7 @@ the test removed its temporary block before completing.
 - [ ] Inspect the merged release manifest. Legacy READ_EXTERNAL_STORAGE is limited to API 32 and WRITE_EXTERNAL_STORAGE to API 28; confirm no broad all-files or unnecessary photo/video permissions are added by dependencies.
 - [ ] Confirm the Play listing package name is exactly `com.prosn.app` and matches the app configuration and Firebase registration.
 - [ ] In Play Console → App content → App access, provide a working reviewer account and exact sign-in instructions. Keep the test account active, seeded with usable content, and accessible for the full review. If email/OTP verification is required, explain the reviewer path and provide the required access details through Play Console's secure fields.
-- [ ] Complete the Data safety form from the actual production SDK configuration and data flows. Review account identifiers, email, user content/messages, photos, device/diagnostic data, push tokens, advertising identifiers, and data shared with Supabase, Cloudflare, Firebase, AdMob, Sentry, and any remaining ImgBB flow.
+- [ ] Complete the Data safety form from the actual production SDK configuration and data flows. Review account identifiers, email, user content/messages, photos, device/diagnostic data, push tokens, advertising identifiers, and data shared with Supabase, Cloudflare, Firebase, AdMob, and Sentry, including the current Cloudflare R2 upload and moderation flow.
 - [ ] Set Target Audience and Content Rating truthfully for the actual intended audience and app features. Do not select an age group merely to bypass child-safety requirements.
 - [ ] Verify the public Privacy Policy, Account Deletion, Community Guidelines, and Child Safety Standards pages load in a signed-out/incognito browser and contain the current support contact.
 - [ ] Confirm the public account-deletion flow works end-to-end with a disposable account, including email ownership verification, server-side deletion, and honest success/failure messages.
