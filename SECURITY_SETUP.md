@@ -5,15 +5,12 @@ holds any credential — nothing to recover by decompiling the APK/IPA.
 
 | Old (in the app)                          | Now (server-side)              |
 |--------------------------------------------|---------------------------------|
-| ImgBB API key hardcoded in app              | `imgbb-upload` function         |
+| Cloudflare R2 credentials                  | `r2-upload` function            |
 | Gmail App Password + client OTP compare     | `send-otp` + `verify-otp`       |
 | OneSignal REST API key                      | `notify` function               |
 | Google Vision API key                       | `check-image-safety` function   |
 
-Image uploads are back on **ImgBB** (Cloudflare R2 setup is on hold for
-now) — but the ImgBB key lives only inside `imgbb-upload`. The app sends
-the image as base64 to that function; the function does the actual
-ImgBB upload and hands back the URL. Nothing to extract by decompiling.
+Image uploads use **Cloudflare R2**. The Flutter app sends image bytes to the `r2-upload` Edge Function using a Firebase ID token. The function verifies the identity, calls the Cloudflare media gateway for server-side moderation, and stores approved media in the configured R2 bucket. R2 credentials remain server-side in Supabase Edge Function secrets.
 
 Plus database-level fixes in `supabase_schema.sql` (see the
 "SECURITY HARDENING" section at the bottom) that close a few RLS gaps a
@@ -31,7 +28,7 @@ bottom (safe to re-run — everything uses `if not exists` / `or replace`).
 ```bash
 supabase login
 supabase link --project-ref <your-project-ref>
-supabase functions deploy imgbb-upload
+supabase functions deploy r2-upload
 supabase functions deploy send-otp
 supabase functions deploy verify-otp
 supabase functions deploy notify
@@ -44,7 +41,6 @@ injected automatically. Everything else:
 
 ```bash
 supabase secrets set \
-  IMGBB_API_KEY=<new-imgbb-key> \
   GMAIL_SENDER_EMAIL=proearn.in@gmail.com \
   GMAIL_APP_PASSWORD=<new-gmail-app-password> \
   ONESIGNAL_APP_ID=09286c92-4d17-4f28-9953-dc5fd19f5683 \
@@ -52,15 +48,11 @@ supabase secrets set \
   GOOGLE_VISION_API_KEY=<new-google-vision-key>
 ```
 
-Getting an ImgBB key: [api.imgbb.com](https://api.imgbb.com/) → sign in
-→ "Get API Key". Free tier is fine to start.
-
 ## 4. Rotate every key that was previously hardcoded
 These were already burned the moment they shipped inside a compiled
 app — anyone who had installed the app could extract them. Generate
 fresh ones and use *those* above:
-- **ImgBB key**: your old ImgBB key (`1f16f3c5205da4081486a76894cde105`)
-  was hardcoded before — revoke/regenerate it on ImgBB, don't reuse it.
+- **Legacy media-host credential**: any credential previously embedded in client code or documentation should be revoked at its original provider. The current app upload path does not use it.
 - **Gmail App Password**: Google Account → Security → App passwords →
   revoke the old one, create a new one.
 - **OneSignal REST API key**: OneSignal dashboard → Settings → Keys &
@@ -68,26 +60,13 @@ fresh ones and use *those* above:
 - **Google Vision API key**: Google Cloud Console → Credentials →
   delete the old key, create a new one restricted to the Vision API.
 
-## What changed in the Flutter code
-- `lib/service.dart`: `uploadImageToImgBB()` now calls the `imgbb-upload`
-  edge function (base64 body) instead of hitting `api.imgbb.com`
-  directly with a hardcoded key. `sendNotification()` / `isImageSafe()`
-  call `notify` / `check-image-safety`. 
-- `lib/social_feed.dart`, `lib/user_profile_features.dart`: call sites
-  unchanged (`uploadImageToImgBB(...)`), just calling the new secure
-  implementation.
-- `lib/main.dart`: authentication and OTP flows use Supabase Auth and server-side verification; the local Gmail SMTP sender and `mailer` package dependency are removed.
-- `pubspec.yaml`: removed `mailer`.
+## Current image upload flow
 
-## Switching to R2 later
-When you're ready to set up Cloudflare R2, the earlier presigned-URL
-approach (`r2-upload-url` edge function) can be dropped back in — it
-was removed from this version, but the pattern is identical to the
-other edge functions here. Just ask and I'll add it back alongside
-ImgBB or as a replacement.
+- `lib/service.dart` routes app image uploads through `CloudflareMediaService`.
+- `lib/cloudflare_media_service.dart` sends the image bytes to the Supabase `r2-upload` Edge Function with a Firebase ID token.
+- `supabase/functions/r2-upload/index.ts` verifies the Firebase identity, requires successful server-side image moderation through the Cloudflare media gateway, and stores the image in Cloudflare R2.
+- The client contains no R2 access key or secret. The live upload function does not require a third-party image-host API key.
 
 ## Note on image moderation
-`check-image-safety` stops the Vision key from being extracted from the
-app, but a modified client could still skip calling it before
-uploading. Fully closing that would need server-side enforcement at
-insert time (bigger infra change) — ask if you want that too.
+
+The current `r2-upload` function enforces moderation server-side before storage for every supported image category. The Cloudflare media gateway performs the moderation check; the upload function fails closed if moderation rejects the image or the moderation service is unavailable. Keep the gateway URL and internal authorization configured only on the server.
