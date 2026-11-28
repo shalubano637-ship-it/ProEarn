@@ -378,7 +378,11 @@ class _RoomChatPageState extends State<RoomChatPage> {
         'reportedBy': _myUid,
         'reportedUserId': msg['sender_id'],
         'reason': selected,
-        'messageSnapshot': msg['text'],
+        'messageSnapshot': jsonEncode({
+          'text': msg['text']?.toString() ?? '',
+          'image_url': msg['image_url']?.toString(),
+          'hasVoiceAttachment': msg['voice_path']?.toString().isNotEmpty == true,
+        }),
         'source': 'room_message',
         'targetMessageId': msg['id'],
       });
