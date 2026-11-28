@@ -7,7 +7,7 @@ holds any credential — nothing to recover by decompiling the APK/IPA.
 |--------------------------------------------|---------------------------------|
 | Cloudflare R2 credentials                  | `r2-upload` function            |
 | Gmail App Password + client OTP compare     | `send-otp` + `verify-otp`       |
-| OneSignal REST API key                      | `notify` function               |
+| Firebase Admin credentials                  | `notify` function (FCM HTTP v1) |
 | Google Vision API key                       | `check-image-safety` function   |
 
 Image uploads use **Cloudflare R2**. The Flutter app sends image bytes to the `r2-upload` Edge Function using a Firebase ID token. The function verifies the identity, calls the Cloudflare media gateway for server-side moderation, and stores approved media in the configured R2 bucket. R2 credentials remain server-side in Supabase Edge Function secrets.
@@ -55,8 +55,7 @@ fresh ones and use *those* above:
 - **Legacy media-host credential**: any credential previously embedded in client code or documentation should be revoked at its original provider. The current app upload path does not use it.
 - **Gmail App Password**: Google Account → Security → App passwords →
   revoke the old one, create a new one.
-- **OneSignal REST API key**: OneSignal dashboard → Settings → Keys &
-  IDs → regenerate.
+- **Firebase Admin credentials**: keep the service-account private key only in Supabase Edge Function secrets. Rotate the service-account key in Google Cloud if it was ever exposed; never commit it or include it in the Flutter app.
 - **Google Vision API key**: Google Cloud Console → Credentials →
   delete the old key, create a new one restricted to the Vision API.
 
