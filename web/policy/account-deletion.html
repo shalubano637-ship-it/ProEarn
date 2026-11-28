@@ -25,6 +25,7 @@
     .password-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);margin:0;padding:8px 10px;border:0;background:transparent;color:var(--muted);line-height:1;cursor:pointer}
     .password-toggle svg{width:21px;height:21px;display:block}
     .password-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    .google-delete-section{margin-top:18px;text-align:center}.google-delete-section #googleSignInButton{display:flex;justify-content:center;min-height:44px}.google-delete-section .helper{margin:10px 0 0;color:var(--muted);font-size:13px}.separator{display:flex;align-items:center;gap:12px;margin:18px 0;color:var(--muted);font-size:12px}.separator::before,.separator::after{content:"";height:1px;flex:1;background:var(--line)}
     button{margin-top:18px;padding:13px 19px;border:0;border-radius:11px;background:linear-gradient(110deg,#f4d976,#d4af37);color:#080808;font:inherit;font-weight:800;cursor:pointer}
     button:disabled{opacity:.55;cursor:wait}.secondary-button{margin-left:8px;background:rgba(255,255,255,.08);border:1px solid var(--line);color:var(--text)}.hidden{display:none}#status{margin-top:16px;padding:12px 14px;border-radius:10px;background:rgba(212,175,55,.09);color:#f4d976;white-space:pre-wrap;font-size:14px}
     .notice{margin:22px 0 0;padding:17px 18px;border:1px solid var(--line);border-radius:14px;color:var(--muted);font-size:14px;background:rgba(255,255,255,.025)}
@@ -41,7 +42,7 @@
   <main class="wrap">
     <span class="eyebrow">Account control · Privacy</span>
     <h1>Delete your ProSN account and data</h1>
-    <p class="intro">Enter the email and password for your ProSN account. ProSN sends a fresh Firebase verification email for every website deletion request, even when Firebase already shows the address as verified. Open the newest link and return to this page; the deletion confirmation stays locked until the verification return is checked. Google sign-in users can continue deleting their account in the app under <strong>Settings → Security → Delete Account</strong>.</p>
+    <p class="intro">Choose the sign-in method you use for ProSN. Email and password accounts must complete a fresh Firebase email-verification step before deletion. Google Sign-In accounts can authenticate with the same Google account and proceed to the permanent-deletion confirmation here. You do not need to reinstall or open the app to submit a website deletion request.</p>
     <section class="panel" aria-label="Account deletion request">
       <form id="emailForm">
         <label for="email">Account email</label>
@@ -53,6 +54,11 @@
         </div>
         <button id="sendLink" type="submit">Verify account / Send verification email →</button>
       </form>
+      <section id="googleDeleteSection" class="google-delete-section" aria-label="Google account deletion sign-in">
+        <div class="separator"><span>OR</span></div>
+        <div id="googleSignInButton"></div>
+        <p class="helper">Continue with the same Google account linked to your ProSN profile.</p>
+      </section>
       <section id="verificationPanel" class="notice hidden" aria-live="polite" aria-label="Email verification">
         <p id="verificationMessage">A verification link will be sent to your account email.</p>
         <button id="checkVerification" type="button">I've verified my email — Check status</button>
@@ -109,6 +115,7 @@
     }
     const PENDING_KEY = 'prosn_account_deletion_email_verification';
     const TOKEN_TTL_MS = 55 * 60 * 1000;
+    const GOOGLE_WEB_CLIENT_ID = '449305618154-ii2bo0jsf8ner0oa4f6lv4eo3q4slft0.apps.googleusercontent.com';
 
     const emailForm = document.getElementById('emailForm');
     const deleteForm = document.getElementById('deleteForm');
@@ -122,6 +129,8 @@
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const togglePassword = document.getElementById('togglePassword');
+    const googleDeleteSection = document.getElementById('googleDeleteSection');
+    const googleSignInButton = document.getElementById('googleSignInButton');
 
     togglePassword.addEventListener('click', () => {
       const show = passwordInput.type === 'password';
@@ -200,6 +209,7 @@
 
     function showVerificationPanel(email, message) {
       emailForm.classList.add('hidden');
+      googleDeleteSection.classList.add('hidden');
       deleteForm.classList.add('hidden');
       verificationPanel.classList.remove('hidden');
       verificationMessage.textContent = message || ('A verification email was sent to ' + email + '. Open its link, then return here. Check your Spam/Junk folder too.');
@@ -211,6 +221,7 @@
       verificationPanel.classList.add('hidden');
       deleteForm.classList.add('hidden');
       emailForm.classList.remove('hidden');
+      googleDeleteSection.classList.remove('hidden');
       if (message) status.textContent = message;
       passwordInput.value = '';
       sendButton.disabled = false;
@@ -222,9 +233,75 @@
       document.getElementById('verifiedAccount').textContent =
         'Email verified for: ' + verifiedEmail + '. Review this carefully before confirming permanent deletion.';
       emailForm.classList.add('hidden');
+      googleDeleteSection.classList.add('hidden');
       verificationPanel.classList.add('hidden');
       deleteForm.classList.remove('hidden');
       status.textContent = 'Firebase confirms your email is verified. Your account will be deleted only after you confirm below.';
+    }
+
+    async function loadGoogleIdentityServices() {
+      if (window.google?.accounts?.id) return;
+      await new Promise((resolve, reject) => {
+        const existing = document.querySelector('script[data-prosn-google-identity]');
+        if (existing) {
+          existing.addEventListener('load', resolve, { once: true });
+          existing.addEventListener('error', () => reject(new Error('Google Sign-In could not be loaded. Use email sign-in or retry later.')), { once: true });
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.dataset.prosnGoogleIdentity = 'true';
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('Google Sign-In could not be loaded. Use email sign-in or retry later.'));
+        document.head.appendChild(script);
+      });
+      if (!window.google?.accounts?.id) throw new Error('Google Sign-In did not initialize. Use email sign-in or retry later.');
+    }
+
+    async function handleGoogleDeletionCredential(response) {
+      if (!response?.credential) {
+        status.textContent = 'Google did not return a sign-in credential. Please try again.';
+        return;
+      }
+      googleDeleteSection.classList.add('hidden');
+      status.textContent = 'Verifying your Google account with Firebase…';
+      try {
+        const result = await firebasePost('accounts:signInWithIdp', {
+          postBody: 'id_token=' + encodeURIComponent(response.credential) + '&providerId=google.com',
+          requestUri: window.location.origin,
+          returnSecureToken: true,
+          returnIdpCredential: true
+        });
+        if (!result.idToken || !result.email) throw new Error('Firebase did not return a valid Google account session.');
+        const accountInfo = await firebasePost('accounts:lookup', { idToken: result.idToken });
+        const user = accountInfo?.users?.[0];
+        const providers = Array.isArray(user?.providerUserInfo) ? user.providerUserInfo : [];
+        const isGoogleAccount = providers.some((provider) => provider.providerId === 'google.com');
+        if (!user || !isGoogleAccount || user.emailVerified !== true) {
+          throw new Error('Firebase could not confirm a verified Google account linked to ProSN. Use the Google account linked in the app or contact support.');
+        }
+        showDeleteConfirmation(user.email, result.idToken);
+        status.textContent = 'Google account verified. Review the account details and confirm permanent deletion below.';
+      } catch (error) {
+        googleDeleteSection.classList.remove('hidden');
+        status.textContent = error?.message || 'Google sign-in failed. Please try again or use email sign-in.';
+      }
+    }
+
+    async function initializeGoogleDeletionSignIn() {
+      await loadGoogleIdentityServices();
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_WEB_CLIENT_ID,
+        callback: handleGoogleDeletionCredential,
+        auto_select: false,
+        cancel_on_tap_outside: true
+      });
+      window.google.accounts.id.renderButton(googleSignInButton, {
+        type: 'standard', theme: 'outline', size: 'large', text: 'continue_with',
+        shape: 'rectangular', logo_alignment: 'left', width: 320
+      });
     }
 
     async function sendVerificationEmail(pending) {
@@ -378,6 +455,10 @@
     // Firebase's email action handler returns to this continue URL only after processing
     // the verification action. Still verify emailVerified with accounts:lookup before
     // enabling the destructive account-deletion confirmation.
+    initializeGoogleDeletionSignIn().catch((error) => {
+      status.textContent = error?.message || 'Google Sign-In is unavailable. You can still use email and password to request deletion.';
+    });
+
     const pendingOnLoad = readPendingVerification();
     if (pendingOnLoad) {
       emailInput.value = pendingOnLoad.email;
