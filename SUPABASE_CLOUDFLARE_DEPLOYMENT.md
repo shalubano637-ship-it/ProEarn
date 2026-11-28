@@ -81,11 +81,6 @@ Verify that `MEDIA_GATEWAY_URL` points to that deployed Worker. Account
 deletion intentionally stops before deleting the Auth account if R2 cleanup
 fails, so the user can retry.
 
-## ImgBB legacy media limitation
+## Historical externally hosted media
 
-ImgBB's documented API exposes an upload endpoint and returns a
-`delete_url`, but it does not document a server-side delete API. Existing
-legacy ImgBB images therefore cannot be guaranteed to disappear automatically
-through this account-deletion function. New current-app uploads use R2. See
-the privacy policy disclosure and arrange provider-side cleanup for legacy
-images where required.
+Removing the legacy upload endpoint does not rewrite image URLs already stored in posts, profiles, comments, or messages. Existing externally hosted URLs may continue to load, but automatic account cleanup only guarantees deletion for media whose object keys are tracked in the R2 storage flow. Review historical records separately before assuming every old external image is removed during account deletion. New uploads must use the authenticated `r2-upload` function and the configured Cloudflare R2 bucket.
