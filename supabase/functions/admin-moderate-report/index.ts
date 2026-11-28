@@ -155,9 +155,15 @@ Deno.serve(async (req) => {
         return json({ error: "Report has no valid Room message target" }, 400);
       }
 
+      if (!report.reportedUserId) {
+        return json({ error: "Room message report has no reported sender" }, 400);
+      }
       const { data: roomMessage, error: roomMessageError } = await admin.from("room_messages")
-        .select("id,image_url,voice_path").eq("id", messageId).maybeSingle();
+        .select("id,sender_id,image_url,voice_path").eq("id", messageId).maybeSingle();
       if (roomMessageError) throw roomMessageError;
+      if (roomMessage && String(roomMessage.sender_id) !== String(report.reportedUserId)) {
+        return json({ error: "Report target does not match the Room message sender" }, 409);
+      }
 
       if (roomMessage) {
         // Room images are stored under chat/; room voice notes use voice/<uid>/... keys.
