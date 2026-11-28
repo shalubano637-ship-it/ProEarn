@@ -3,7 +3,7 @@
 Sensitive server-side operations are kept behind Supabase Edge Functions. The app itself no longer
 holds any credential — nothing to recover by decompiling the APK/IPA.
 
-| Old (in the app)                          | Now (server-side)              |
+| Operation / credential                    | Current server-side handling  |
 |--------------------------------------------|---------------------------------|
 | Cloudflare R2 credentials                  | `r2-upload` function            |
 | Gmail App Password + client OTP compare     | `send-otp` + `verify-otp`       |
