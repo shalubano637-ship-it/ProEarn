@@ -47,7 +47,7 @@ class _BlockedUsersListScreenState extends State<BlockedUsersListScreen> {
         'p_user_id': currentUser.uid,
         'p_blocked_id': uid,
       });
-    } catch (error) {
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
