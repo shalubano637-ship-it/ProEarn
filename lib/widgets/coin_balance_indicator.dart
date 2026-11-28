@@ -1,4 +1,3 @@
-import 'package:proearn/firebase_user_compat.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -8,20 +7,35 @@ import '../theme/theme.dart';
 import 'coin_icon.dart';
 
 /// Single source and visual style for the user's wallet balance across the app.
-class WalletCoinBalance extends StatelessWidget {
+class WalletCoinBalance extends StatefulWidget {
   const WalletCoinBalance({super.key, this.onTap});
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return const SizedBox.shrink();
+  State<WalletCoinBalance> createState() => _WalletCoinBalanceState();
+}
 
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: Supabase.instance.client
+class _WalletCoinBalanceState extends State<WalletCoinBalance> {
+  Stream<List<Map<String, dynamic>>>? _coinStream;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _coinStream = Supabase.instance.client
           .from(kUsersCollection)
           .stream(primaryKey: ['uid'])
-          .eq('uid', user.id),
+          .eq('uid', user.uid);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_coinStream == null) return const SizedBox.shrink();
+
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _coinStream,
       builder: (context, snapshot) {
         final raw = snapshot.data != null && snapshot.data!.isNotEmpty
             ? snapshot.data!.first['mainCoins']
@@ -30,7 +44,7 @@ class WalletCoinBalance extends StatelessWidget {
         final colors = Theme.of(context).colorScheme;
 
         return InkWell(
-          onTap: onTap,
+          onTap: widget.onTap,
           borderRadius: BorderRadius.circular(12),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),

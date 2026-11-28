@@ -33,6 +33,21 @@ class _ChatGiftSheetState extends State<_ChatGiftSheet> {
   Map<String, dynamic>? _selectedGift;
   int _quantity = 1;
   bool _isSending = false;
+  late Future<List<Map<String, dynamic>>> _inventoryFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    _inventoryFuture = uid.isEmpty
+        ? Future.value(<Map<String, dynamic>>[])
+        : Supabase.instance.client
+            .from('gift_inventory')
+            .select('*, gifts(*)')
+            .eq('ownerUid', uid)
+            .eq('source', 'purchased')
+            .gt('count', 0);
+  }
 
   Future<void> _send() async {
     if (_selectedGift == null || _isSending) return;
@@ -87,8 +102,6 @@ class _ChatGiftSheetState extends State<_ChatGiftSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-
     return DraggableScrollableSheet(
       initialChildSize: 0.65,
       minChildSize: 0.4,
@@ -110,12 +123,7 @@ class _ChatGiftSheetState extends State<_ChatGiftSheet> {
               const SizedBox(height: 8),
               Expanded(
                 child: FutureBuilder<List<Map<String, dynamic>>>(
-                  future: Supabase.instance.client
-                      .from('gift_inventory')
-                      .select('*, gifts(*)')
-                      .eq('ownerUid', uid)
-                      .eq('source', 'purchased')
-                      .gt('count', 0),
+                  future: _inventoryFuture,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());

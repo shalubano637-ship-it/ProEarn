@@ -32,11 +32,24 @@ class _SecurityPageState extends State<SecurityPage> {
   bool hideNewPassword = true;
   bool passwordMatched = false;
   bool isLoading = false;
+  Stream<List<Map<String, dynamic>>>? _blockedUsersStream;
+  Stream<List<Map<String, dynamic>>>? _hiddenPostsStream;
 
   @override
   void initState() {
     super.initState();
-    final currentUserEmail = FirebaseAuth.instance.currentUser?.email;
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      _blockedUsersStream = Supabase.instance.client
+          .from(kUsersCollection)
+          .stream(primaryKey: ['uid'])
+          .eq('uid', currentUser.uid);
+      _hiddenPostsStream = Supabase.instance.client
+          .from(kUsersCollection)
+          .stream(primaryKey: ['uid'])
+          .eq('uid', currentUser.uid);
+    }
+    final currentUserEmail = currentUser?.email;
     if (currentUserEmail != null) {
       emailController.text = currentUserEmail;
     }
@@ -374,10 +387,7 @@ class _SecurityPageState extends State<SecurityPage> {
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 80),
               children: [
               StreamBuilder<List<Map<String, dynamic>>>(
-                stream: Supabase.instance.client
-                    .from(kUsersCollection)
-                    .stream(primaryKey: ['uid'])
-                    .eq('uid', currentUser.uid),
+                stream: _blockedUsersStream,
                 builder: (context, snapshot) {
                   int blockedCount = 0;
                   if (snapshot.hasData && snapshot.data!.isNotEmpty) {
@@ -431,10 +441,7 @@ class _SecurityPageState extends State<SecurityPage> {
               const SizedBox(height: 15),
                 
 StreamBuilder<List<Map<String, dynamic>>>(
-  stream: Supabase.instance.client
-      .from(kUsersCollection)
-      .stream(primaryKey: ['uid'])
-      .eq('uid', currentUser.uid),
+  stream: _hiddenPostsStream,
   builder: (context, snapshot) {
     int hiddenCount = 0;
     if (snapshot.hasData && snapshot.data!.isNotEmpty) {

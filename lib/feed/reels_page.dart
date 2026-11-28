@@ -64,7 +64,8 @@ class _ReelsPageState extends State<ReelsPage> {
       _postsStream = Supabase.instance.client
           .from(kPostsCollection)
           .stream(primaryKey: ['id'])
-          .order('timestamp', ascending: false);
+          .order('timestamp', ascending: false)
+          .limit(100);
     }
   }
 
@@ -134,7 +135,6 @@ class _ReelsPageState extends State<ReelsPage> {
   }
     
   Future<void> _handleRefresh() async {
-    await Future.delayed(const Duration(milliseconds: 800));
     if (mounted && _shuffledDocs != null) {
       _prefetchedUrls.clear();
       setState(() {

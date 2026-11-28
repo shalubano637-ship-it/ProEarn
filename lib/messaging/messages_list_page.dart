@@ -557,7 +557,7 @@ class _ConversationsListState extends State<_ConversationsList> {
   }
 }
 
-class _FollowedUsersList extends StatelessWidget {
+class _FollowedUsersList extends StatefulWidget {
   final String currentUid;
   final String query;
   final String? forwardText;
@@ -572,18 +572,66 @@ class _FollowedUsersList extends StatelessWidget {
     this.forwardImageUrls,
   });
 
-  bool get isForwardMode => forwardText != null || forwardImageUrl != null || forwardImageUrls != null;
+  @override
+  State<_FollowedUsersList> createState() => _FollowedUsersListState();
+}
+
+class _FollowedUsersListState extends State<_FollowedUsersList> {
+  late Future<List<Map<String, dynamic>>> _usersFuture;
+
+  bool get isForwardMode =>
+      widget.forwardText != null ||
+      widget.forwardImageUrl != null ||
+      widget.forwardImageUrls != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _usersFuture = _loadUsers();
+  }
+
+  @override
+  void didUpdateWidget(covariant _FollowedUsersList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentUid != widget.currentUid) {
+      _usersFuture = _loadUsers();
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _loadUsers() async {
+    final profile = await Supabase.instance.client
+        .from(kUsersCollection)
+        .select('following')
+        .eq('uid', widget.currentUid)
+        .maybeSingle();
+    final following = (profile?['following'] as List?)?.cast<String>() ?? [];
+    if (following.isEmpty) return [];
+    final rows = await Supabase.instance.client
+        .from('public_profiles')
+        .select()
+        .inFilter('uid', following);
+    return List<Map<String, dynamic>>.from(rows);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Map<String, dynamic>?>(
-      future: Supabase.instance.client.from(kUsersCollection).select('following').eq('uid', currentUid).maybeSingle(),
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _usersFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        final following = (snapshot.data?['following'] as List?)?.cast<String>() ?? [];
-        if (following.isEmpty) {
+        if (snapshot.hasError) {
+          return const Center(child: Text("Couldn't load followed users. Please try again."));
+        }
+        final users = snapshot.data ?? [];
+        final filtered = widget.query.isEmpty
+            ? users
+            : users.where((u) =>
+                (u['userName'] ?? '').toString().toLowerCase().contains(widget.query)
+              ).toList();
+
+        if (users.isEmpty) {
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(24.0),
@@ -591,53 +639,42 @@ class _FollowedUsersList extends StatelessWidget {
             ),
           );
         }
+        if (filtered.isEmpty) {
+          return const Center(child: Text("No results."));
+        }
 
-        return FutureBuilder<List<Map<String, dynamic>>>(
-          future: Supabase.instance.client.from('public_profiles').select().inFilter('uid', following),
-          builder: (context, usersSnapshot) {
-            final users = usersSnapshot.data ?? [];
-            final filtered = query.isEmpty
-                ? users
-                : users.where((u) => (u['userName'] ?? '').toString().toLowerCase().contains(query)).toList();
+        return ListView.builder(
+          itemCount: filtered.length,
+          itemBuilder: (context, index) {
+            final u = filtered[index];
+            final userName = u['userName'] ?? 'User';
+            final profileUrl = u['profileUrl'] ?? '';
+            final otherUid = u['uid'] as String;
 
-            if (filtered.isEmpty) {
-              return const Center(child: Text("No results."));
-            }
-
-            return ListView.builder(
-              itemCount: filtered.length,
-              itemBuilder: (context, index) {
-                final u = filtered[index];
-                final userName = u['userName'] ?? 'User';
-                final profileUrl = u['profileUrl'] ?? '';
-                final otherUid = u['uid'] as String;
-
-                return ListTile(
-                  onTap: isForwardMode
-                      ? () => _forwardTo(
-                            context,
-                            otherUid: otherUid,
-                            otherUserName: userName,
-                            forwardText: forwardText,
-                            forwardImageUrl: forwardImageUrl,
-                            forwardImageUrls: forwardImageUrls,
-                          )
-                      : () => _openChat(context, otherUid, userName),
-                  leading: GestureDetector(
-                    onTap: isForwardMode ? null : () => _openProfile(context, otherUid),
-                    child: ClipOval(
-                      child: GlobalCachedImage(
-                        imageUrl: profileUrl,
-                        width: 48,
-                        height: 48,
-                        fit: BoxFit.cover,
-                        errorWidget: const Icon(Icons.person),
-                      ),
-                    ),
+            return ListTile(
+              onTap: isForwardMode
+                  ? () => _forwardTo(
+                        context,
+                        otherUid: otherUid,
+                        otherUserName: userName,
+                        forwardText: widget.forwardText,
+                        forwardImageUrl: widget.forwardImageUrl,
+                        forwardImageUrls: widget.forwardImageUrls,
+                      )
+                  : () => _openChat(context, otherUid, userName),
+              leading: GestureDetector(
+                onTap: isForwardMode ? null : () => _openProfile(context, otherUid),
+                child: ClipOval(
+                  child: GlobalCachedImage(
+                    imageUrl: profileUrl,
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    errorWidget: const Icon(Icons.person),
                   ),
-                  title: Text(userName),
-                );
-              },
+                ),
+              ),
+              title: Text(userName),
             );
           },
         );

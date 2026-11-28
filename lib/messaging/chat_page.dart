@@ -160,8 +160,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     }
   }
 
-  // Poll as a recovery path for devices where the Realtime websocket
-  // silently disconnects while the chat screen remains open.
+  // Retain the existing polling fallback because it also recovers chats
+  // when a device's Realtime connection silently drops.
   Stream<List<Map<String, dynamic>>> _pollMessages(String conversationId) async* {
     while (mounted) {
       try {
@@ -174,7 +174,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       } catch (e) {
         debugPrint('Chat message refresh failed: $e');
       }
-      await Future.delayed(const Duration(seconds: 4));
+      await Future.delayed(const Duration(seconds: 15));
     }
   }
 
