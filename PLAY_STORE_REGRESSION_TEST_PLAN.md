@@ -53,6 +53,10 @@ remain open until tested on a real Android device with dedicated test accounts.
   - [x] Room Chat report snapshots now preserve message text, image URL, and
     whether a voice attachment was present; the admin dashboard labels and
     previews `room_message` reports and offers a dedicated removal action.
+  - [x] The live `get_room_messages` RPC now returns a voice-attachment flag,
+    duration, and listen counters without exposing the private R2 voice key.
+    The migration was applied; SQL grants were verified as authenticated-only
+    (anon cannot execute the RPC).
   - [x] Live `admin-moderate-report` is ACTIVE (v10). The Room Chat action
     verifies the report source and sender match, removes the `room_messages`
     row, deletes its R2 chat image/voice object, marks the report actioned,
