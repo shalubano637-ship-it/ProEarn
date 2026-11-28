@@ -209,7 +209,7 @@ class AiSocialApp extends StatelessWidget {
 }
 
 class _AppLifecycleObserver extends WidgetsBindingObserver {
-  static const Duration _sessionValidationInterval = Duration(minutes: 5);
+  static const Duration _sessionValidationInterval = Duration(seconds: 45);
   static const Set<String> _invalidSessionCodes = {
     'user-not-found',
     'user-disabled',
