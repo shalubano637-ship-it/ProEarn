@@ -261,6 +261,39 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
     }
   }
 
+  Future<void> _deleteRoomMessage(Map<String, dynamic> report) async {
+    final messageId = report['targetMessageId'] as String?;
+    if (messageId == null || messageId.isEmpty) {
+      _showSnack("Is report ke saath koi Room message attached nahi hai.", isError: true);
+      return;
+    }
+
+    final confirmed = await _confirm(
+      title: "Remove this Room message?",
+      body: "This permanently removes the reported message and its stored image or voice attachment from the Room.",
+    );
+    if (!confirmed || !mounted) return;
+
+    try {
+      final response = await _client.functions.invoke(
+        'admin-moderate-report',
+        body: {'reportId': report['id'], 'action': 'remove_room_message'},
+      );
+      final data = response.data;
+      if (data is! Map || data['success'] != true) {
+        throw StateError("Moderation service did not confirm Room message removal");
+      }
+      if (!mounted) return;
+      setState(() {
+        report['status'] = 'actioned';
+        report['actionTaken'] = 'room_message_removed';
+      });
+      _showSnack("Room message removed.");
+    } catch (e) {
+      if (mounted) _showSnack("Couldn’t remove this Room message. Please retry.", isError: true);
+    }
+  }
+
   Future<bool> _confirm({required String title, required String body}) async {
     final result = await showDialog<bool>(
       context: context,
@@ -335,6 +368,7 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
       'post' => 'Post',
       'chat_message' => 'Chat message',
       'chat_settings' => 'Chat / user',
+      'room_message' => 'Room message',
       'comment' => 'Comment',
       _ => 'Unknown',
     };
@@ -387,6 +421,45 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
             ),
           const SizedBox(width: 8),
           Expanded(child: Text(caption, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12))),
+        ],
+      );
+    }
+    if (source == 'room_message') {
+      final rawSnapshot = report['messageSnapshot'] as String?;
+      Map<String, dynamic> snapshot = {};
+      if (rawSnapshot != null && rawSnapshot.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(rawSnapshot);
+          snapshot = decoded is Map ? Map<String, dynamic>.from(decoded) : {'text': rawSnapshot};
+        } catch (_) {
+          snapshot = {'text': rawSnapshot};
+        }
+      }
+      final messageText = snapshot['text']?.toString().trim() ?? '';
+      final imageUrl = (snapshot['image_url'] ?? snapshot['imageUrl'])?.toString();
+      final hasVoiceAttachment = snapshot['hasVoiceAttachment'] == true ||
+          (snapshot['voice_path']?.toString().isNotEmpty ?? false);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            messageText.isNotEmpty ? messageText : "(attachment-only Room message)",
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+          ),
+          if (imageUrl != null && imageUrl.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: AppRadius.smRadius,
+              child: GlobalCachedImage(imageUrl: imageUrl, width: 88, height: 88, fit: BoxFit.cover),
+            ),
+          ],
+          if (hasVoiceAttachment)
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text("Voice attachment", style: TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+            ),
         ],
       );
     }
@@ -571,6 +644,12 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
                         onPressed: () => _deleteChatMessage(r),
                         icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.warning),
                         label: const Text("Delete Chat Message", style: TextStyle(color: AppColors.warning)),
+                      ),
+                    if (r['source'] == 'room_message' && r['targetMessageId'] != null)
+                      OutlinedButton.icon(
+                        onPressed: () => _deleteRoomMessage(r),
+                        icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.warning),
+                        label: const Text("Delete Room Message", style: TextStyle(color: AppColors.warning)),
                       ),
                     if (r['status'] != 'dismissed')
                       TextButton(
