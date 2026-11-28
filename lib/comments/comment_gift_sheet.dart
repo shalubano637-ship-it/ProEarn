@@ -106,8 +106,6 @@ class _CommentGiftSheetState extends State<_CommentGiftSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
       minChildSize: 0.4,
