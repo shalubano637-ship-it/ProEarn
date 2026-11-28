@@ -27,6 +27,16 @@ class _CommentGiftSheetState extends State<_CommentGiftSheet> {
   Map<String, dynamic>? _selectedGift;
   int _quantity = 1;
   bool _isSending = false;
+  late Future<List<Map<String, dynamic>>> _availableGiftsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    _availableGiftsFuture = uid.isEmpty
+        ? Future.value(<Map<String, dynamic>>[])
+        : _loadAvailableGifts(uid);
+  }
 
   Future<void> _send() async {
     if (_selectedGift == null || _isSending) return;
@@ -118,7 +128,7 @@ class _CommentGiftSheetState extends State<_CommentGiftSheet> {
               const SizedBox(height: 12),
               Expanded(
                 child: FutureBuilder<List<Map<String, dynamic>>>(
-                  future: _loadAvailableGifts(uid),
+                  future: _availableGiftsFuture,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
