@@ -4,6 +4,29 @@ Run this on a physical Android device using a fresh test account and a second
 account for chat/report/block scenarios. Do not use a personal production
 account for destructive deletion tests.
 
+## Automated CI checks (verified)
+
+The following checks passed in GitHub Actions run
+[46128711255](https://github.com/shalubano637-ship-it/ProEarn/actions/runs/46128711255)
+on 2026-11-28 for commit
+`e67ad372b0baa77d2ab6ed2d019fccbea19e1e3c` on `main`.
+
+These are CI/automated checks only. They do not count as physical-device,
+live-account, payment-provider, or end-to-end tests.
+
+- [x] Flutter static analysis completed successfully (0 errors; 29 warnings and 212 info notices were reported).
+- [x] Flutter unit tests passed: 14/14 in `test/chest_timer_service_test.dart`.
+- [x] Deno type checks passed for the Firebase auth helpers and the configured provisioning, Google bridge, account deletion, R2 upload, notifications, Play Billing, moderation, and voice-message functions.
+- [x] Firebase Auth helper Deno tests passed (`supabase/functions/_shared/firebase_auth_test.ts`).
+- [x] Persistent upload keystore was restored; the actual debug APK signer was verified against that keystore and the Firebase SHA-1 registration.
+- [x] Release signing certificate and Firebase package/Web OAuth configuration checks passed.
+- [x] Signed release APK and signed Android App Bundle (AAB) were built and uploaded as CI artifacts.
+
+### Chest timer unit-test coverage
+
+- [x] Unit-tested chest timer schedule, start, countdown, pause/persist, foreground resume, expiry, already-unlocked state, signed-out state, repository error handling, and disposal (14/14 tests).
+- [ ] End-to-end chest reward flow: ad verification, server-side reward/claim persistence, actual claim, and push-notification delivery.
+
 ## Build and install
 
 - [ ] Install the CI debug APK on a clean device.
@@ -43,18 +66,16 @@ account for destructive deletion tests.
 
 ## Rewards and ads
 
-- [ ] Start, pause, resume, and expire a chest timer.
 - [ ] Confirm chest-ready notification is not duplicated.
 - [ ] Test coin balance, gift inventory, gift sending, and leaderboard updates.
 - [ ] Test rewarded ads only grant in-app virtual rewards, never direct cash or monetary items.
 - [ ] Confirm daily ad reward caps are enforced server-side.
 
-
 ## Google Play Console and Android policy checks
 
 - [ ] Confirm the release AAB targets Android 16 / API 36. Do not infer this from compileSdk; inspect the built artifact or Play Console's App Bundle Explorer.
 - [ ] Inspect the merged release manifest. Legacy READ_EXTERNAL_STORAGE is limited to API 32 and WRITE_EXTERNAL_STORAGE to API 28; confirm no broad all-files or unnecessary photo/video permissions are added by dependencies.
-- [ ] Confirm the Play listing package name is exactly `com.example.proearn` (or update the app configuration and Firebase registration together if the actual Play package differs).
+- [ ] Confirm the Play listing package name is exactly `com.prosn.app` and matches the app configuration and Firebase registration.
 - [ ] In Play Console → App content → App access, provide a working reviewer account and exact sign-in instructions. Keep the test account active, seeded with usable content, and accessible for the full review. If email/OTP verification is required, explain the reviewer path and provide the required access details through Play Console's secure fields.
 - [ ] Complete the Data safety form from the actual production SDK configuration and data flows. Review account identifiers, email, user content/messages, photos, device/diagnostic data, push tokens, advertising identifiers, and data shared with Supabase, Cloudflare, Firebase, AdMob, Sentry, and any remaining ImgBB flow.
 - [ ] Set Target Audience and Content Rating truthfully for the actual intended audience and app features. Do not select an age group merely to bypass child-safety requirements.
@@ -65,8 +86,9 @@ account for destructive deletion tests.
 
 ## Release validation
 
-- [ ] Confirm applicationId matches the Play Console app and google-services.json.
+- [x] CI verified `applicationId` and the Firebase Android client both use `com.prosn.app`.
+- [ ] Confirm the Play Console listing package matches `com.prosn.app`.
 - [ ] Confirm versionCode is greater than the highest uploaded Play version code.
-- [ ] Build a signed release AAB with the private upload keystore.
+- [x] Build a signed release AAB with the persistent private upload keystore (verified in the CI run linked above).
 - [ ] Verify the public Privacy Policy and account-deletion URLs open without login.
 - [ ] Complete Play Console Data Safety, Ads, Content Rating, Target Audience, and App Access declarations.
