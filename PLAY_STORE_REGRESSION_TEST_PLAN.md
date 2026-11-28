@@ -22,6 +22,70 @@ live-account, payment-provider, or end-to-end tests.
 - [x] Release signing certificate and Firebase package/Web OAuth configuration checks passed.
 - [x] Signed release APK and signed Android App Bundle (AAB) were built and uploaded as CI artifacts.
 
+## Requested live test status (2026-11-28)
+
+These results are from a read-only live Supabase inspection plus one reversible
+block/unblock database smoke test. A deployed function, source-code inspection,
+or historical row count is not an end-to-end pass. The nine top-level checks
+remain open until tested on a real Android device with dedicated test accounts.
+
+- [ ] **Real device installation** — not performed. The CI APK artifact exists,
+  but no Android phone/emulator is connected to install or launch it.
+- [ ] **Email and Google login** — Firebase email/password and Google bridge
+  paths were inspected; the provisioning and Google bridge functions are
+  deployed ACTIVE. No live email verification, Google account login, logout,
+  or relogin was executed.
+- [ ] **Chat and messaging** — not E2E tested. Live database counts: 0
+  conversations, 0 message requests, 0 direct messages, and 0 room messages.
+- [ ] **Block/unblock end-to-end** — app UI and real-device interaction remain
+  untested.
+  - [x] Live database smoke test passed for the deployed
+    `block_user_and_hide_post`, `is_blocked_by_user`, and `unblock_user`
+    functions. It applied a block between two existing profiles, verified the
+    blocked-state check from the other profile, unblocked, and verified the
+    state cleared. The test ended with 0 users having any blocked IDs; no block
+    was left in place. This was a SQL-side smoke test with simulated JWT
+    claims, not a Flutter/API-device test.
+- [ ] **Reporting and moderation** — no new report-to-admin-to-takedown flow
+  was executed.
+  - [x] Live `admin-moderate-report` function is ACTIVE (v9); its caller
+    authentication, admin check, and supported actions were inspected.
+  - [x] Existing database has 6 reports, all `dismissed`, and 0 pending reports.
+    This is historical state, not proof that a new report can be actioned.
+- [ ] **Billing and subscriptions** — not tested through Google Play.
+  - [x] Live `play-billing` function is ACTIVE (v10); client product IDs and
+    server verification/ledger code were inspected.
+  - [x] Live ledger currently has 0 purchase events and 0 subscription rows.
+  - [ ] License-tester purchase, coin credit, weekly/monthly renewal, cancel,
+    refund, restore, duplicate callback, and entitlement checks remain open.
+  - [ ] Google Play RTDN is not configured, so off-app cancellation/refund
+    updates are not yet verified.
+- [ ] **Ads and rewards** — not E2E tested.
+  - [x] Confirmed `lib/ad_unit_ids.dart` and the Android manifest still use
+    Google's sample/test AdMob IDs. Production ad delivery cannot be validated
+    with these IDs.
+  - [ ] Rewarded-ad completion, server-side reward grant, duplicate prevention,
+    daily caps, and chest claim remain open.
+- [ ] **Account deletion E2E** — not independently re-run or verified in this
+  session.
+  - [x] Live `delete-account-request` (v22) and `delete-account` (v26)
+    functions are ACTIVE; source enforces Firebase token and verified-email
+    checks.
+  - [x] The deletion-request table has 4 records, all with status
+    `completed`. This is backend record evidence only; Firebase Auth user
+    removal, R2 cleanup, app auto-logout, and rejected post-deletion login
+    were not independently checked.
+- [ ] **Push notifications** — device delivery remains untested.
+  - [x] Two user records currently have an FCM token and push enabled.
+  - [x] Live `notify` function is ACTIVE (v60) and uses Firebase Cloud
+    Messaging HTTP v1 in its send path.
+  - [ ] Android permission prompt, foreground/background delivery, tap
+    navigation, and delivery on a real device remain open.
+
+No payment, account deletion, report takedown, post upload, or message was
+triggered by this audit. The only stateful smoke test was block/unblock, and
+the test removed its temporary block before completing.
+
 ### Chest timer unit-test coverage
 
 - [x] Unit-tested chest timer schedule, start, countdown, pause/persist, foreground resume, expiry, already-unlocked state, signed-out state, repository error handling, and disposal (14/14 tests).
