@@ -147,7 +147,7 @@ class _RoomChatPageState extends State<RoomChatPage> {
     return (m['image_url']?.toString().isNotEmpty ?? false) &&
         (m['text']?.toString().isEmpty ?? true) &&
         (m['reply_to_message_id'] == null) &&
-        (m['voice_path']?.toString().isNotEmpty != true);
+        (m['has_voice_attachment'] != true);
   }
 
   bool _imagesCloseTogether(Map<String, dynamic> a, Map<String, dynamic> b) {
@@ -381,7 +381,7 @@ class _RoomChatPageState extends State<RoomChatPage> {
         'messageSnapshot': jsonEncode({
           'text': msg['text']?.toString() ?? '',
           'image_url': msg['image_url']?.toString(),
-          'hasVoiceAttachment': msg['voice_path']?.toString().isNotEmpty == true,
+          'hasVoiceAttachment': msg['has_voice_attachment'] == true,
         }),
         'source': 'room_message',
         'targetMessageId': msg['id'],
@@ -588,7 +588,7 @@ class _RoomChatPageState extends State<RoomChatPage> {
                                 ),
                               ),
                             ),
-                            if ((m['voice_path']?.toString().isNotEmpty ?? false))
+                            if (m['has_voice_attachment'] == true)
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 2),
                                 child: VoiceMessageBubble(
@@ -665,7 +665,7 @@ class _RoomChatPageState extends State<RoomChatPage> {
               child: Row(children: [
                 const Icon(Icons.reply, size: 18),
                 const SizedBox(width: 8),
-                Expanded(child: Text(_replyingTo!['text']?.toString().isNotEmpty == true ? _replyingTo!['text'].toString() : ((_replyingTo!['voice_path']?.toString().isNotEmpty ?? false) ? 'Voice message' : 'Photo'), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                Expanded(child: Text(_replyingTo!['text']?.toString().isNotEmpty == true ? _replyingTo!['text'].toString() : ((_replyingTo!['has_voice_attachment'] == true) ? 'Voice message' : 'Photo'), maxLines: 1, overflow: TextOverflow.ellipsis)),
                 IconButton(onPressed: () => setState(() => _replyingTo = null), icon: const Icon(Icons.close)),
               ]),
             ),
