@@ -209,7 +209,7 @@ class AiSocialApp extends StatelessWidget {
 }
 
 class _AppLifecycleObserver extends WidgetsBindingObserver {
-  static const Duration _sessionValidationInterval = Duration(seconds: 45);
+  static const Duration _sessionValidationInterval = Duration(minutes: 5);
   static const Set<String> _invalidSessionCodes = {
     'user-not-found',
     'user-disabled',
@@ -250,9 +250,8 @@ class _AppLifecycleObserver extends WidgetsBindingObserver {
         return;
       }
 
-      // Force a token refresh as a second server-side check so a deleted
-      // account cannot keep using a previously cached ID token.
-      await refreshedUser.getIdToken(true);
+      // reload() performs the authoritative account lookup. A forced token
+      // refresh here would add a second network round trip every validation.
     } on FirebaseAuthException catch (authError) {
       if (_invalidSessionCodes.contains(authError.code)) {
         debugPrint('Remote Firebase account is no longer valid (' + authError.code + '); signing out.');
