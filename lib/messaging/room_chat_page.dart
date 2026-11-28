@@ -111,7 +111,9 @@ class _RoomChatPageState extends State<RoomChatPage> {
     _memberCount = widget.memberCount;
     _loadMessages();
     _loadFavorite();
-    _timer = Timer.periodic(const Duration(seconds: 5), (_) => _loadMessages(silent: true));
+    // Room messages come from a joined RPC; keep a safety refresh without
+    // downloading the same history every five seconds. Sends refresh immediately.
+    _timer = Timer.periodic(const Duration(seconds: 20), (_) => _loadMessages(silent: true));
   }
 
   Future<void> _scrollToMessage(String messageId) async {
