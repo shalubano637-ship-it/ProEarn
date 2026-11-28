@@ -22,10 +22,17 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
   final String _currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
   bool _isDevicePermissionGranted = false;
   bool? _pushEnabled;
+  Stream<List<Map<String, dynamic>>>? _userStream;
 
   @override
   void initState() {
     super.initState();
+    if (_currentUid.isNotEmpty) {
+      _userStream = Supabase.instance.client
+          .from(kUsersCollection)
+          .stream(primaryKey: ['uid'])
+          .eq('uid', _currentUid);
+    }
     WidgetsBinding.instance.addObserver(this);
     _checkCurrentDevicePermission();
     _loadPushPreference();
@@ -71,7 +78,7 @@ class _PushNotificationPageState extends State<PushNotificationPage> with Widget
         title: const Text("Notification Settings"),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: Supabase.instance.client.from(kUsersCollection).stream(primaryKey: ['uid']).eq('uid', _currentUid),
+        stream: _userStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
